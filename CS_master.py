@@ -964,6 +964,12 @@ def Sa_avg(bgmpe,scenario,T):
     acceleration of the product of the Spectral
     accelerations at selected periods; 
 
+    References
+    ----------
+    Kohrangi, M., Bazzurro, P., Vamvatsikos, D., & Spillatura, A. (2017). 
+    Conditional spectrum-based ground motion record selection using average spectral acceleration. 
+    Earthquake Engineering & Structural Dynamics, 46(10), 1667–1685. https://doi.org/10.1002/eqe.2876
+
     Parameters
     ----------
     bgmpe : openquake object
@@ -1021,6 +1027,12 @@ def rho_AvgSA_SA(bgmpe,scenario,T,Tstar):
     Details
     -------  
     function to compute the correlation between Spectra acceleration and AvgSA.
+    
+    References
+    ----------
+    Kohrangi, M., Bazzurro, P., Vamvatsikos, D., & Spillatura, A. (2017). 
+    Conditional spectrum-based ground motion record selection using average spectral acceleration. 
+    Earthquake Engineering & Structural Dynamics, 46(10), 1667–1685. https://doi.org/10.1002/eqe.2876
     
     Parameters
     ----------

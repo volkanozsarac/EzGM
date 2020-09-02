@@ -5,7 +5,7 @@
 |    record selection and scaling                                       |
 |    Version: 0.1                                                       |
 |                                                                       |
-|    Created on 26/08/2020                                              |
+|    Created on 02/09/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -22,17 +22,21 @@ import zipfile
 import numpy as np
 import numpy.matlib
 from scipy.stats import skew
-from time import gmtime
+from time import gmtime, time
 import matplotlib.pyplot as plt
 import matplotlib
 from scipy.io import loadmat
 from scipy import interpolate
+import pickle
+import copy
 # Import the tools from OpenQuake
 from openquake.hazardlib import gsim, imt, const
 
+startTime = time()
+
 class cs_master:
     
-    def __init__(self,Tstar, gmpe = 'Boore_Atkinson_2008', database = 'NGA_W1'):
+    def __init__(self,Tstar, gmpe = 'Boore_Atkinson_2008', database = 'NGA_W1', Tnew = 1, pInfo = 0):
         """
         
         Details
@@ -42,12 +46,22 @@ class cs_master:
         
         Parameters
         ----------
-        Tstar : int, float, list
-            Conditioning period range [sec]
+        Tstar    : int, float, list
+            Conditioning period range [sec].
         gmpe     : str, optional
-            GMPE model (see OpenQuake library). The default is 'Boore_Atkinson_2008'.
-        database : str
-            database to use, NGA_W1, NGA_W2, EXSIM etc.
+            GMPE model (see OpenQuake library). 
+            The default is 'Boore_Atkinson_2008'.
+        database : str, optional
+            database to use, NGA_W1, NGA_W2, EXSIM_Duzce, etc.
+            The default is NGA_W1.
+       Tnew      : int, optional
+            flag to create a new uniform period array with step size 0.05 sec
+            The spectral values will be interpolated for this new period array
+            The default = 1. If 0 existing period array will be used.           
+        pInfo    : int, optional
+            flag to print required input for the gmpe which is going to be used. 
+            (0: no, 1:yes)
+            The default is 0.
             
         Returns
         -------
@@ -55,33 +69,59 @@ class cs_master:
         
         """
         
-        import numpy as np
-        
+        # add Tstar to self
         if isinstance(Tstar,int) or isinstance(Tstar,float):
             self.Tstar = np.array([Tstar])
         elif isinstance(Tstar,list): 
             self.Tstar = np.asarray(Tstar)
         
-        # Input the ground motion database to use
+        # Add the input the ground motion database to use
         matfile = os.path.join('Meta_Data',database)
         self.database = loadmat(matfile, squeeze_me=True)
-        
         self.database['Name'] = database
         
-        # check if AvgSa or Sa is used as IM, then if T* is not present, add it
+        # Refine the period array and the spectra via interpolation
+        if Tnew == 1:
+            step = 0.05
+            Periods = np.append(np.array([0.01, 0.02]),np.arange(step,self.database['Periods'][-1],step))
+            f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)            
+            Sa_int = f(Periods)
+            temp = self.database['Sa_1'][:,-1].reshape(len(self.database['Sa_1'][:,-1]),1)
+            self.database['Sa_1'] = np.append(Sa_int, temp, axis=1)
+    
+            if database.startswith("NGA"):
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'],axis=1)            
+                Sa_int = f(Periods)
+                temp = self.database['Sa_2'][:,-1].reshape(len(self.database['Sa_2'][:,-1]),1)
+                self.database['Sa_2'] = np.append(Sa_int, temp, axis=1)
+                
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'],axis=1)            
+                Sa_int = f(Periods)
+                temp = self.database['Sa_RotD50'][:,-1].reshape(len(self.database['Sa_RotD50'][:,-1]),1)
+                self.database['Sa_RotD50'] = np.append(Sa_int, temp, axis=1)
+                
+            self.database['Periods'] = np.append(Periods,self.database['Periods'][-1])
+        
+        # check if AvgSa or Sa is used as IM, 
+        # then in case of Sa(T*) add T* and Sa(T*) if not present
         if not self.Tstar[0] in self.database['Periods'] and len(self.Tstar) == 1: 
-            f1 = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)
-            f2 = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'],axis=1)
-            
-            Sa1_int = f1(self.Tstar[0]); Sa1_int.shape = (len(Sa1_int),1)
-            Sa2_int = f2(self.Tstar[0]); Sa2_int.shape = (len(Sa2_int),1)
-            
-            Sa1 = np.append(self.database['Sa_1'], Sa1_int, axis=1)
-            Sa2 = np.append(self.database['Sa_2'], Sa2_int, axis=1)
-            Periods = np.append(self.database['Periods'],self.Tstar[0])
-            
-            self.database['Sa_1'] = Sa1[:,np.argsort(Periods)]
-            self.database['Sa_2'] = Sa2[:,np.argsort(Periods)]
+            f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)            
+            Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)           
+            Sa = np.append(self.database['Sa_1'], Sa_int, axis=1)
+            Periods = np.append(self.database['Periods'],self.Tstar[0])            
+            self.database['Sa_1'] = Sa[:,np.argsort(Periods)]
+
+            if database.startswith("NGA"):
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'],axis=1)
+                Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)
+                Sa = np.append(self.database['Sa_2'], Sa_int, axis=1)
+                self.database['Sa_2'] = Sa[:,np.argsort(Periods)]  
+                
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'],axis=1)
+                Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)
+                Sa = np.append(self.database['Sa_RotD50'], Sa_int, axis=1)
+                self.database['Sa_RotD50'] = Sa[:,np.argsort(Periods)]  
+
             self.database['Periods'] = Periods[np.argsort(Periods)]
             
         # Define the GMPE object and print the required input information
@@ -105,15 +145,15 @@ class cs_master:
             self.bgmpe = gsim.idriss_2014.Idriss2014()
         if gmpe == 'AbrahamsonEtAl2014':
             self.bgmpe = gsim.abrahamson_2014.AbrahamsonEtAl2014()
-        
-        # print the selected gmpe info
-        print('The required distance parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_DISTANCES))
-        print('The required rupture parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
-        print('The required site parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
-        print('The defined intensity measure component is: %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
-        print('The defined tectonic region type is: %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
+    
+        if pInfo == 1:  # print the selected gmpe info
+            print('The required distance parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_DISTANCES))
+            print('The required rupture parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
+            print('The required site parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
+            print('The defined intensity measure component is: %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
+            print('The defined tectonic region type is: %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
-    def create(self, im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = [0.01,4]):
+    def create(self, im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = [0.01,4], outdir = 'Outputs'):
         """
         
         Details
@@ -145,12 +185,23 @@ class cs_master:
         T_CS_range : list, optional
                      Lower and upper bound values for the period range of contional spectrum.
                      The default is [0.01,4].
+        outdir     : str
+                     output directory to create.
+                     The default is 'Outputs'.
 
         Returns
         -------
         None.
                                         
         """
+        
+        # create the output directory and add the path to self
+        cwd = os. getcwd()
+        outdir_path = os.path.join(cwd,outdir)
+        self.outdir = outdir_path
+        create_outdir(self.outdir)
+        
+        # add intensity measure level to self
         self.im_Tstar = im_Tstar
         
         # Get number of scenarios, and their contribution
@@ -379,13 +430,24 @@ class cs_master:
         """
         
         if self.selection == 1: # SaKnown = Sa_arb
-            SaKnown    = np.append(self.database['Sa_1'],self.database['Sa_2'], axis=0)
-            soil_Vs30  = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-            Mw         = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)   
-            Rjb        = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)  
-            fault      = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
 
+            if self.database['Name'].startswith("NGA"):
+            
+                SaKnown    = np.append(self.database['Sa_1'],self.database['Sa_2'], axis=0)
+                soil_Vs30  = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
+                Mw         = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)   
+                Rjb        = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)  
+                fault      = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
+                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            
+            elif self.database['Name'].startswith("EXSIM"):
+                SaKnown = self.database['Sa_1']
+                soil_Vs30  = self.database['soil_Vs30']
+                Mw         = self.database['magnitude']
+                Rjb        = self.database['Rjb']
+                fault      = self.database['mechanism']
+                Filename_1 = self.database['Filename_1']
+    
         if self.selection == 2: # SaKnown = Sa_g.m.
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1']*self.database['Sa_2'])
@@ -401,7 +463,7 @@ class cs_master:
             fault      = self.database['mechanism']
             Filename_1 = self.database['Filename_1']
             Filename_2 = self.database['Filename_2']
-
+                
         perKnown = self.database['Periods']        
         
         # Limiting the records to be considered using the `notAllowed' variable
@@ -518,6 +580,10 @@ class cs_master:
         self.Vs30_lim = Vs30_lim
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
+        
+        # Exsim provides a single gm component
+        if self.database['Name'].startswith("EXSIM"):
+            self.selection = 1
         
         # Simulate response spectra
         self.simulate_spectra() 
@@ -666,65 +732,93 @@ class cs_master:
         self.rec_fault = fault[recID]
         self.rec_h1 = Filename_1[recID]
         
-        if selection == 1:
+        if self.selection == 1:
             self.rec_h2 = None
-        elif selection == 2:
+        elif self.selection == 2:
             self.rec_h2 = Filename_2[recID]
             
-    def write(self,outdir):
+    def write(self, cs = 0, recs = 1):
         
-        # set the directories and file names
-        zipName = 'Records.zip'
-        cwd = os. getcwd()
-        outdir_path = os.path.join(cwd,outdir)
-        create_outdir(outdir_path)
-        n = len(self.rec_h1)
-        path_dts = os.path.join(cwd,outdir_path,'GMR_dts.txt')
-        path_durs = os.path.join(cwd,outdir_path,'GMR_durs.txt')
-        path_H1 = os.path.join(cwd,outdir_path,'GMR_H1_names.txt')
-        dts = np.zeros((n))
-        durs = np.zeros((n))
-        h1s = open(path_H1, 'w')
-        if not self.rec_h2 is None:
-            path_H2 = os.path.join(cwd,outdir_path,'GMR_H2_names.txt')
-            h2s = open(path_H2, 'w')
-        
-        if self.database['Name'] == 'NGA_W1':
-
-            folder = 'NGA_W1'
-            # save the first gm components
-            for i in range(n):
-                file = self.rec_h1[i]
-                temp1,temp2 = file.split('/'); temp2 = temp2[:-3] + 'at2'
-                rec_path = os.path.join(folder,temp1.upper(),temp2)
-                dts[i], _, _, time, inp_acc = ReadNGA(rec_path,zipName)
-                durs[i] = time[-1]
-                gmr_file = 'GMR_'+str(i+1)+'.txt'
-                path = os.path.join(outdir_path,gmr_file)
-                acc_Sc = self.rec_scale[i] * inp_acc
-                np.savetxt(path, acc_Sc, fmt='%1.4e')
-                h1s.write(gmr_file+'\n')
-            
-            h1s.close()
-            np.savetxt(path_dts,dts)
-            np.savetxt(path_durs,durs)
-            
-            # save the second gm components
+        if recs == 1:
+            # set the directories and file names
+            zipName = 'Records.zip'
+            n = len(self.rec_h1)
+            path_dts = os.path.join(self.outdir,'GMR_dts.txt')
+            path_durs = os.path.join(self.outdir,'GMR_durs.txt')
+            path_H1 = os.path.join(self.outdir,'GMR_H1_names.txt')
+            dts = np.zeros((n))
+            durs = np.zeros((n))
+            h1s = open(path_H1, 'w')
             if not self.rec_h2 is None:
+                path_H2 = os.path.join(self.outdir,'GMR_H2_names.txt')
+                h2s = open(path_H2, 'w')
+            
+            if self.database['Name'] == 'NGA_W1':
+    
+                folder = 'NGA_W1'
+                # save the first gm components
                 for i in range(n):
-                    file = self.rec_h2[i]
+                    file = self.rec_h1[i]
                     temp1,temp2 = file.split('/'); temp2 = temp2[:-3] + 'at2'
                     rec_path = os.path.join(folder,temp1.upper(),temp2)
-                    _, _, _, _, inp_acc = ReadNGA(rec_path,zipName)
-                    gmr_file = 'GMR_'+str(n+i+1)+'.txt'
-                    path = os.path.join(outdir_path,gmr_file)
+                    dts[i], _, _, t, inp_acc = ReadNGA(rec_path,zipName)
+                    durs[i] = t[-1]
+                    gmr_file = 'GMR_'+str(i+1)+'.txt'
+                    path = os.path.join(self.outdir,gmr_file)
                     acc_Sc = self.rec_scale[i] * inp_acc
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
-                    h2s.write(gmr_file+'\n')                
+                    h1s.write(gmr_file+'\n')
                 
-            h2s.close()
+                h1s.close()
+                np.savetxt(path_dts,dts)
+                np.savetxt(path_durs,durs)
+                
+                # save the second gm components
+                if not self.rec_h2 is None:
+                    for i in range(n):
+                        file = self.rec_h2[i]
+                        temp1,temp2 = file.split('/'); temp2 = temp2[:-3] + 'at2'
+                        rec_path = os.path.join(folder,temp1.upper(),temp2)
+                        _, _, _, _, inp_acc = ReadNGA(rec_path,zipName)
+                        gmr_file = 'GMR_'+str(n+i+1)+'.txt'
+                        path = os.path.join(self.outdir,gmr_file)
+                        acc_Sc = self.rec_scale[i] * inp_acc
+                        np.savetxt(path, acc_Sc, fmt='%1.4e')
+                        h2s.write(gmr_file+'\n')                
+                    
+                    h2s.close()
+    
+            if self.database['Name'].startswith('EXSIM'):
+                folder = self.database['Name']
+                sf = 1/981 # cm/s**2 to g
+                for i in range(n):
+                    file = self.rec_h1[i]
+                    temp = file.split('_acc')[0]
+                    rec_path = os.path.join(folder,temp,file)
+                    dts[i], _, _, t, inp_acc = ReadEXSIM(rec_path,zipName)
+                    durs[i] = t[-1]
+                    gmr_file = 'GMR_'+str(i+1)+'.txt'
+                    path = os.path.join(self.outdir,gmr_file)
+                    acc_Sc = self.rec_scale[i] * inp_acc * sf
+                    np.savetxt(path, acc_Sc, fmt='%1.4e')
+                    h1s.write(gmr_file+'\n')
+                    
+                h1s.close()
+                np.savetxt(path_dts,dts)
+                np.savetxt(path_durs,durs)
+            
+        if cs == 1:
+            # save some info as pickle obj
+            path_cs = os.path.join(self.outdir,'CS.pkl')  
+            cs_obj = vars(copy.deepcopy(self)) # use copy.deepcopy to create independent obj
+            cs_obj['database'] = self.database['Name']
+            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[','',).replace(']','')
+            del cs_obj['bgmpe'] 
+            del cs_obj['outdir']
+            with open(path_cs, 'wb') as file:
+                pickle.dump(cs_obj, file)
         
-        print('The selected ground motion records are formatted and placed in %s directory' % outdir)
+        print('Finished writing process, the files are located in %s' % self.outdir)
         
     def plot(self, cs = 0, sim = 0, rec = 1, save = 0):
         """
@@ -736,12 +830,26 @@ class cs_master:
 
         Parameters
         ----------
-        sim : int, optional
+        cs     : int, optional
+            Flag to plot conditional spectrum.
+            The default is 1.
+        sim    : int, optional
             Flag to plot simulated response spectra vs. conditional spectrum.
             The default is 0.
-        rec : int, optional
+        rec    : int, optional
             Flag to plot Selected response spectra of selected records
-            vs. conditional spectrum. The default is 1.
+            vs. conditional spectrum. 
+            The default is 1.
+        save   : int, optional
+            Flag to save plotted figures in pdf format.
+            The default is 0.
+        outdir : str, optional
+            Output directory to save plots.
+            The default is 'Outputs'.
+            
+        Notes
+        -----
+        0: no, 1: yes
 
         Returns
         -------
@@ -803,7 +911,7 @@ class cs_master:
             plt.show()
             
             if save == 1:
-                plt.savefig('Simulations.pdf')
+                plt.savefig(os.path.join(self.outdir,'ConditionalSpectrum.pdf'))
 
         if sim == 1:
             # Plot Conditional spectrum vs. Simulated response spectra
@@ -849,7 +957,7 @@ class cs_master:
             plt.show()
             
             if save == 1:
-                plt.savefig('Simulations.pdf')
+                plt.savefig(os.path.join(self.outdir,'Simulations.pdf'))
             
         if rec == 1:
             # Plot Conditional spectrum vs. Selected response spectra
@@ -895,7 +1003,7 @@ class cs_master:
             plt.show()
             
             if save == 1:
-                plt.savefig('Selected.pdf')
+                plt.savefig(os.path.join(self.outdir,'Selected.pdf'))
 
 def Baker_Jayaram_2008(T1, T2):
     """
@@ -964,12 +1072,6 @@ def Sa_avg(bgmpe,scenario,T):
     acceleration of the product of the Spectral
     accelerations at selected periods; 
 
-    References
-    ----------
-    Kohrangi, M., Bazzurro, P., Vamvatsikos, D., & Spillatura, A. (2017). 
-    Conditional spectrum-based ground motion record selection using average spectral acceleration. 
-    Earthquake Engineering & Structural Dynamics, 46(10), 1667–1685. https://doi.org/10.1002/eqe.2876
-
     Parameters
     ----------
     bgmpe : openquake object
@@ -1027,12 +1129,6 @@ def rho_AvgSA_SA(bgmpe,scenario,T,Tstar):
     Details
     -------  
     function to compute the correlation between Spectra acceleration and AvgSA.
-    
-    References
-    ----------
-    Kohrangi, M., Bazzurro, P., Vamvatsikos, D., & Spillatura, A. (2017). 
-    Conditional spectrum-based ground motion record selection using average spectral acceleration. 
-    Earthquake Engineering & Structural Dynamics, 46(10), 1667–1685. https://doi.org/10.1002/eqe.2876
     
     Parameters
     ----------
@@ -1114,9 +1210,7 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
     
     Details
     -------
-    This function process acceleration history for NGA data file (.AT2 format)
-    to a single column value and return the total number of data points and 
-    time iterval of the recording.
+    This function process acceleration history for NGA data file (.AT2 format).
     
     Parameters
     ----------
@@ -1136,9 +1230,9 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
         number of points in ground motion record file.
     desc : str
         Description of the earthquake (e.g., name, year, etc).
-    time : numpy.array (n x 1)
+    t    : numpy.array (n x 1)
         time array, same length with npts.
-    inp_acc : numpy.array (n x 1)
+    acc  : numpy.array (n x 1)
         acceleration array, same length with time unit 
         usually in (g) unless stated as other.
 
@@ -1189,7 +1283,7 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
                     for value in data:
                         a = float(value)
                         acc_data.append(a)
-                    inp_acc = np.asarray(acc_data)
+                    acc = np.asarray(acc_data)
                 counter = counter + 1
 
         if flag == 0:
@@ -1212,23 +1306,128 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
                     for value in data:
                         a = float(value)
                         acc_data.append(a)
-                    inp_acc = np.asarray(acc_data)
+                    acc = np.asarray(acc_data)
                 counter = counter + 1
             
-        time = [] # save time history
+        t = [] # save time history
         for i in range (0,len(acc_data)):
-            t = i * dt
-            time.append(t)
+            ti = i * dt
+            t.append(ti)
             
         if outFilename is not None:
-            np.savetxt(outFilename, inp_acc, fmt='%1.4e')
+            np.savetxt(outFilename, acc, fmt='%1.4e')
 
         npts = int(npts)
-        return dt, npts, desc, time, inp_acc
+        return dt, npts, desc, t, acc
     
     except IOError:
         print("processMotion FAILED!: The record file is not in the directory")
+
+def ReadEXSIM(inFilename, zipName=None, outFilename=None):
+    """
+    
+    Details
+    -------
+    This function process acceleration history for EXSIM data file.
+    
+    Parameters
+    ----------
+    inFilename : str
+        location and name of the input file.
+    zipName    : str
+        it is assumed that the database is located in this file.
+    outFilename : str, optional
+        location and name of the output file. 
+        The default is None.
+
+    Returns
+    -------
+    dt   : float
+        time interval of recorded points.
+    npts : int
+        number of points in ground motion record file.
+    desc : str
+        Description of the earthquake (e.g., name, year, etc).
+    time : numpy.array (n x 1)
+        time array, same length with npts.
+    acc  : numpy.array (n x 1)
+        acceleration array, same length with time unit 
+        usually in (g) unless stated as other.
+
+    """
+    
+    try:
+        # Read the ground motion from zipped database folder
+        if not zipName is None:
+            with zipfile.ZipFile(zipName, 'r') as myzip:
+                with myzip.open(inFilename) as myfile:
+                    content = [x.decode('utf-8') for x in myfile.readlines()]
+                    
+        # Read the ground motion from unzipped database folder
+        else:
+            with open(inFilename,'r') as inFileID:
+                content = inFileID.readlines()
+    
+        desc = content[:12]
+        dt = float(content[6].split()[1])
+        npts = int(content[5].split()[0])
+        acc = []
+        t = []
         
+        for i in range(12,len(content)):
+            temp = content[i].split()
+            t.append(float(temp[0]))
+            acc.append(float(temp[1]))
+        
+        acc = np.asarray(acc)
+        t = np.asarray(t)
+
+        if outFilename is not None:
+            np.savetxt(outFilename, acc, fmt='%1.4e')
+
+        return dt, npts, desc, t, acc
+    
+    except IOError:
+        print("processMotion FAILED!: The record file is not in the directory")
+    
 def create_outdir(outdir_path):
+    """  
+
+    Parameters
+    ----------
+    outdir_path : str
+        output directory to create.
+
+    Returns
+    -------
+    None.
+
+    """
     shutil.rmtree(outdir_path, ignore_errors=True)
     os.makedirs(outdir_path)
+    
+def RunTime():
+    """
+
+    Details
+    -------
+    Prints the time passed between startTime and Finishtime (now)
+    in hours, minutes, seconds. startTime is a global variable.
+
+    Parameters
+    ----------
+    None.
+
+    Returns
+    -------
+    None.
+
+    """
+    finishTime = time()
+    # Procedure to obtained elapsed time in Hr, Min, and Sec
+    timeSeconds = finishTime-startTime
+    timeMinutes = int(timeSeconds/60);
+    timeHours = int(timeSeconds/3600);
+    timeMinutes = int(timeMinutes - timeHours*60)
+    timeSeconds = timeSeconds - timeMinutes*60 - timeHours*3600
+    print("Run time: %d hours: %d minutes: %.2f seconds"  % (timeHours, timeMinutes, timeSeconds))

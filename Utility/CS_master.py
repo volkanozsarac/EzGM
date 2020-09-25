@@ -29,7 +29,6 @@ from scipy.io import loadmat
 from scipy import interpolate
 import pickle
 import copy
-import numba as nb
 # Import the tools from OpenQuake
 from openquake.hazardlib import gsim, imt, const
 

@@ -81,7 +81,7 @@ class cs_master:
         self.database['Name'] = database
         
         # Resample the period array and the spectra via interpolation
-        if T_resample == [0]:
+        if T_resample[0]:
             step = T_resample[1]
             Periods = np.append(np.array([0.01, 0.02]),np.arange(step,self.database['Periods'][-1],step))
             f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)            

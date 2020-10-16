@@ -22,14 +22,14 @@ plt.close('all')
 # %% Define the period range of interest
 # if IM = SA this is a float, if IM = AvgSa this is a list 
 # which contains upper and lower bounds, e.g. [0.6, 2.0]
-# Tstar = 0.4
-Tstar = [0.1, 1.0]
+Tstar = 0.4
+# Tstar = [0.1, 1.0]
 
 # The database being used to select ground motions
-database = 'EXSIM_Duzce' # 'NGA_W1', 'NGA_W2', 'EXSIM_Duzce'
+database = 'NGA_W1' # 'NGA_W1', 'NGA_W2', 'EXSIM_Duzce'
 
 # Define the gmpe to use
-gmpe = 'Akkar_EtAlRjb_2014'
+gmpe = 'Boore_EtAl_2014'
 
 Vs30 = 520
 
@@ -47,7 +47,7 @@ mean_dists = np.loadtxt(os.path.join('Hazard_Info','mean_dists.out'))
 for i in range(len(poes)):
 
     # %% Define the rupture parameters to use
-    rup_param = {'rake': 0, 'mag': [mean_mags[i]]} # mag is a list contains disagg. results for each scenario
+    rup_param = {'rake': 0.0, 'mag': [mean_mags[i]]} # mag is a list contains disagg. results for each scenario
     
     # Define the site parameters to use
     site_param = {'vs30': Vs30}
@@ -62,19 +62,13 @@ for i in range(len(poes)):
     outdir = os.path.join(database,'POE-'+str(poes[i])+'-in-50-years')
     
     # Create conditional spectrum
-    cs.create(im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = T_CS, outdir = outdir)
-    
+    cs.create(im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = T_CS, cond = 1, useVar=1, outdir = outdir)
     # Plot conditional spectrum
     cs.plot(cs = 1, sim = 0, rec = 0, save = 1)
     
-    # %% Select the ground motions
-    # define number of ground motion records to select
-    nGM = 25
-    # define gm selection option, average 2 components or arbitrary 1 component
-    selection = 1 
-    
+    # %% Select the ground motions    
     # perform the selection
-    cs.select(nGM = 25, selection = 1, Sa_def='RotD50', 
+    cs.select(nGM = 100, selection = 1, Sa_def='RotD50', isScaled = 1, maxScale = 4,
                     Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None)   
  
     # Plot the CS with simulated spectra and spectra of selected records

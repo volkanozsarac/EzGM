@@ -3,9 +3,9 @@
 |                                                                       |
 |    Conditional spectrum based                                         |
 |    record selection and scaling                                       |
-|    Version: 0.2                                                       |
+|    Version: 0.3                                                       |
 |                                                                       |
-|    Created on 17/09/2020                                              |
+|    Created on 16/10/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -153,7 +153,7 @@ class cs_master:
             print('The defined intensity measure component is: %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is: %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
-    def create(self, im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = [0.01,4], outdir = 'Outputs'):
+    def create(self, im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = [0.01,4], cond = 1, useVar = 1, outdir = 'Outputs'):
         """
         
         Details
@@ -185,6 +185,11 @@ class cs_master:
         T_CS_range : list, optional
                      Lower and upper bound values for the period range of contional spectrum.
                      The default is [0.01,4].
+        cond       : int, optional
+                     0 to run unconditional selection
+                     1 to run conditional selection
+        useVar     : Use variance in target spectrum
+                     Do not use variance in target spectrum
         outdir     : str
                      output directory to create.
                      The default is 'Outputs'.
@@ -194,7 +199,6 @@ class cs_master:
         None.
                                         
         """
-        
         # create the output directory and add the path to self
         cwd = os. getcwd()
         outdir_path = os.path.join(cwd,outdir)
@@ -229,11 +233,10 @@ class cs_master:
         Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont),len(T_CS),1)
         
         # Conditional spectrum, log parameters
-        mu_lnSaT_lnSaTstar = np.zeros((len(T_CS),nScenarios))
-        sigma_lnSaT_lnSaTstar = np.zeros((len(T_CS),nScenarios))
+        TgtMean = np.zeros((len(T_CS),nScenarios))
 
         # Covariance
-        Cov_all = np.zeros((nScenarios,len(T_CS),len(T_CS)))
+        TgtCov = np.zeros((nScenarios,len(T_CS),len(T_CS)))
         
         for n in range(nScenarios):
 
@@ -285,52 +288,65 @@ class cs_master:
         
                 # Compute the correlations between each T and Tstar
                 rho_T_Tstar[i] = rho_AvgSA_SA(self.bgmpe,scenario,T_CS[i],self.Tstar)
-        
-            # Get the value of the ln(CMS), conditioned on T_star
-            mu_lnSaT_lnSaTstar[:,n] = mu_lnSaT + rho_T_Tstar * epsilon * sigma_lnSaT
+            
+            if cond == 1:
+                # Get the value of the ln(CMS), conditioned on T_star
+                TgtMean[:,n] = mu_lnSaT + rho_T_Tstar * epsilon * sigma_lnSaT
+            elif cond == 0:
+                TgtMean[:,n] = mu_lnSaT 
         
             for i in range(len(T_CS)):
                 for j in range(len(T_CS)):
+                    
                     var1 = sigma_lnSaT[i] ** 2
                     var2 = sigma_lnSaT[j] ** 2
                     varTstar = sigma_lnSaTstar ** 2
-                    
                     # using Baker & Jayaram 2008 as correlation model
                     sigma_Corr = Baker_Jayaram_2008(T_CS[i], T_CS[j]) * np.sqrt(var1 * var2)
-        
-                    sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
-                    sigma22 = np.array([varTstar])
-                    sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
-                    sigma12.shape = (2,1); sigma22.shape = (1,1)
-                    sigma_cond = sigma11 - sigma12 * 1. / (sigma22) * sigma12.T
+                    
+                    if cond == 1:
+                        sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
+                        sigma22 = np.array([varTstar])
+                        sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
+                        sigma12.shape = (2,1); sigma22.shape = (1,1)
+                        sigma_cond = sigma11 - sigma12 * 1. / (sigma22) * sigma12.T
+                        Cov[i, j] = sigma_cond[0, 1]
+                        
+                    elif cond == 0:
+                        Cov[i, j] = sigma_Corr
 
-                    temp = sigma_cond[0, 1]
-                    if np.abs(temp)<1e-10 and i==j: 
-                        temp = 1e-10 # do not have zeros or negatives
-                    Cov[i, j] = temp
+            # Get the value of standard deviation of target spectrum
+            TgtCov[n,:,:] = Cov
 
-            # Get the value of Conditional standard deviation of lnSa
-            sigma_lnSaT_lnSaTstar[:,n] = np.sqrt(np.diagonal(Cov))
-            Cov_all[n,:,:] = Cov
+        # over-write coveriance matrix with zeros if no variance is desired in the ground motion selection
+        if useVar == 0:
+            TgtCov = np.zeros(TgtCov.shape)
             
-        mu_lnSaT_lnSaTstar_fin = np.sum(mu_lnSaT_lnSaTstar*Hcont_mat,1)
+        TgtMean_fin = np.sum(TgtMean*Hcont_mat,1)
         # all 2D matrices are the same for each kk scenario, since sigma is only T dependent
-        Cov_final=Cov_all[0,:,:]
+        TgtCov_fin = TgtCov[0,:,:]
         Cov_elms = np.zeros((len(T_CS),nScenarios))
         for ii in range(len(T_CS)):
             for kk in range(nScenarios):
                 # Hcont[kk] = contribution of the k-th scenario
-                Cov_elms[ii,kk] = (Cov_all[kk,ii,ii]+(mu_lnSaT_lnSaTstar[ii,kk]-mu_lnSaT_lnSaTstar_fin[ii])**2) * self.Hcont[kk] 
+                Cov_elms[ii,kk] = (TgtCov[kk,ii,ii]+(TgtMean[ii,kk]-TgtMean_fin[ii])**2) * self.Hcont[kk] 
 
         cov_diag=np.sum(Cov_elms,1)
-        Cov_final[np.eye(len(T_CS))==1] = cov_diag
-        sigma_lnSaT_lnSaTstar_fin = np.sqrt(np.diagonal(Cov))
-        sigma_lnSaT_lnSaTstar_fin[np.isnan(sigma_lnSaT_lnSaTstar_fin)] = 0
+        TgtCov_fin[np.eye(len(T_CS))==1] = cov_diag
+
+        # Find covariance values of zero and set them to a small number so that
+        # random number generation can be performed
+        TgtCov_fin[np.abs(TgtCov_fin)<1e-10] = 1e-10
+        
+        TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
+        TgtSigma_fin[np.isnan(TgtSigma_fin)] = 0
           
-        self.mu_ln = mu_lnSaT_lnSaTstar_fin
-        self.sigma_ln = sigma_lnSaT_lnSaTstar_fin
+        self.mu_ln = TgtMean_fin
+        self.sigma_ln = TgtSigma_fin
         self.T = T_CS
-        self.cov = Cov_final
+        self.cov = TgtCov_fin
+        self.cond = cond
+        self.useVar = useVar
         
         print('Coniditonal spectrum is created.')
 
@@ -349,39 +365,20 @@ class cs_master:
         
         Notes
         -----
-        seedValue  : For repeatability. For a particular seedValue not equal to
-                     zero, the code will output the same set of ground motions.
-                     The set will change when the seedValue changes. If set to
-                     zero, the code randomizes the algorithm and different sets of
-                     ground motions (satisfying the target mean and variance) are
-                     generated each time.
-        weights    : [Weight for error in mean, Weight for error in standard
-                     deviation] e.g., [1.0,1.0] - equal weight for both errors.
-        nTrials    : nTrials sets of response spectra are simulated and the best set (in terms of
-                     matching means, variances and skewness is chosen as the seed). The user
-                     can also optionally rerun this segment multiple times before deciding to
-                     proceed with the rest of the algorithm. It is to be noted, however, that
-                     the greedy improvement technique significantly improves the match between
-                     the means and the variances subsequently.
                      
         """
         
-        # Default settings used for response spectra simulation
-        nTrials = 30
-        weights = np.array([1.0, 2.0, 0.3])
-        seedValue  = 1
-        
         # Set initial seed for simulation
-        if seedValue != 0:
+        if self.seedValue != 0:
             np.random.seed(0)
         else:
             np.random.seed(sum(gmtime()[:6]))
 
-        devTotalSim = np.zeros((nTrials,1))
+        devTotalSim = np.zeros((self.nTrials,1))
         specDict = {}
         nT = len(self.T)
         # Generate simulated response spectra with best matches to the target values
-        for j in range(nTrials):
+        for j in range(self.nTrials):
             specDict[j] = np.zeros((self.nGM,nT))
             for i in range(self.nGM):
                 # Note: we may use latin hypercube sampling here instead. I leave it as Monte Carlo for now
@@ -391,9 +388,9 @@ class cs_master:
             devSigSim = np.std(np.log(specDict[j]), axis=0) -  self.sigma_ln # how close is the mean of the spectra to the target
             devSkewSim = skew(np.log(specDict[j]), axis=0)                   # how close is the skewness of the spectra to zero (i.e., the target)
             
-            devTotalSim[j] = weights[0] * np.sum(devMeanSim**2)  + \
-                             weights[1] * np.sum(devSigSim**2)   + \
-                             0.1 * (weights[2]) * np.sum(devSkewSim**2) # combine the three error metrics to compute a total error
+            devTotalSim[j] = self.weights[0] * np.sum(devMeanSim**2)  + \
+                             self.weights[1] * np.sum(devSigSim**2)   + \
+                             0.1 * (self.weights[2]) * np.sum(devSkewSim**2) # combine the three error metrics to compute a total error
 
         recUse = np.argmin(np.abs(devTotalSim))   # find the simulated spectra that best match the targets 
         self.sim_spec = np.log(specDict[recUse])  # return the best set of simulations
@@ -523,8 +520,10 @@ class cs_master:
             
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2
         
-    def select(self, nGM, selection=2, Sa_def='RotD50', 
-               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None):
+    def select(self, nGM, selection=1, Sa_def='RotD50', isScaled = 0, maxScale = 4,
+               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
+               nTrials = 20,  weights = [1,2,0.3], seedValue  = 0, 
+               nLoop = 2, penalty = 0, tol = 10):
         """
         
         Details
@@ -533,44 +532,58 @@ class cs_master:
         
         Parameters
         ----------
+        nGM : int
+            Number of ground motions to be selected.
         selection : int, optional, The default is 1.
             1 for single-component selection and arbitrary component sigma.
             2 for two-component selection and average component sigma. 
-        Sa_def : str, optional
+        Sa_def : str, optional, the default is 'RotD50'.
             The spectra definition. Necessary if selection = 2.
             'GeoMean' or 'RotDxx', where xx the percentile to use. 
-            The default is 'RotD50'.
-        Mw_lim : list, optional
+        isScaled :
+        maxScale : float, optional, the default is 4.
+            The maximum allowable scale factor
+        Mw_lim : list, optional, the default is None.
             The limiting values on magnitude. 
-            The default is None.
-        Vs30_lim : list, optional
+        Vs30_lim : list, optional, the default is None.
             The limiting values on Vs30. 
-            The default is None.
-        Rjb_lim : list, optional
+        Rjb_lim : list, optional, the default is None.
             The limiting values on Rjb. 
-            The default is None.
-        mechanism_lim : int, optional
+        mechanism_lim : int, optional, the default is None.
             The limiting fault mechanism. 
-            The default is None.
             0 for unspecified fault 
             1 for strike-slip fault
             2 for normal fault
             3 for reverse fault
-        nGM : int
-            Number of ground motions to be selected.
+        seedValue  : int, optional, the default is 0.
+            For repeatability. For a particular seedValue not equal to
+            zero, the code will output the same set of ground motions.
+            The set will change when the seedValue changes. If set to
+            zero, the code randomizes the algorithm and different sets of
+            ground motions (satisfying the target mean and variance) are
+            generated each time.
+        weights : numpy.ndarray or list, optional, the default is [1,2,0.3].
+            Weights for error in mean, standard deviation and skewness
+        nTrials : int, optional, the default is 20.
+            nTrials sets of response spectra are simulated and the best set (in terms of
+            matching means, variances and skewness is chosen as the seed). The user
+            can also optionally rerun this segment multiple times before deciding to
+            proceed with the rest of the algorithm. It is to be noted, however, that
+            the greedy improvement technique significantly improves the match between
+            the means and the variances subsequently.
+        nLoop      : int, optional, the default is 2.
+            Number of loops of optimization to perform.
+        penalty    : int, optional, the default is 0.
+            > 0 to penalize selected spectra more than 
+            3 sigma from the target at any period, = 0 otherwise.
+        tol        : int, optional, the default is 10.
+            Tolerable percent error to skip optimization 
 
         Returns
         -------
         None.
 
         """
-        # Default settings used for selection
-        isScaled   = 1
-        maxScale   = 4
-        nLoop      = 2
-        penalty    = 0
-        tol        = 10 # %
-        weights = np.array([1.0, 2.0])
         
         # Save the variables used to select ground motion records
         self.nGM = nGM
@@ -580,6 +593,13 @@ class cs_master:
         self.Vs30_lim = Vs30_lim
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
+        self.seedValue = seedValue
+        self.weights = weights
+        self.nTrials = nTrials
+        self.maxScale = maxScale
+        self.nLoop = nLoop
+        self.tol = tol
+        self.penalty = penalty
         
         # Exsim provides a single gm component
         if self.database['Name'].startswith("EXSIM"):
@@ -607,7 +627,7 @@ class cs_master:
             ind1.append(np.where(self.T == self.Tstar[k])[0][0])
             ind2.append(np.where(self.T != self.Tstar[k])[0][0])
             
-        # Length of AvgSa period range
+        # Length of IM period range
         n = len(self.Tstar)
         
         # Find nGM ground motions, inital subset
@@ -618,22 +638,21 @@ class cs_master:
             # From the sample of ground motions
             for j in range(nBig):
                 
-                # Calculate the intensity measure level (AvgSa or Sa)
-                rec_Avg=np.exp(np.sum(sampleBig[j,ind1])/n)
+                if isScaled == 1: # Calculate scaling facator
                 
-                if isScaled == 1: # calculate error for scaled ground motions
-                    scaleFac[j] = self.im_Tstar/rec_Avg
-                    # check if scaling factor is greater than the limit
-                    if scaleFac[j] > maxScale: 
-                        err[j] = 1000000
-                    else:
-                        err[j] = np.sum((np.log(np.exp(sampleBig[j,:])*scaleFac[j]) - self.sim_spec[i,:])**2) 
-                else: # calculate error for unscaled ground motions
-                    err[j] = np.sum((sampleBig[j,:] - self.sim_spec[i,:])**2)
-                
+                    if self.cond == 1: # Calculate using conditioning IML
+                        rec_iml=np.exp(np.sum(sampleBig[j,ind1])/n)
+                        scaleFac[j] = self.im_Tstar/rec_iml
+                        
+                    elif self.cond == 0: # Calculate using minimization of mean squared root error
+                        scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
+
+                # check if scaling factor is greater than the limit                
                 # check if this record have already been selected
-                if np.any(recID == j):
+                if np.any(recID == j) or scaleFac[j] > maxScale:
                     err[j] = 1000000
+                else: # calculate the error
+                    err[j] = np.sum((np.log(np.exp(sampleBig[j,:])*scaleFac[j]) - self.sim_spec[i,:])**2)
                     
             recID[i] = int(np.argsort(err)[0])    
             if err.min() >= 1000000:
@@ -655,24 +674,25 @@ class cs_master:
             for i in range(self.nGM): # Loop for nGM
                 
                 minDev = 100000
-                
+                scaleFac = np.ones((nBig))
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recID = np.delete(recID, i)
                 
                 # Try to add a new spectra to the subset list
                 for j in range(nBig):
-                    
-                    # Get the intensity measure level (Sa or AvgSa)
-                    rec_Avg=np.exp(np.sum(sampleBig[j,ind1])/n)
-                    
                     # Get the scaling factor and do the scaling
-                    if isScaled == 1: 
-                        scaleFac[j] = self.im_Tstar/rec_Avg
-                        sampleSmall = np.concatenate((sampleSmall,sampleBig[j,:].reshape(1,sampleBig.shape[1]) + np.log(scaleFac[j])),axis=0)
-                    else:
-                        scaleFac[j] = 1
-                        sampleSmall = np.concatenate((sampleSmall,sampleBig[j,:].reshape(1,sampleBig.shape[1])),axis=0)
-                    
+                    if isScaled == 1:
+
+                        if self.cond == 1: # Calculate using conditioning IML
+                            # Calculate the intensity measure level (AvgSa or Sa)
+                            rec_Avg=np.exp(np.sum(sampleBig[j,ind1])/n)
+                            scaleFac[j] = self.im_Tstar/rec_Avg
+                        
+                        elif self.cond == 0: # Calculate using minimization of mean squared root error
+                            scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
+                        
+                    sampleSmall = np.concatenate((sampleSmall,sampleBig[j,:].reshape(1,sampleBig.shape[1]) + np.log(scaleFac[j])),axis=0)
+
                     # Greedy subset modification procedure
                     devMean = np.mean(sampleSmall,axis=0) - self.mu_ln # Compute deviations from target
                     devSig = np.std(sampleSmall, axis=0) - self.sigma_ln
@@ -684,15 +704,15 @@ class cs_master:
                             devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(self.mu_ln + 3*self.sigma_ln))) * penalty
                     
                     # Check if we exceed the scaling limit
-                    if scaleFac[j] > maxScale:
+                    if scaleFac[j] > maxScale or np.any(np.array(recID) == j):
                         devTotal += 1000000
                     
                     # Should cause improvement and record should not be repeated
-                    if devTotal < minDev and not np.any(np.array(recID) == j):
+                    if devTotal < minDev:
                         minID = j
                         minDev = devTotal
                     
-                    # Empty the slot for to try new candidate
+                    # Empty the slot to try a new candidate
                     sampleSmall = np.delete(sampleSmall, -1, 0)
                 
                 # Add new element in the right slot
@@ -876,12 +896,13 @@ class cs_master:
             hatch = [self.Tstar.min(), self.Tstar.max()]
 
         if cs == 1:
-            # Plot Conditional spectrum vs. Simulated response spectra
+            # Plot Target spectrum vs. Simulated response spectra
             fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Conditional Spectrum', y = 0.95)
+            plt.suptitle('Target Spectrum', y = 0.95)
             ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
             
             ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
@@ -894,36 +915,41 @@ class cs_master:
             by_label = dict(zip(labels, handles))
             ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
             ax[0].set_xlim([self.T[0],self.T[-1]])
-            ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
                    
             # Sample and target standard deviations
-            ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-            ax[1].set_xlabel('Period [sec]')
-            ax[1].set_ylabel('Dispersion')
-            ax[1].grid(True)
-            ax[1].legend(frameon = False)
-            ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_xlim([self.T[0],self.T[-1]])
-            ax[1].set_ylim(bottom=0)
-            ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            if self.useVar == 1:
+                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].set_xlabel('Period [sec]')
+                ax[1].set_ylabel('Dispersion')
+                ax[1].grid(True)
+                ax[1].legend(frameon = False)
+                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[0].set_xlim([self.T[0],self.T[-1]])
+                ax[1].set_ylim(bottom=0)
+                if self.cond == 1:
+                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
             plt.show()
             
             if save == 1:
-                plt.savefig(os.path.join(self.outdir,'ConditionalSpectrum.pdf'))
+                plt.savefig(os.path.join(self.outdir,'Targeted.pdf'))
 
         if sim == 1:
-            # Plot Conditional spectrum vs. Simulated response spectra
+            # Plot Target spectrum vs. Simulated response spectra
             fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Conditional Spectrum vs. Simulated Spectra', y = 0.95)
+            plt.suptitle('Target Spectrum vs. Simulated Spectra', y = 0.95)
             ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
             ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)+2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)-2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)+2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)-2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
                         
             for i in range(self.nGM):
                 ax[0].loglog(self.T,np.exp(self.sim_spec[i,:]),color = 'gray', lw=1,label='Selected');
@@ -939,33 +965,37 @@ class cs_master:
             by_label = dict(zip(labels, handles))
             ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
             ax[0].set_xlim([self.T[0],self.T[-1]])
-            ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-                   
-            # Sample and target standard deviations
-            ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-            ax[1].semilogx(self.T,np.std(self.sim_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
-            ax[1].set_xlabel('Period [sec]')
-            ax[1].set_ylabel('Dispersion')
-            ax[1].grid(True)
-            ax[1].legend(frameon = False)
-            ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[1].set_xlim([self.T[0],self.T[-1]])
-            ax[1].set_ylim(bottom=0)
-            ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-            plt.show()
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+
+            if self.useVar == 1:
+                # Sample and target standard deviations
+                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.T,np.std(self.sim_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
+                ax[1].set_xlabel('Period [sec]')
+                ax[1].set_ylabel('Dispersion')
+                ax[1].grid(True)
+                ax[1].legend(frameon = False)
+                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xlim([self.T[0],self.T[-1]])
+                ax[1].set_ylim(bottom=0)
+                if self.cond == 1:
+                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+                plt.show()
             
             if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Simulations.pdf'))
+                plt.savefig(os.path.join(self.outdir,'Simulated.pdf'))
             
         if rec == 1:
-            # Plot Conditional spectrum vs. Selected response spectra
+            # Plot Target spectrum vs. Selected response spectra
             fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Conditional Spectrum vs. Spectra of Selected Records', y = 0.95)
+            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y = 0.95)
             ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
             ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
             ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)+2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
@@ -985,7 +1015,8 @@ class cs_master:
             by_label = dict(zip(labels, handles))
             ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
             ax[0].set_xlim([self.T[0],self.T[-1]])
-            ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
                    
             # Sample and target standard deviations
             ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
@@ -999,7 +1030,8 @@ class cs_master:
             ax[0].set_xlim([self.T[0],self.T[-1]])
             ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[1].set_ylim(bottom=0)
-            ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            if self.cond == 1:
+                ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
             plt.show()
             
             if save == 1:

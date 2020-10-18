@@ -36,7 +36,7 @@ startTime = time()
 
 class cs_master:
     
-    def __init__(self,Tstar, gmpe = 'Boore_Atkinson_2008', database = 'NGA_W1', T_resample = [0,0.05], pInfo = 0):
+    def __init__(self, Tstar = 0.5, gmpe = 'Boore_Atkinson_2008', database = 'NGA_W1', T_resample = [0,0.05], pInfo = 1):
         """
         
         Details
@@ -46,7 +46,7 @@ class cs_master:
         
         Parameters
         ----------
-        Tstar    : int, float, list
+        Tstar    : int, float, list, the default is 0.5.
             Conditioning period range [sec].
         gmpe     : str, optional
             GMPE model (see OpenQuake library). 
@@ -61,7 +61,7 @@ class cs_master:
         pInfo    : int, optional
             flag to print required input for the gmpe which is going to be used. 
             (0: no, 1:yes)
-            The default is 0.
+            The default is 1.
             
         Returns
         -------
@@ -153,12 +153,14 @@ class cs_master:
             print('The defined intensity measure component is: %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is: %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
-    def create(self, im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = [0.01,4], cond = 1, useVar = 1, outdir = 'Outputs'):
+    def create(self, site_param = {'vs30': 520}, rup_param = {'rake': 0.0, 'mag': [7.2, 6.5]}, 
+               dist_param = {'rjb': [20, 5]}, Hcont=[0.6,0.4], T_Tgt_range  = [0.01,4], 
+               im_Tstar = 1.0, cond = 1, useVar = 1, outdir = 'Outputs'):
         """
         
         Details
         -------
-        Create a conditional spectrum.
+        Creates the target spectrum (conditional or unconditional).
     
         Notes
         -----
@@ -172,27 +174,27 @@ class cs_master:
 
         Parameters
         ----------
-        im_Tstar   : int, float
-                     Conditioning intensity measure level [g]
         site_param : dictionary
-                     Contains required site parameters to define CS.
+            Contains required site parameters to define target spectrum.
         rup_param  : dictionary
-                     Contains required rupture parameters to define CS.
+            Contains required rupture parameters to define target spectrum.
         dist_param : dictionary
-                     Contains required distance parameters to define CS.
-        Hcont      : list, optional
-                     Hazard contribution for considered scenarios. The default is None.
-        T_CS_range : list, optional
-                     Lower and upper bound values for the period range of contional spectrum.
-                     The default is [0.01,4].
+            Contains required distance parameters to define target spectrum.
+        Hcont      : list, optional, the default is None.
+            Hazard contribution for considered scenarios. 
+            If None hazard contribution is the same for all scenarios.
+        im_Tstar   : int, float, optional, the default is 1.
+            Conditioning intensity measure level [g]
+        T_Tgt_range: list, optional, the default is [0.01,4].
+            Lower and upper bound values for the period range of target spectrum.
         cond       : int, optional
-                     0 to run unconditional selection
-                     1 to run conditional selection
-        useVar     : Use variance in target spectrum
-                     Do not use variance in target spectrum
-        outdir     : str
-                     output directory to create.
-                     The default is 'Outputs'.
+            0 to run unconditional selection
+            1 to run conditional selection
+        useVar     : int, optional, the default is 1.
+            0 not to use variance in target spectrum
+            1 to use variance in target spectrum
+        outdir     : str, optional, the default is 'Outputs'.
+            output directory to create.
 
         Returns
         -------
@@ -205,6 +207,10 @@ class cs_master:
         self.outdir = outdir_path
         create_outdir(self.outdir)
         
+        # add target spectrum settings to self
+        self.cond = cond
+        self.useVar = useVar
+
         # add intensity measure level to self
         self.im_Tstar = im_Tstar
         
@@ -216,39 +222,40 @@ class cs_master:
             self.Hcont = Hcont
         
         # Period range of the target spectrum
-        temp = np.abs(self.database['Periods'] - np.min(T_CS_range))
+        temp = np.abs(self.database['Periods'] - np.min(T_Tgt_range))
         idx1 = np.where(temp==np.min(temp))[0][0]
-        temp = np.abs(self.database['Periods'] - np.max(T_CS_range))
+        temp = np.abs(self.database['Periods'] - np.max(T_Tgt_range))
         idx2 = np.where(temp==np.min(temp))[0][0]
-        T_CS = self.database['Periods'][idx1:idx2+1]
+        T_Tgt = self.database['Periods'][idx1:idx2+1]
 
+        # Define the array for AvgSa periods
         if len(self.Tstar) != 1:
-            Tlower = np.min(self.Tstar); temp = np.abs(T_CS-Tlower)
+            Tlower = np.min(self.Tstar); temp = np.abs(T_Tgt-Tlower)
             idx1 = np.where(temp==np.min(temp))[0][0]
-            Tupper = np.max(self.Tstar); temp = np.abs(T_CS-Tupper)
+            Tupper = np.max(self.Tstar); temp = np.abs(T_Tgt-Tupper)
             idx2 = np.where(temp==np.min(temp))[0][0]
-            self.Tstar = T_CS[idx1:idx2+1]
+            self.Tstar = T_Tgt[idx1:idx2+1]
 
         # Get number of scenarios, and their contribution
-        Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont),len(T_CS),1)
+        Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont),len(T_Tgt),1)
         
         # Conditional spectrum, log parameters
-        TgtMean = np.zeros((len(T_CS),nScenarios))
+        TgtMean = np.zeros((len(T_Tgt),nScenarios))
 
         # Covariance
-        TgtCov = np.zeros((nScenarios,len(T_CS),len(T_CS)))
+        TgtCov = np.zeros((nScenarios,len(T_Tgt),len(T_Tgt)))
         
         for n in range(nScenarios):
 
             # gmpe spectral values
-            mu_lnSaT = np.zeros(len(T_CS))
-            sigma_lnSaT = np.zeros(len(T_CS))
+            mu_lnSaT = np.zeros(len(T_Tgt))
+            sigma_lnSaT = np.zeros(len(T_Tgt))
             
             # correlation coefficients
-            rho_T_Tstar = np.zeros(len(T_CS))
+            rho_T_Tstar = np.zeros(len(T_Tgt))
 
             # Covariance
-            Cov = np.zeros((len(T_CS),len(T_CS)))
+            Cov = np.zeros((len(T_Tgt),len(T_Tgt)))
             
             # Set the contexts for the scenario
             sites = gsim.base.SitesContext()
@@ -273,38 +280,38 @@ class cs_master:
                 setattr(dists, key, temp)
                 
             scenario = [sites,rup,dists]
-            
-            # Get the GMPE output and calculate Avg_Sa_Tstar
-            mu_lnSaTstar,sigma_lnSaTstar = Sa_avg(self.bgmpe,scenario,self.Tstar)
-            
-            # Back calculate epsilon
-            epsilon = (np.log(self.im_Tstar) - mu_lnSaTstar) / sigma_lnSaTstar
         
-            for i in range(len(T_CS)):
+            for i in range(len(T_Tgt)):
                 # Get the GMPE ouput for a rupture scenario
-                mu0, sigma0 = self.bgmpe.get_mean_and_stddevs(sites, rup, dists, imt.SA(period=T_CS[i]), [const.StdDev.TOTAL])
+                mu0, sigma0 = self.bgmpe.get_mean_and_stddevs(sites, rup, dists, imt.SA(period=T_Tgt[i]), [const.StdDev.TOTAL])
                 mu_lnSaT[i] = mu0[0]
                 sigma_lnSaT[i] = sigma0[0][0]
-        
-                # Compute the correlations between each T and Tstar
-                rho_T_Tstar[i] = rho_AvgSA_SA(self.bgmpe,scenario,T_CS[i],self.Tstar)
+                
+                if self.cond == 1:
+                    # Compute the correlations between each T and Tstar
+                    rho_T_Tstar[i] = rho_AvgSA_SA(self.bgmpe,scenario,T_Tgt[i],self.Tstar)
             
-            if cond == 1:
+            if self.cond == 1:
+                # Get the GMPE output and calculate Avg_Sa_Tstar
+                mu_lnSaTstar,sigma_lnSaTstar = Sa_avg(self.bgmpe,scenario,self.Tstar)
+                # Back calculate epsilon
+                epsilon = (np.log(self.im_Tstar) - mu_lnSaTstar) / sigma_lnSaTstar
                 # Get the value of the ln(CMS), conditioned on T_star
                 TgtMean[:,n] = mu_lnSaT + rho_T_Tstar * epsilon * sigma_lnSaT
-            elif cond == 0:
+                
+            elif self.cond == 0:
                 TgtMean[:,n] = mu_lnSaT 
         
-            for i in range(len(T_CS)):
-                for j in range(len(T_CS)):
+            for i in range(len(T_Tgt)):
+                for j in range(len(T_Tgt)):
                     
                     var1 = sigma_lnSaT[i] ** 2
                     var2 = sigma_lnSaT[j] ** 2
-                    varTstar = sigma_lnSaTstar ** 2
                     # using Baker & Jayaram 2008 as correlation model
-                    sigma_Corr = Baker_Jayaram_2008(T_CS[i], T_CS[j]) * np.sqrt(var1 * var2)
+                    sigma_Corr = Baker_Jayaram_2008(T_Tgt[i], T_Tgt[j]) * np.sqrt(var1 * var2)
                     
-                    if cond == 1:
+                    if self.cond == 1:
+                        varTstar = sigma_lnSaTstar ** 2
                         sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
                         sigma22 = np.array([varTstar])
                         sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
@@ -312,27 +319,27 @@ class cs_master:
                         sigma_cond = sigma11 - sigma12 * 1. / (sigma22) * sigma12.T
                         Cov[i, j] = sigma_cond[0, 1]
                         
-                    elif cond == 0:
+                    elif self.cond == 0:
                         Cov[i, j] = sigma_Corr
 
             # Get the value of standard deviation of target spectrum
             TgtCov[n,:,:] = Cov
 
         # over-write coveriance matrix with zeros if no variance is desired in the ground motion selection
-        if useVar == 0:
+        if self.useVar == 0:
             TgtCov = np.zeros(TgtCov.shape)
             
         TgtMean_fin = np.sum(TgtMean*Hcont_mat,1)
         # all 2D matrices are the same for each kk scenario, since sigma is only T dependent
         TgtCov_fin = TgtCov[0,:,:]
-        Cov_elms = np.zeros((len(T_CS),nScenarios))
-        for ii in range(len(T_CS)):
+        Cov_elms = np.zeros((len(T_Tgt),nScenarios))
+        for ii in range(len(T_Tgt)):
             for kk in range(nScenarios):
                 # Hcont[kk] = contribution of the k-th scenario
                 Cov_elms[ii,kk] = (TgtCov[kk,ii,ii]+(TgtMean[ii,kk]-TgtMean_fin[ii])**2) * self.Hcont[kk] 
 
         cov_diag=np.sum(Cov_elms,1)
-        TgtCov_fin[np.eye(len(T_CS))==1] = cov_diag
+        TgtCov_fin[np.eye(len(T_Tgt))==1] = cov_diag
 
         # Find covariance values of zero and set them to a small number so that
         # random number generation can be performed
@@ -340,13 +347,12 @@ class cs_master:
         
         TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
         TgtSigma_fin[np.isnan(TgtSigma_fin)] = 0
-          
+         
+        # Add target spectrum to self
         self.mu_ln = TgtMean_fin
         self.sigma_ln = TgtSigma_fin
-        self.T = T_CS
+        self.T = T_Tgt
         self.cov = TgtCov_fin
-        self.cond = cond
-        self.useVar = useVar
         
         print('Coniditonal spectrum is created.')
 
@@ -520,7 +526,7 @@ class cs_master:
             
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2
         
-    def select(self, nGM, selection=1, Sa_def='RotD50', isScaled = 0, maxScale = 4,
+    def select(self, nGM=30, selection=1, Sa_def='RotD50', isScaled = 1, maxScale = 4,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
                nTrials = 20,  weights = [1,2,0.3], seedValue  = 0, 
                nLoop = 2, penalty = 0, tol = 10):
@@ -532,7 +538,7 @@ class cs_master:
         
         Parameters
         ----------
-        nGM : int
+        nGM : int, optional, the default is 30.
             Number of ground motions to be selected.
         selection : int, optional, The default is 1.
             1 for single-component selection and arbitrary component sigma.
@@ -540,7 +546,9 @@ class cs_master:
         Sa_def : str, optional, the default is 'RotD50'.
             The spectra definition. Necessary if selection = 2.
             'GeoMean' or 'RotDxx', where xx the percentile to use. 
-        isScaled :
+        isScaled : int, optional, the default is 1.
+            0 not to allow use of amplitude scaling for spectral matching.
+            1 to allow use of amplitude scaling for spectral matching.
         maxScale : float, optional, the default is 4.
             The maximum allowable scale factor
         Mw_lim : list, optional, the default is None.
@@ -571,12 +579,12 @@ class cs_master:
             proceed with the rest of the algorithm. It is to be noted, however, that
             the greedy improvement technique significantly improves the match between
             the means and the variances subsequently.
-        nLoop      : int, optional, the default is 2.
+        nLoop   : int, optional, the default is 2.
             Number of loops of optimization to perform.
-        penalty    : int, optional, the default is 0.
+        penalty : int, optional, the default is 0.
             > 0 to penalize selected spectra more than 
             3 sigma from the target at any period, = 0 otherwise.
-        tol        : int, optional, the default is 10.
+        tol     : int, optional, the default is 10.
             Tolerable percent error to skip optimization 
 
         Returns
@@ -585,10 +593,11 @@ class cs_master:
 
         """
         
-        # Save the variables used to select ground motion records
+        # Add selection settings to self
         self.nGM = nGM
         self.selection = selection
         self.Sa_def = Sa_def
+        self.isScaled = isScaled
         self.Mw_lim = Mw_lim
         self.Vs30_lim = Vs30_lim
         self.Rjb_lim = Rjb_lim
@@ -638,7 +647,7 @@ class cs_master:
             # From the sample of ground motions
             for j in range(nBig):
                 
-                if isScaled == 1: # Calculate scaling facator
+                if self.isScaled == 1: # Calculate scaling facator
                 
                     if self.cond == 1: # Calculate using conditioning IML
                         rec_iml=np.exp(np.sum(sampleBig[j,ind1])/n)
@@ -649,7 +658,7 @@ class cs_master:
 
                 # check if scaling factor is greater than the limit                
                 # check if this record have already been selected
-                if np.any(recID == j) or scaleFac[j] > maxScale:
+                if np.any(recID == j) or scaleFac[j] > self.maxScale:
                     err[j] = 1000000
                 else: # calculate the error
                     err[j] = np.sum((np.log(np.exp(sampleBig[j,:])*scaleFac[j]) - self.sim_spec[i,:])**2)
@@ -660,7 +669,7 @@ class cs_master:
                 print(recID[i])
                 sys.exit()
 
-            if isScaled == 1:
+            if self.isScaled == 1:
                 finalScaleFac[i] = scaleFac[recID[i]]
             
             # Save the selected spectra
@@ -669,7 +678,7 @@ class cs_master:
         # Optimizing the selected subset of ground motions
         # Currently only option is to use Greedy subset modification procedure
         # This seems to be sufficient enough
-        for k in range(nLoop): # Number of passes
+        for k in range(self.nLoop): # Number of passes
             
             for i in range(self.nGM): # Loop for nGM
                 
@@ -681,7 +690,7 @@ class cs_master:
                 # Try to add a new spectra to the subset list
                 for j in range(nBig):
                     # Get the scaling factor and do the scaling
-                    if isScaled == 1:
+                    if self.isScaled == 1:
 
                         if self.cond == 1: # Calculate using conditioning IML
                             # Calculate the intensity measure level (AvgSa or Sa)
@@ -699,12 +708,12 @@ class cs_master:
                     devTotal = weights[0] * np.sum(devMean**2) + weights[1] * np.sum(devSig**2)
                     
                     # Penalize bad spectra (set penalty to zero if this is not required)
-                    if penalty != 0:
+                    if self.penalty > 0:
                         for m in range(sampleSmall.shape[0]):
                             devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(self.mu_ln + 3*self.sigma_ln))) * penalty
                     
                     # Check if we exceed the scaling limit
-                    if scaleFac[j] > maxScale or np.any(np.array(recID) == j):
+                    if scaleFac[j] > self.maxScale or np.any(np.array(recID) == j):
                         devTotal += 1000000
                     
                     # Should cause improvement and record should not be repeated
@@ -716,7 +725,7 @@ class cs_master:
                     sampleSmall = np.delete(sampleSmall, -1, 0)
                 
                 # Add new element in the right slot
-                if isScaled == 1:
+                if self.isScaled == 1:
                     finalScaleFac[i] = scaleFac[minID]
                 else:
                     finalScaleFac[i] = 1
@@ -724,7 +733,7 @@ class cs_master:
                                 sampleSmall[i:,:]),axis=0)
                 recID = np.concatenate((recID[:i],np.array([minID]),recID[i:]))
             
-            # Lets check if the selected ground motions are good enough, if the erors are sufficiently small stop!
+            # Lets check if the selected ground motions are good enough, if the errors are sufficiently small stop!
             if len(ind1) != 1: # if conditioned on AvgSa
                 medianErr = np.max(np.abs(np.exp(np.mean(sampleSmall,axis=0)) - np.exp(self.mu_ln))/np.exp(self.mu_ln))*100
                 stdErr = np.max(np.abs(np.std(sampleSmall, axis=0) - self.sigma_ln)/self.sigma_ln)*100
@@ -732,18 +741,18 @@ class cs_master:
                 medianErr = np.max(np.abs(np.exp(np.mean(sampleSmall[:,ind2],axis=0)) - np.exp(self.mu_ln[ind2]))/np.exp(self.mu_ln[ind2]))*100
                 stdErr = np.max(np.abs(np.std(sampleSmall[:,ind2], axis=0) - self.sigma_ln[ind2])/self.sigma_ln[ind2])*100                
 
-            if medianErr < tol and stdErr < tol:
+            if medianErr < self.tol and stdErr < self.tol:
                 break
         print('Ground Motion selection is finished')
         print('For T ∈ [%.2f - %2.f]'% (self.T[0],self.T[-1]))
         print('Max error in median = %.2f %%' % medianErr)
         print('Max error in standard deviation = %.2f %%' % stdErr)
-        if medianErr < tol and stdErr < tol:
-            print('The errors are within the target %d percent %%' % tol)
+        if medianErr < self.tol and stdErr < self.tol:
+            print('The errors are within the target %d percent %%' % self.tol)
             
         # print('100% done')
         recID = recID.tolist()
-        # Output information
+        # Add selected record information to self
         self.rec_scale = finalScaleFac
         self.rec_spec = sampleSmall
         self.rec_Vs30 = Vs30[recID]
@@ -1411,7 +1420,8 @@ def ReadEXSIM(inFilename, zipName=None, outFilename=None):
             acc.append(float(temp[1]))
         
         acc = np.asarray(acc)
-        acc = acc[2500:10800] # get rid of zeros
+        if len(acc) < 20000:
+            acc = acc[2500:10800] # get rid of zeros
         dur = len(acc)*dt
         t = np.arange(0,dur,dt)
 

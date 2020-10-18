@@ -19,17 +19,19 @@ plot_disagg(Mbin,dbin,n_rows)
 
 from Utility.CS_master import *
 plt.close('all')
+
+""" CONDITIONAL SPECTRUM BASED SELECTION FOR MSA """
 # %% Define the period range of interest
 # if IM = SA this is a float, if IM = AvgSa this is a list 
 # which contains upper and lower bounds, e.g. [0.6, 2.0]
-Tstar = 0.4
-# Tstar = [0.1, 1.0]
+# Tstar = 0.4
+Tstar = [0.1, 1.0]
 
 # The database being used to select ground motions
 database = 'NGA_W1' # 'NGA_W1', 'NGA_W2', 'EXSIM_Duzce'
 
 # Define the gmpe to use
-gmpe = 'Boore_EtAl_2014'
+gmpe = 'Akkar_EtAlRjb_2014'
 
 Vs30 = 520
 
@@ -37,7 +39,7 @@ T_CS = [0.05,2.5]
 
 # Create the cs object, check which parameters are required for the gmpe you are using.
 # You should create site, rupture and distance dictionaries
-cs = cs_master(Tstar, gmpe = gmpe, database = database, T_resample = [1,0.05], pInfo = 1)
+cs = cs_master(Tstar = Tstar, gmpe = gmpe, database = database, T_resample = [1,0.05], pInfo = 1)
 
 poes=np.loadtxt(os.path.join('Hazard_Info','poes.out'))
 imls=np.loadtxt(os.path.join('Hazard_Info','imls_AvgSA.out'))
@@ -62,13 +64,15 @@ for i in range(len(poes)):
     outdir = os.path.join(database,'POE-'+str(poes[i])+'-in-50-years')
     
     # Create conditional spectrum
-    cs.create(im_Tstar, site_param, rup_param, dist_param, Hcont=None, T_CS_range = T_CS, cond = 1, useVar=1, outdir = outdir)
+    cs.create(site_param, rup_param, dist_param, Hcont=None, T_Tgt_range = T_CS, 
+              im_Tstar = im_Tstar, cond = 1, useVar=1, outdir = outdir)
+    
     # Plot conditional spectrum
     cs.plot(cs = 1, sim = 0, rec = 0, save = 1)
     
     # %% Select the ground motions    
     # perform the selection
-    cs.select(nGM = 100, selection = 1, Sa_def='RotD50', isScaled = 1, maxScale = 4,
+    cs.select(nGM = 25, selection = 1, isScaled = 1, maxScale = 4,
                     Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None)   
  
     # Plot the CS with simulated spectra and spectra of selected records
@@ -76,9 +80,5 @@ for i in range(len(poes)):
     
     # %% Write the selected ground motions to the text files and locate in output directory
     # note you have to have record files in Records.zip for this options
-    cs.write(cs = 1, recs = 1)
+    # cs.write(cs = 1, recs = 1)
     plt.close('all')
-
-# %% Calculate the total RunTime between module import time 
-# and the execution time of following func.
-RunTime()

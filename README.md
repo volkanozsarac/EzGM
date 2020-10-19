@@ -9,5 +9,4 @@ s/he should place the available records from metadata file into the Records.zip 
 e.g. NGA_W1 for metadata NGA_W1.mat. The main advantage over existing MATLAB codes is that it makes use of Openquake hazardlib, thus any gmpe available there could directly be used.
 
 # Note:
-Installation of Openquake package in Linux and MACOS is straightforward. In case of windows openquake package is not properly installed. Couple of DLL files that are called from the incorrect location. 
-To fix this use: pip install shapely or conda install shapely
+Installation of Openquake package in Linux and MACOS is straightforward. In case of windows package may not be installed correctly, in other words, geos_c.dll or similar .dll files could be missing). To fix this: pip install shapely or conda install shapely

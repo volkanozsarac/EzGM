@@ -447,9 +447,11 @@ class cs_master:
             An array which contains the filename of 1st gm component from filtered database.
             If selection is set to 1, it will include filenames of both components.
         Filename_2 : numpy.ndarray
-            An array which contains the filenameof 2nd gm component filtered database.
+            An array which contains the filename of 2nd gm component filtered database.
             If selection is set to 1, it will be None value.
-
+        NGA_num : numpy.ndarray
+			If NGA_W2 is used as record database, record sequence numbers from filtered
+			database will be saved, for other databases this variable is None.
         """
         
         if self.selection == 1: # SaKnown = Sa_arb
@@ -1276,7 +1278,6 @@ def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 100):
         Value of IM.
 
     """
-    import numpy as np
     nGM, nT = Sa_1.shape
     theta = np.linspace(start=0, stop=np.pi, num=num_theta)
 

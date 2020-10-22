@@ -22,7 +22,7 @@ import zipfile
 import numpy as np
 import numpy.matlib
 from scipy.stats import skew
-from time import gmtime, time
+from time import gmtime, time, sleep
 import matplotlib.pyplot as plt
 import matplotlib
 from scipy.io import loadmat
@@ -31,6 +31,8 @@ import pickle
 import copy
 # Import the tools from OpenQuake
 from openquake.hazardlib import gsim, imt, const
+from selenium import webdriver
+import requests
 
 startTime = time()
 
@@ -892,6 +894,292 @@ class cs_master:
                 pickle.dump(cs_obj, file)
         
         print('Finished writing process, the files are located in %s' % self.outdir)
+
+    def nga_download(self, username , pwd):
+        """
+        
+        Details
+        -------
+        
+        This function has been created as a web automation tool in order to 
+        download unscaled record time histories from NGA-West2 Database 
+        (https://ngawest2.berkeley.edu/) by Record Sequence Numbers (RSNs).
+
+        Parameters
+        ----------
+        username     : str
+                Account username (e-mail)
+                            e.g.: 'username@mail.com'
+        pwd          : str
+                Account password
+                            e.g.: 'password!12345'
+
+        """
+        self.username = username
+        self.pwd = pwd
+
+        def download_url(url, save_path, chunk_size=128):
+            """
+            
+            Details
+            -------
+            
+            This function downloads file from given url.Herein, it is being used 
+
+            Parameters
+            ----------
+            url          : str
+                    e.g.: 'www.example.com/example_file.pdf'
+            save_path    : str
+                    Save directory.
+
+            """
+            r = requests.get(url, stream=True)
+            with open(save_path, 'wb') as fd:
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    fd.write(chunk)     
+
+        def find_latest_ver():
+            """
+            
+            Details
+            -------
+            
+            This function finds the latest version of the chrome driver from  
+            'https://chromedriver.chromium.org/'.
+
+            """
+            r = requests.get('https://chromedriver.chromium.org/')
+            a = r.text
+            start = a.find('Latest stable release:')
+            text = a.replace(a[0:start],'')
+            start = text.find('path=')      
+
+            text = text.replace(text[0:start+5],'')
+            end = text.find("/")
+            latest_ver = text.replace(text[end::],'')
+            return latest_ver       
+
+        def add_driver_to_the_PATH(save_path):
+            paths = sys.path
+            package = [i for i in paths if 'lib' in i][0]
+            with zipfile.ZipFile(save_path, 'r') as zip_ref:
+                zip_ref.extractall(package)
+
+        def dir_size(Down_Dir):
+            total_size = 0
+            for path, dirs, files in os.walk(Down_Dir):
+                for f in files:
+                    fp = os.path.join(path, f)
+                    total_size += os.path.getsize(fp)
+            return total_size       
+
+        def download_wait(Down_Dir):
+            delta_size = 100
+            flag = 0
+            flag_lim = 5
+            while delta_size > 0 and flag < flag_lim:
+                print
+                size_0 = dir_size(Down_Dir)
+                sleep(6)
+                size_1 = dir_size(Down_Dir)
+                if size_1-size_0 > 0:
+                    delta_size = size_1-size_0
+                else:
+                    flag += 1
+                    print(flag_lim-flag)
+            print(f'Download has done to the directory:\n{Down_Dir}')          
+
+        def seek_and_download():
+            """
+            
+            Details
+            -------
+            
+            This function finds the latest version of the chrome driver from  
+            'https://chromedriver.chromium.org/' and downloads the compatible
+            version to the OS and extract it to the path.
+
+            """
+            paths = sys.path
+            package = [i for i in paths if 'lib' in i][0]
+            if 'win' in sys.platform:
+                current_platform = 'win32'
+                aim_driver = 'chromedriver.exe'
+            elif 'linux' in sys.platform:
+                current_platform = 'linux64'
+                aim_driver = 'chromedriver'
+            else:       
+                current_platform = 'mac64'
+                aim_driver = 'chromedriver'
+            if aim_driver not in os.listdir(package):
+                latest_ver = find_latest_ver()
+                save_path = os.path.join(os.getcwd(),'chromedriver.zip')
+                url = f"https://chromedriver.storage.googleapis.com/{latest_ver}/chromedriver_{current_platform}.zip"
+                download_url(url, save_path, chunk_size=128)
+                add_driver_to_the_PATH(save_path)
+                print ('chromedriver downloaded successfully!!')
+                os.remove(save_path)
+            else:
+                print("chromedriver allready exists!!")
+
+        def go_to_sign_in_page(Download_Dir):
+            """
+            
+            Details
+            -------
+            
+            This function starts the webdriver in headless mode and 
+            opens the sign in page to 'https://ngawest2.berkeley.edu/'
+
+            Parameters
+            ----------
+            Download_Dir     : str
+                    Directory for the output time histories to be downloaded
+
+            """
+
+            ChromeOptions = webdriver.ChromeOptions()
+            prefs = {"download.default_directory" : Download_Dir}
+            ChromeOptions.add_experimental_option("prefs",prefs)
+            ChromeOptions.headless = True
+            if 'win' in sys.platform:
+                aim_driver = 'chromedriver.exe'
+            elif 'linux' in sys.platform:
+                aim_driver = 'chromedriver'
+            else:       
+                aim_driver = 'chromedriver'
+            path_of_driver = os.path.join([i for i in sys.path if 'lib' in i][0] , aim_driver)
+            if not os.path.exists(path_of_driver):
+                print('Downloading the chromedriver!!')
+                seek_and_download()
+            driver = webdriver.Chrome(executable_path = path_of_driver ,options=ChromeOptions)
+            url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
+            driver.get(url_sign_in)
+            return driver       
+
+        def sign_in_with_given_creds(driver,USERNAME,PASSWORD):
+            """
+            
+            Details
+            -------
+            
+            This function signs in to 'https://ngawest2.berkeley.edu/' with
+            given account credentials
+
+            Parameters
+            ----------
+            driver     : selenium webdriver object
+                    Please use the driver have been generated as output of 
+                    'go_to_sign_in_page' function
+            USERNAME   : str
+                    Account username (e-mail)
+                                e.g.: 'username@mail.com'
+            PASSWORD   : str
+                    Account password
+                                e.g.: 'password!12345' 
+            """
+            print("Signing in with given account!...")
+            driver.find_element_by_id('user_email').send_keys(USERNAME)
+            driver.find_element_by_id('user_password').send_keys(PASSWORD)
+            driver.find_element_by_id('user_submit').click()
+            try:
+                alert = driver.find_element_by_css_selector('p.alert')
+                warn = alert.text
+                print(warn)
+            except:
+                warn = ''
+                pass
+            return driver, warn     
+
+        def Download_Given(RSNs,Download_Dir,driver):
+            """
+            
+            Details
+            -------
+            
+            This function dowloads the timehistories which have been indicated with their RSNs
+            from 'https://ngawest2.berkeley.edu/'.
+
+            Parameters
+            ----------
+            RSNs     : str
+                    A string variable contains RSNs to be downloaded which uses ',' as delimeter
+                    between RNSs
+                                e.g.: '1,5,91,35,468'
+            Download_Dir     : str
+                    Directory for the output timehistories to be downloaded
+            driver     : selenium webdriver object
+                    Please use the driver have been generated as output of 
+                    sign_in_with_given_creds' function
+
+            """
+            url_get_record = 'https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1'   
+            print("Listing the Records!....")
+            driver.get(url_get_record)
+            driver.find_element_by_xpath("//button[@type='button']").submit()
+            sleep(2)
+            driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
+            sleep(3)
+            driver.find_element_by_xpath("//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
+            try:
+                note = driver.find_element_by_id('notice').text 
+            except:
+                note = 'NO'
+
+            if 'NO' in note:
+                driver.quit()
+                pass
+            else:
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+                sleep(3)
+                driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
+                print("Downloading the Records!...")
+                obj = driver.switch_to.alert
+                msg=obj.text
+                print ("Alert shows following message: "+ msg )
+                sleep(5)
+                obj.accept()       
+                obj = driver.switch_to.alert
+                msg=obj.text
+                print ("Alert shows following message: "+ msg )
+                sleep(3)
+                obj.accept()
+                print("Downloading the Records!...")  
+                download_wait(Download_Dir)
+                driver.quit()
+
+        driver = go_to_sign_in_page(self.outdir)
+        driver,warn = sign_in_with_given_creds(driver,self.username,self.pwd)
+        if str(warn) == 'Invalid email or password.':
+            print(warn)
+            driver.quit()
+            sys.exit()
+        else:
+            RSNs = ''
+            for i in self.rec_rsn:
+                RSNs += str(int(i)) + ','
+
+            RSNs = RSNs[:-1:]
+            print(RSNs)
+            files_before_download = set(os.listdir(self.outdir))
+            Download_Given(RSNs,self.outdir,driver)
+            files_after_download = set(os.listdir(self.outdir))
+            Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
+            file_extension = Downloaded_File[Downloaded_File.find('.')::]
+            file_name = Downloaded_File[:Downloaded_File.find('.'):]
+            time_tag = gmtime()
+            time_tag_str = f'{time_tag[0]}'
+            for i in range(1,len(time_tag)):
+                time_tag_str += f'_{time_tag[i]}'
+            new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
+            Downloaded_File = os.path.join(self.outdir,Downloaded_File)
+            Downloaded_File_Rename = os.path.join(self.outdir,new_file_name)
+            os.rename(Downloaded_File,Downloaded_File_Rename)
+            self.Unscaled_rec_file = Downloaded_File_Rename
+
+
+
         
     def plot(self, cs = 0, sim = 0, rec = 1, save = 0):
         """

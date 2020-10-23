@@ -1,5 +1,4 @@
 # EzGM
---
 Toolbox for ground motion record selection and processing
 
 This software performs CS(AvgSa) or CS(Sa) based record selection
@@ -11,19 +10,19 @@ The example is provided for CS(AvgSa) based ground motion record selection with 
 Moreover, the other methods inside EzGM can be used to process a ground motion record (filter and read NGA records e.g.) and to obtain different intensity measures (see EzGM.gm_parameters). 
 
 # Required Packages
-sys
-os
-shutil
-zipfile
-time
-pickle
-copy
-numba
-numpy
-scipy
-matplotlib
-openquake
-selenium
+sys,
+os,
+shutil,
+zipfile,
+time,
+pickle,
+copy,
+numba,
+numpy,
+scipy,
+matplotlib,
+openquake,
+selenium,
 requests
 
 # Note:

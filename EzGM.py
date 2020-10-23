@@ -1280,7 +1280,7 @@ class cs_master:
 
         def add_driver_to_the_PATH(save_path):
             paths = sys.path
-            package = [i for i in paths if 'lib' in i][0]
+            package = [i for i in paths if 'site-packages' in i][0]
             with zipfile.ZipFile(save_path, 'r') as zip_ref:
                 zip_ref.extractall(package)
 
@@ -1320,7 +1320,7 @@ class cs_master:
 
             """
             paths = sys.path
-            package = [i for i in paths if 'lib' in i][0]
+            package = [i for i in paths if 'site-packages' in i][0]
             if 'win' in sys.platform:
                 current_platform = 'win32'
                 aim_driver = 'chromedriver.exe'
@@ -1367,10 +1367,12 @@ class cs_master:
                 aim_driver = 'chromedriver'
             else:       
                 aim_driver = 'chromedriver'
-            path_of_driver = os.path.join([i for i in sys.path if 'lib' in i][0] , aim_driver)
+            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0] , aim_driver)
             if not os.path.exists(path_of_driver):
                 print('Downloading the chromedriver!!')
                 seek_and_download()
+                if 'linux' in sys.platform:
+                    os.chmod(path_of_driver, 0o777)
             driver = webdriver.Chrome(executable_path = path_of_driver ,options=ChromeOptions)
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
             driver.get(url_sign_in)
@@ -1435,18 +1437,22 @@ class cs_master:
             url_get_record = 'https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1'   
             print("Listing the Records!....")
             driver.get(url_get_record)
+            sleep(2)
             driver.find_element_by_xpath("//button[@type='button']").submit()
             sleep(2)
             driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
             sleep(3)
             driver.find_element_by_xpath("//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
             try:
-                note = driver.find_element_by_id('notice').text 
+                note = driver.find_element_by_id('notice').text
+                print(note)
             except:
                 note = 'NO'
 
             if 'NO' in note:
+                print("\033[1;31mCould not be able to download records!")
                 driver.quit()
+                sys.exit()
                 pass
             else:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
@@ -2007,90 +2013,90 @@ def gm_parameters(Ag,dt,T,xi):
     -------
     param: dictionary
         Contains the following intensity measures:
-	PSa(T): numpy.ndarray       
-	    Elastic pseudo-acceleration response spectrum [m/s2]
-	PSv(T): numpy.ndarray   
-	    Elastic pseudo-velocity response spectrum [m/s]
-	Sd(T): numpy.ndarray 
-	    Elastic displacement response spectrum  - relative displacement [m]
-	Sv(T): numpy.ndarray 
-	    Elastic velocity response spectrum - relative velocity at [m/s]
-	Sa(T): numpy.ndarray 
-	    Elastic accleration response spectrum - total accelaration [m/s2]
-	Ei_r(T): numpy.ndarray 
-	    Relative input energy spectrum for elastic system [N.m]
-	Ei_a(T): numpy.ndarray 
-	    Absolute input energy spectrum for elastic system [N.m]
-	Periods: numpy.ndarray 
-	    Periods where spectral values are calculated [sec]
-	FAS: numpy.ndarray 
-	    Fourier amplitude spectra
-	PAS: numpy.ndarray 
-	    Power amplitude spectra
-	PGA: float
-	    Peak ground acceleration [m/s2]
-	PGV: float
-	    Peak ground velocity [m/s]
-	PGD: float
-	    Peak ground displacement [m]
-	Aint: numpy.ndarray 
-	    Arias intensity ratio vector with time [m/s]
-	Arias: float 
-	    Maximum value of arias intensity ratio [m/s]
-	HI: float
-	    Housner intensity ratio [m]
-	    Requires T to be defined between (0.1-2.5 sec)
-	    Otherwise not applicable, and equal to 'N.A'
-	CAV: float
-	    Cumulative absolute velocity [m/s]        
-	t_5_75: list
-	    Significant duration time vector between 5% and 75% of energy release (from Aint)
-	D_5_75: float
-	    Significant duration between 5% and 75% of energy release (from Aint)
-	t_5_95: list    
-	    Significant duration time vector between 5% and 95% of energy release (from Aint)
-	D_5_95: float
-	    Significant duration between 5% and 95% of energy release (from Aint)
-	t_bracketed: list 
-	    Bracketed duration time vector (acc>0.05g)
-	    Not applicable, in case of low intensity records, 
-	    Thus, equal to 'N.A'
-	D_bracketed: float
-	    Bracketed duration (acc>0.05g)
-	    Not applicable, in case of low intensity records, 
-	    Thus, equal to 'N.A'
-	t_uniform: list 
-	    Uniform duration time vector (acc>0.05g)
-	    Not applicable, in case of low intensity records, 
-	    Thus, equal to 'N.A'
-	D_uniform: float 
-	    Uniform duration (acc>0.05g)
-	    Not applicable, in case of low intensity records, 
-	    Thus, equal to 'N.A'
-	Tm: float
-	    Mean period
-	Tp: float             
-	    Predominant Period
-	aRMS: float 
-	    Root mean square root of acceleration [m/s2]
-	vRMS: float
-	    Root mean square root of velocity [m/s]
-	dRMS: float  
-	    Root mean square root of displacement [m]
-	Ic: float     
-	    End time might which is used herein, is not always a good choice
-	ASI: float   
-	    Acceleration spectrum intensity [m/s]
-	    Requires T to be defined between (0.1-0.5 sec)
-	    Otherwise not applicable, and equal to 'N.A'
-	MASI: float [m]
-	    Modified acceleration spectrum intensity
-	    Requires T to be defined between (0.1-2.5 sec)
-	    Otherwise not applicable, and equal to 'N.A'
-	VSI: float [m]
-	    Velocity spectrum intensity
-	    Requires T to be defined between (0.1-2.5 sec)
-	    Otherwise not applicable, and equal to 'N.A'
+    PSa(T): numpy.ndarray       
+        Elastic pseudo-acceleration response spectrum [m/s2]
+    PSv(T): numpy.ndarray   
+        Elastic pseudo-velocity response spectrum [m/s]
+    Sd(T): numpy.ndarray 
+        Elastic displacement response spectrum  - relative displacement [m]
+    Sv(T): numpy.ndarray 
+        Elastic velocity response spectrum - relative velocity at [m/s]
+    Sa(T): numpy.ndarray 
+        Elastic accleration response spectrum - total accelaration [m/s2]
+    Ei_r(T): numpy.ndarray 
+        Relative input energy spectrum for elastic system [N.m]
+    Ei_a(T): numpy.ndarray 
+        Absolute input energy spectrum for elastic system [N.m]
+    Periods: numpy.ndarray 
+        Periods where spectral values are calculated [sec]
+    FAS: numpy.ndarray 
+        Fourier amplitude spectra
+    PAS: numpy.ndarray 
+        Power amplitude spectra
+    PGA: float
+        Peak ground acceleration [m/s2]
+    PGV: float
+        Peak ground velocity [m/s]
+    PGD: float
+        Peak ground displacement [m]
+    Aint: numpy.ndarray 
+        Arias intensity ratio vector with time [m/s]
+    Arias: float 
+        Maximum value of arias intensity ratio [m/s]
+    HI: float
+        Housner intensity ratio [m]
+        Requires T to be defined between (0.1-2.5 sec)
+        Otherwise not applicable, and equal to 'N.A'
+    CAV: float
+        Cumulative absolute velocity [m/s]        
+    t_5_75: list
+        Significant duration time vector between 5% and 75% of energy release (from Aint)
+    D_5_75: float
+        Significant duration between 5% and 75% of energy release (from Aint)
+    t_5_95: list    
+        Significant duration time vector between 5% and 95% of energy release (from Aint)
+    D_5_95: float
+        Significant duration between 5% and 95% of energy release (from Aint)
+    t_bracketed: list 
+        Bracketed duration time vector (acc>0.05g)
+        Not applicable, in case of low intensity records, 
+        Thus, equal to 'N.A'
+    D_bracketed: float
+        Bracketed duration (acc>0.05g)
+        Not applicable, in case of low intensity records, 
+        Thus, equal to 'N.A'
+    t_uniform: list 
+        Uniform duration time vector (acc>0.05g)
+        Not applicable, in case of low intensity records, 
+        Thus, equal to 'N.A'
+    D_uniform: float 
+        Uniform duration (acc>0.05g)
+        Not applicable, in case of low intensity records, 
+        Thus, equal to 'N.A'
+    Tm: float
+        Mean period
+    Tp: float             
+        Predominant Period
+    aRMS: float 
+        Root mean square root of acceleration [m/s2]
+    vRMS: float
+        Root mean square root of velocity [m/s]
+    dRMS: float  
+        Root mean square root of displacement [m]
+    Ic: float     
+        End time might which is used herein, is not always a good choice
+    ASI: float   
+        Acceleration spectrum intensity [m/s]
+        Requires T to be defined between (0.1-0.5 sec)
+        Otherwise not applicable, and equal to 'N.A'
+    MASI: float [m]
+        Modified acceleration spectrum intensity
+        Requires T to be defined between (0.1-2.5 sec)
+        Otherwise not applicable, and equal to 'N.A'
+    VSI: float [m]
+        Velocity spectrum intensity
+        Requires T to be defined between (0.1-2.5 sec)
+        Otherwise not applicable, and equal to 'N.A'
     """
         
     # INITIALIZATION

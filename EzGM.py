@@ -1,8 +1,9 @@
 """
 |-----------------------------------------------------------------------|
 |                                                                       |
-|    Ground motion record selection                                     |
-|    and processing tools                                               |
+|    EzGM                                                               |
+|    Toolbox for ground motion record                                   |
+|    selection and processing                                           |
 |    Version: 0.4                                                       |
 |                                                                       |
 |    Created on 23/10/2020                                              |

@@ -9,7 +9,7 @@ The main advantage over existing MATLAB codes is that it makes use of Openquake 
 The example is provided for CS(AvgSa) based ground motion record selection with two hazard scenarios.
 Moreover, other methods inside EzGM can be used to process a ground motion record (filter and read NGA records e.g.) and to obtain different intensity measures (see EzGM.gm_parameters). 
 
-# Required Packages
+## Required Packages
 sys,
 os,
 shutil,
@@ -25,5 +25,5 @@ openquake,
 selenium,
 requests
 
-# Note:
+### Note
 Installation of Openquake package in Linux and MACOS is straightforward. In case of windows package may not be installed correctly, in other words, geos_c.dll or similar .dll files could be missing). To fix this simply write, pip install shapely or conda install shapely (in case of anaconda)

@@ -1846,28 +1846,29 @@ def baseline_correction(values,dt,polynomial_type):
     """
     Details
     -------
-        This script will return baseline corrected values for the given signal
+    This script will return baseline corrected values for the given signal
     
     Notes
     -----
-        Applicable for Constant, Linear, Quadratic and Cubic polynomial functions
+    Applicable for Constant, Linear, Quadratic and Cubic polynomial functions
         
     References
     ----------
-        Kramer, Steven L. 1996. Geotechnical Earthquake Engineering. Prentice Hall
+    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering. Prentice Hall
         
     Parameters
     ----------
-        values: numpy.ndarray
-            signal values      
-        dt: float          
-            sampling interval
-        polynomal_type: str
-            type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'    
+    values: numpy.ndarray
+        signal values      
+    dt: float          
+        sampling interval
+    polynomal_type: str
+        type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'    
         
     Returns
     -------
-        values_corrected:   corrected values
+    values_corrected: numpy.ndarray
+        corrected values
         
     """   
         
@@ -2243,19 +2244,19 @@ def eq_spectra(Ag,dt,T,xi):
     Returns
     -------
     PSa(T): numpy.ndarray       
-	Elastic pseudo-acceleration response spectrum [m/s2]
+        Elastic pseudo-acceleration response spectrum [m/s2]
     PSv(T): numpy.ndarray   
-	Elastic pseudo-velocity response spectrum [m/s]
+        Elastic pseudo-velocity response spectrum [m/s]
     Sd(T): numpy.ndarray 
-	Elastic displacement response spectrum  - relative displacement [m]
+        Elastic displacement response spectrum  - relative displacement [m]
     Sv(T): numpy.ndarray 
-	Elastic velocity response spectrum - relative velocity at [m/s]
+        Elastic velocity response spectrum - relative velocity at [m/s]
     Sa(T): numpy.ndarray 
-	Elastic accleration response spectrum - total accelaration [m/s2]
+        Elastic accleration response spectrum - total accelaration [m/s2]
     Ei_r(T): numpy.ndarray 
-	Relative input energy spectrum for elastic system [N.m]
+        Relative input energy spectrum for elastic system [N.m]
     Ei_a(T): numpy.ndarray 
-	Absolute input energy spectrum for elastic system [N.m]
+        Absolute input energy spectrum for elastic system [N.m]
     """
 
     # Get the length of acceleration history array

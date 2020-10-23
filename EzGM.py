@@ -1,11 +1,11 @@
 """
 |-----------------------------------------------------------------------|
 |                                                                       |
-|    Conditional spectrum based                                         |
-|    record selection and scaling                                       |
-|    Version: 0.3                                                       |
+|    Ground motion record selection                                     |
+|    and processing tools                                               |
+|    Version: 0.4                                                       |
 |                                                                       |
-|    Created on 21/10/2020                                              |
+|    Created on 23/10/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -13,34 +13,43 @@
 |-----------------------------------------------------------------------|
 """
 
-# Import standard python libraries
-from __future__ import division
+# Import python libraries
 import sys
 import os
 import shutil
 import zipfile
+from time import gmtime, time, sleep
+import pickle
+import copy
+from numba import njit
 import numpy as np
 import numpy.matlib
 from scipy.stats import skew
-from time import gmtime, time, sleep
-import matplotlib.pyplot as plt
-import matplotlib
+from scipy.signal import butter, filtfilt
+import scipy.integrate as integrate
+import scipy.fftpack
 from scipy.io import loadmat
 from scipy import interpolate
-import pickle
-import copy
-# Import the tools from OpenQuake
+import matplotlib.pyplot as plt
+import matplotlib
 from openquake.hazardlib import gsim, imt, const
 from selenium import webdriver
 import requests
 
-startTime = time()
-
 class cs_master:
+    """
+    This class is used to
+        1) Create target spectrum
+            Uncoditional spectrum using specified gmpe
+            Conditional spectrum using average spectral acceleration
+            Conditional spectrum using spectral acceleration
+            with and without considering variance
+        2) Selecting suitable ground motion sets for target spectrum
+        3) Scaling and processing of selected ground motion records
+    """
     
-    def __init__(self, Tstar = 0.5, gmpe = 'Boore_Atkinson_2008', database = 'NGA_W1', T_resample = [0,0.05], pInfo = 1):
+    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W1', T_resample = [0,0.05], pInfo = 1):
         """
-        
         Details
         -------
         Loads the database and add spectral values for Tstar 
@@ -68,13 +77,12 @@ class cs_master:
         Returns
         -------
         None.
-        
         """
         
         # add Tstar to self
         if isinstance(Tstar,int) or isinstance(Tstar,float):
             self.Tstar = np.array([Tstar])
-        elif isinstance(Tstar,list): 
+        elif isinstance(Tstar,list):
             self.Tstar = np.asarray(Tstar)
         
         # Add the input the ground motion database to use
@@ -150,17 +158,17 @@ class cs_master:
             self.bgmpe = gsim.abrahamson_2014.AbrahamsonEtAl2014()
     
         if pInfo == 1:  # print the selected gmpe info
-            print('The required distance parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_DISTANCES))
-            print('The required rupture parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
-            print('The required site parameters for this gmpe are: %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
-            print('The defined intensity measure component is: %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
-            print('The defined tectonic region type is: %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
+            print('For the selected gmpe;')
+            print('The mandatory input distance parameters are %s' % list(self.bgmpe.REQUIRES_DISTANCES))
+            print('The mandatory input rupture parameters are %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
+            print('The mandatory input site parameters are %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
+            print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
+            print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
     def create(self, site_param = {'vs30': 520}, rup_param = {'rake': 0.0, 'mag': [7.2, 6.5]}, 
                dist_param = {'rjb': [20, 5]}, Hcont=[0.6,0.4], T_Tgt_range  = [0.01,4], 
-               im_Tstar = 2.0, epsilon = None, cond = 1, useVar = 1, outdir = 'Outputs'):
+               im_Tstar = 1.0, epsilon = None, cond = 1, useVar = 1, outdir = 'Outputs'):
         """
-        
         Details
         -------
         Creates the target spectrum (conditional or unconditional).
@@ -203,9 +211,107 @@ class cs_master:
 
         Returns
         -------
-        None.
-                                        
+        None.                    
         """
+        
+        def Sa_avg(bgmpe,scenario,T):
+            """
+            Details
+            -------
+            GMPM of average spectral acceleration
+            The code will get as input the selected periods, 
+            Magnitude, distance and all other parameters of the 
+            selected GMPM and 
+            will return the median and logarithmic Spectral 
+            acceleration of the product of the Spectral
+            accelerations at selected periods; 
+        
+            Parameters
+            ----------
+            bgmpe : openquake object
+                the openquake gmpe object.
+            scenario : list
+                [sites, rup, dists] source, distance and site context 
+                of openquake gmpe object for the specified scenario.
+            T : numpy.ndarray
+                Array of interested Periods (sec).
+        
+            Returns
+            -------
+            Sa : numpy.ndarray
+                Mean of logarithmic average spectral acceleration prediction.
+            sigma : numpy.ndarray
+               logarithmic standard deviation of average spectral acceleration prediction.
+            """
+            
+            n = len(T);
+            mu_lnSaTstar = np.zeros(n)
+            sigma_lnSaTstar = np.zeros(n)
+            MoC = np.zeros((n,n))
+            # Get the GMPE output
+            for i in range(n):
+                mu_lnSaTstar[i], stddvs_lnSaTstar = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=T[i]),[const.StdDev.TOTAL])
+                # convert to sigma_arb
+                # One should uncomment this line if the arbitary component is used for
+                # record selection.
+                # ro_xy = 0.79-0.23*np.log(T[k])
+                ro_xy = 1
+                sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0])**2)*(2/(1+ro_xy)))**0.5)
+                
+                for j in range(n):
+                    rho = Baker_Jayaram_2008(T[i], T[j])
+                    MoC [i,j] = rho
+        
+            SPa_avg_meanLn = (1/n) *sum(mu_lnSaTstar) # logarithmic mean of Sa,avg
+        
+            SPa_avg_std = 0
+            for i in range(n):
+                for j in range(n):
+                    SPa_avg_std = SPa_avg_std  + (MoC[i,j] *sigma_lnSaTstar[i]*sigma_lnSaTstar[j]) # logarithmic Var of the Sa,avg
+        
+            SPa_avg_std = SPa_avg_std*(1/n)**2
+            # compute mean of logarithmic average spectral acceleration
+            # and logarithmic standard deviation of 
+            # spectral acceleration prediction
+            Sa    = SPa_avg_meanLn
+            sigma = np.sqrt(SPa_avg_std)
+            return Sa, sigma
+        
+        def rho_AvgSA_SA(bgmpe,scenario,T,Tstar):
+            """
+            Details
+            -------  
+            Function to compute the correlation between Spectra acceleration and AvgSA.
+            
+            Parameters
+            ----------
+            bgmpe : openquake object
+                the openquake gmpe object.
+            scenario : list
+                [sites, rup, dists] source, distance and site context 
+                of openquake gmpe object for the specified scenario.
+            T     : numpy.ndarray
+                Array of interested Periods to calculate correlation coefficient.
+        
+            Tstar : numpy.ndarray
+                Period range where AvgSa is calculated.
+        
+            Returns
+            -------
+            rho : int
+                Predicted correlation coefficient.
+            """
+            
+            rho=0
+            for j in range(len(Tstar)):
+                rho_bj = Baker_Jayaram_2008(T, Tstar[j])
+                _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),[const.StdDev.TOTAL])
+                rho = rho_bj*sig1[0][0] + rho
+        
+            _, Avg_sig = Sa_avg(bgmpe,scenario,Tstar)
+            rho = rho/(len(Tstar)*Avg_sig)
+            return rho
+
         # create the output directory and add the path to self
         cwd = os. getcwd()
         outdir_path = os.path.join(cwd,outdir)
@@ -376,7 +482,7 @@ class cs_master:
                 self.im_Tstar = np.exp(np.sum(self.mu_ln[ind])/len(self.Tstar))
                 self.epsilon = epsilon
         
-        print('Coniditonal spectrum is created.')
+        print('Target spectrum is created.')
 
     def simulate_spectra(self):
         """
@@ -386,14 +492,11 @@ class cs_master:
 
         Parameters
         ----------
-
+        None.
+        
         Returns
         -------
         None.
-        
-        Notes
-        -----
-                     
         """
         
         # Set initial seed for simulation
@@ -425,14 +528,14 @@ class cs_master:
 
     def search_database(self):
         """
-        
         Details
         -------
         Search the database and does the filtering.
         
         Parameters
         ----------
-
+        None.
+        
         Returns
         -------
         sampleBig : numpy.ndarray
@@ -449,11 +552,11 @@ class cs_master:
             An array which contains the filename of 1st gm component from filtered database.
             If selection is set to 1, it will include filenames of both components.
         Filename_2 : numpy.ndarray
-            An array which contains the filename of 2nd gm component filtered database.
+            An array which contains the filenameof 2nd gm component filtered database.
             If selection is set to 1, it will be None value.
         NGA_num : numpy.ndarray
-			If NGA_W2 is used as record database, record sequence numbers from filtered
-			database will be saved, for other databases this variable is None.
+            If NGA_W2 is used as record database, record sequence numbers from filtered
+            database will be saved, for other databases this variable is None.
         """
         
         if self.selection == 1: # SaKnown = Sa_arb
@@ -503,7 +606,6 @@ class cs_master:
         # notAllowed = []
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-        
         # remove these as J. Baker does for this metadata
         if self.database['Name'] == "NGA_W2":
             temp1 = np.arange(4576,4839,1)
@@ -518,22 +620,22 @@ class cs_master:
                 notAllowed.extend((self.database['NGA_num'][-1]+temp3).tolist())               
             
         if not self.Vs30_lim is None: # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) & (soil_Vs30 < max(self.Vs30_lim))
+            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
         if not self.Mw_lim is None: # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) & (Mw < max(self.Mw_lim))
+            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
         if not self.Rjb_lim is None: # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) & (Rjb < max(self.Rjb_lim))
+            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
             
         if not self.fault_lim is None: # limiting values on mechanism exist
-            mask = (fault == self.fault_lim)
+            mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
         
@@ -580,7 +682,6 @@ class cs_master:
                nTrials = 20,  weights = [1,2,0.3], seedValue  = 0, 
                nLoop = 2, penalty = 0, tol = 10):
         """
-        
         Details
         -------
         Perform the ground motion selection.
@@ -639,7 +740,6 @@ class cs_master:
         Returns
         -------
         None.
-
         """
         
         # Add selection settings to self
@@ -789,14 +889,13 @@ class cs_master:
 
             if medianErr < self.tol and stdErr < self.tol:
                 break
-        print('Ground Motion selection is finished')
+        print('Ground motion selection is finished.')
         print('For T ∈ [%.2f - %2.f]'% (self.T[0],self.T[-1]))
         print('Max error in median = %.2f %%' % medianErr)
         print('Max error in standard deviation = %.2f %%' % stdErr)
         if medianErr < self.tol and stdErr < self.tol:
             print('The errors are within the target %d percent %%' % self.tol)
             
-        # print('100% done')
         recID = recID.tolist()
         # Add selected record information to self
         self.rec_scale = finalScaleFac
@@ -822,6 +921,14 @@ class cs_master:
         if recs == 1:
             # set the directories and file names
             zipName = 'Records.zip'
+            at2 = 'at2'
+            if self.database['Name'] == 'NGA_W2':
+                at2 = 'AT2'
+                try:
+                    zipName = self.Unscaled_rec_file
+                except:
+                    pass
+                
             n = len(self.rec_h1)
             path_dts = os.path.join(self.outdir,'GMR_dts.txt')
             path_durs = os.path.join(self.outdir,'GMR_durs.txt')
@@ -832,15 +939,23 @@ class cs_master:
                 path_H1 = os.path.join(self.outdir,'GMR_H1_names.txt')
                 path_H2 = os.path.join(self.outdir,'GMR_H2_names.txt')
                 h2s = open(path_H2, 'w')
+                
             else:
                 path_H1 = os.path.join(self.outdir,'GMR_names.txt')
-            h1s = open(path_H1, 'w')            
-            if self.database['Name'] == 'NGA_W1':
-    
-                # save the first gm components
+                
+            h1s = open(path_H1, 'w')      
+            
+            if self.database['Name'].startswith('NGA'):
+                
+                if zipName!='Records.zip':
+                    rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
+                else:
+                    rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]
+                contents = ContentFromZip(rec_paths,zipName)
+                
+                # Save the H1 gm components
                 for i in range(n):
-                    rec_path = self.database['Name']+'/'+self.rec_h1[i][:-3] + 'at2'
-                    dts[i], _, _, t, inp_acc = ReadNGA(rec_path,zipName)
+                    dts[i], _, _, t, inp_acc = ReadNGA(content = contents[i])
                     durs[i] = t[-1]
                     gmr_file = 'GMR_'+str(i+1)+'.txt'
                     path = os.path.join(self.outdir,gmr_file)
@@ -848,15 +963,17 @@ class cs_master:
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
                     h1s.write(gmr_file+'\n')
                 
-                h1s.close()
-                np.savetxt(path_dts,dts, fmt='%1.4e')
-                np.savetxt(path_durs,durs, fmt='%1.4e')
-                
-                # save the second gm components
+                # Save the H2 gm components
                 if not self.rec_h2 is None:
+                    
+                    if zipName!='Records.zip':
+                        rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
+                    else:
+                        rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]   
+                        
+                    contents = ContentFromZip(rec_paths,zipName)
                     for i in range(n):
-                        rec_path = self.database['Name']+'/'+self.rec_h2[i][:-3] + 'at2'
-                        _, _, _, _, inp_acc = ReadNGA(rec_path,zipName)
+                        _, _, _, _, inp_acc = ReadNGA(content = contents[i])
                         gmr_file = 'GMR_'+str(n+i+1)+'.txt'
                         path = os.path.join(self.outdir,gmr_file)
                         acc_Sc = self.rec_scale[i] * inp_acc
@@ -867,10 +984,12 @@ class cs_master:
     
             if self.database['Name'].startswith('EXSIM'):
                 sf = 1/981 # cm/s**2 to g
+                rec_paths = [self.database['Name']+'/'+self.rec_h1[i].split('_acc')[0]+'/' 
+                             + self.rec_h1[i] for i in range(n)]               
+                contents = ContentFromZip(rec_paths,zipName)
+                
                 for i in range(n):
-                    temp = self.rec_h1[i].split('_acc')[0]
-                    rec_path = self.database['Name']+'/'+temp+'/'+self.rec_h1[i]
-                    dts[i], _, _, t, inp_acc = ReadEXSIM(rec_path,zipName)
+                    dts[i], _, _, t, inp_acc = ReadEXSIM(content = contents[i])
                     durs[i] = t[-1]
                     gmr_file = 'GMR_'+str(i+1)+'.txt'
                     path = os.path.join(self.outdir,gmr_file)
@@ -878,9 +997,9 @@ class cs_master:
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
                     h1s.write(gmr_file+'\n')
                     
-                h1s.close()
-                np.savetxt(path_dts,dts, fmt='%1.4e')
-                np.savetxt(path_durs,durs, fmt='%1.4e')
+            h1s.close()
+            np.savetxt(path_dts,dts, fmt='%.5f')
+            np.savetxt(path_durs,durs, fmt='%.5f')
             
         if cs == 1:
             # save some info as pickle obj
@@ -893,7 +1012,207 @@ class cs_master:
             with open(path_cs, 'wb') as file:
                 pickle.dump(cs_obj, file)
         
-        print('Finished writing process, the files are located in %s' % self.outdir)
+        print('Finished writing process, the files are located in\n%s' % self.outdir)
+        
+    def plot(self, tgt = 0, sim = 0, rec = 1, save = 0, show = 1):
+        """
+        Details
+        -------
+        Plots the target spectrum and spectra 
+        of selected simulations and records.
+
+        Parameters
+        ----------
+        tgt    : int, optional
+            Flag to plot target spectrum.
+            The default is 1.
+        sim    : int, optional
+            Flag to plot simulated response spectra vs. target spectrum.
+            The default is 0.
+        rec    : int, optional
+            Flag to plot Selected response spectra of selected records
+            vs. target spectrum. 
+            The default is 1.
+        save   : int, optional
+            Flag to save plotted figures in pdf format.
+            The default is 0.
+        show  : int, optional
+            Flag to show figures
+            The default is 0.
+            
+        Notes
+        -----
+        0: off, 1: on
+
+        Returns
+        -------
+        None.
+        """
+
+        SMALL_SIZE = 10
+        MEDIUM_SIZE = 12
+        BIG_SIZE = 14
+        BIGGER_SIZE = 18
+        
+        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+        plt.rc('axes', labelsize=BIG_SIZE)       # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        plt.rc('legend', fontsize=MEDIUM_SIZE)   # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.ioff()
+
+        if self.cond == 1:
+            if len(self.Tstar) == 1:
+                hatch = [self.Tstar*0.98, self.Tstar*1.02]
+            else:
+                hatch = [self.Tstar.min(), self.Tstar.max()]
+
+        if tgt == 1:
+            # Plot Target spectrum vs. Simulated response spectra
+            fig,ax = plt.subplots(1,2, figsize = (16,8))
+            plt.suptitle('Target Spectrum', y = 0.95)
+            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            
+            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+            handles, labels = ax[0].get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
+            ax[0].set_xlim([self.T[0],self.T[-1]])
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+                   
+            # Sample and target standard deviations
+            if self.useVar == 1:
+                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].set_xlabel('Period [sec]')
+                ax[1].set_ylabel('Dispersion')
+                ax[1].grid(True)
+                ax[1].legend(frameon = False)
+                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[0].set_xlim([self.T[0],self.T[-1]])
+                ax[1].set_ylim(bottom=0)
+                if self.cond == 1:
+                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            
+            if save == 1:
+                plt.savefig(os.path.join(self.outdir,'Targeted.pdf'))
+
+        if sim == 1:
+            # Plot Target spectrum vs. Simulated response spectra
+            fig,ax = plt.subplots(1,2, figsize = (16,8))
+            plt.suptitle('Target Spectrum vs. Simulated Spectra', y = 0.95)
+            
+            for i in range(self.nGM):
+                ax[0].loglog(self.T,np.exp(self.sim_spec[i,:]),color = 'gray', lw=1,label='Selected');
+
+            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+
+            ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)+2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)-2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            
+            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+            handles, labels = ax[0].get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
+            ax[0].set_xlim([self.T[0],self.T[-1]])
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+
+            if self.useVar == 1:
+                # Sample and target standard deviations
+                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.T,np.std(self.sim_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
+                ax[1].set_xlabel('Period [sec]')
+                ax[1].set_ylabel('Dispersion')
+                ax[1].grid(True)
+                ax[1].legend(frameon = False)
+                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xlim([self.T[0],self.T[-1]])
+                ax[1].set_ylim(bottom=0)
+                if self.cond == 1:
+                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            
+            if save == 1:
+                plt.savefig(os.path.join(self.outdir,'Simulated.pdf'))
+            
+        if rec == 1:
+            # Plot Target spectrum vs. Selected response spectra
+            fig,ax = plt.subplots(1,2, figsize = (16,8))
+            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y = 0.95)
+
+            for i in range(self.nGM):
+                ax[0].loglog(self.T,np.exp(self.rec_spec[i,:]),color = 'gray', lw=1,label='Selected');
+
+            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.useVar == 1:
+                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+
+            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)+2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)-2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            
+            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+            handles, labels = ax[0].get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
+            ax[0].set_xlim([self.T[0],self.T[-1]])
+            if self.cond == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+                   
+            # Sample and target standard deviations
+            ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+            ax[1].semilogx(self.T,np.std(self.rec_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
+            ax[1].set_xlabel('Period [sec]')
+            ax[1].set_ylabel('Dispersion')
+            ax[1].grid(True)
+            ax[1].legend(frameon = False)
+            ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
+            ax[0].set_xlim([self.T[0],self.T[-1]])
+            ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+            ax[1].set_ylim(bottom=0)
+            if self.cond == 1:
+                ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+            
+            if save == 1:
+                plt.savefig(os.path.join(self.outdir,'Selected.pdf'))
+
+        # Show the figure
+        if show == 1: 
+            plt.show()
 
     def nga_download(self, username , pwd):
         """
@@ -915,8 +1234,6 @@ class cs_master:
                             e.g.: 'password!12345'
 
         """
-        self.username = username
-        self.pwd = pwd
 
         def download_url(url, save_path, chunk_size=128):
             """
@@ -988,7 +1305,7 @@ class cs_master:
                 else:
                     flag += 1
                     print(flag_lim-flag)
-            print(f'Download has done to the directory:\n{Down_Dir}')          
+            print(f'Downloaded files are located in\n{Down_Dir}')          
 
         def seek_and_download():
             """
@@ -1148,241 +1465,42 @@ class cs_master:
                 print("Downloading the Records!...")  
                 download_wait(Download_Dir)
                 driver.quit()
-
-        driver = go_to_sign_in_page(self.outdir)
-        driver,warn = sign_in_with_given_creds(driver,self.username,self.pwd)
-        if str(warn) == 'Invalid email or password.':
-            print(warn)
-            driver.quit()
-            sys.exit()
-        else:
-            RSNs = ''
-            for i in self.rec_rsn:
-                RSNs += str(int(i)) + ','
-
-            RSNs = RSNs[:-1:]
-            print(RSNs)
-            files_before_download = set(os.listdir(self.outdir))
-            Download_Given(RSNs,self.outdir,driver)
-            files_after_download = set(os.listdir(self.outdir))
-            Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
-            file_extension = Downloaded_File[Downloaded_File.find('.')::]
-            file_name = Downloaded_File[:Downloaded_File.find('.'):]
-            time_tag = gmtime()
-            time_tag_str = f'{time_tag[0]}'
-            for i in range(1,len(time_tag)):
-                time_tag_str += f'_{time_tag[i]}'
-            new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
-            Downloaded_File = os.path.join(self.outdir,Downloaded_File)
-            Downloaded_File_Rename = os.path.join(self.outdir,new_file_name)
-            os.rename(Downloaded_File,Downloaded_File_Rename)
-            self.Unscaled_rec_file = Downloaded_File_Rename
-
-
-
         
-    def plot(self, cs = 0, sim = 0, rec = 1, save = 0):
-        """
-        
-        Details
-        -------
-        Plots the conditional spectrum and spectra 
-        of selected simulations and records.
-
-        Parameters
-        ----------
-        cs     : int, optional
-            Flag to plot conditional spectrum.
-            The default is 1.
-        sim    : int, optional
-            Flag to plot simulated response spectra vs. conditional spectrum.
-            The default is 0.
-        rec    : int, optional
-            Flag to plot Selected response spectra of selected records
-            vs. conditional spectrum. 
-            The default is 1.
-        save   : int, optional
-            Flag to save plotted figures in pdf format.
-            The default is 0.
-        outdir : str, optional
-            Output directory to save plots.
-            The default is 'Outputs'.
-            
-        Notes
-        -----
-        0: no, 1: yes
-
-        Returns
-        -------
-        None.
-
-        """
-
-        SMALL_SIZE = 10
-        MEDIUM_SIZE = 12
-        BIG_SIZE = 14
-        BIGGER_SIZE = 18
-        
-        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-        plt.rc('axes', labelsize=BIG_SIZE)       # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('legend', fontsize=MEDIUM_SIZE)   # legend fontsize
-        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
-        plt.ioff()
-
-        if self.cond == 1:
-            if len(self.Tstar) == 1:
-                hatch = [self.Tstar*0.98, self.Tstar*1.02]
+        if self.database['Name'] == 'NGA_W2':
+            print('\nStarted executing nga_download method...')
+            self.username = username
+            self.pwd = pwd
+            driver = go_to_sign_in_page(self.outdir)
+            driver,warn = sign_in_with_given_creds(driver,self.username,self.pwd)
+            if str(warn) == 'Invalid email or password.':
+                print(warn)
+                driver.quit()
+                sys.exit()
             else:
-                hatch = [self.Tstar.min(), self.Tstar.max()]
-
-        if cs == 1:
-            # Plot Target spectrum vs. Simulated response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum', y = 0.95)
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            
-            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
-            ax[0].set_xlabel('Period [sec]')
-            ax[0].set_ylabel('Spectral Acceleration [g]')
-            ax[0].grid(True)
-            handles, labels = ax[0].get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
-            if self.cond == 1:
-                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-                   
-            # Sample and target standard deviations
-            if self.useVar == 1:
-                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-                ax[1].set_xlabel('Period [sec]')
-                ax[1].set_ylabel('Dispersion')
-                ax[1].grid(True)
-                ax[1].legend(frameon = False)
-                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[0].set_xlim([self.T[0],self.T[-1]])
-                ax[1].set_ylim(bottom=0)
-                if self.cond == 1:
-                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-            plt.show()
-            
-            if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Targeted.pdf'))
-
-        if sim == 1:
-            # Plot Target spectrum vs. Simulated response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum vs. Simulated Spectra', y = 0.95)
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-            ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
-            if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)+2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)-2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                        
-            for i in range(self.nGM):
-                ax[0].loglog(self.T,np.exp(self.sim_spec[i,:]),color = 'gray', lw=1,label='Selected');
-            
-            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
-            ax[0].set_xlabel('Period [sec]')
-            ax[0].set_ylabel('Spectral Acceleration [g]')
-            ax[0].grid(True)
-            handles, labels = ax[0].get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
-            if self.cond == 1:
-                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-            if self.useVar == 1:
-                # Sample and target standard deviations
-                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-                ax[1].semilogx(self.T,np.std(self.sim_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
-                ax[1].set_xlabel('Period [sec]')
-                ax[1].set_ylabel('Dispersion')
-                ax[1].grid(True)
-                ax[1].legend(frameon = False)
-                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[1].set_xlim([self.T[0],self.T[-1]])
-                ax[1].set_ylim(bottom=0)
-                if self.cond == 1:
-                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-                plt.show()
-            
-            if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Simulated.pdf'))
-            
-        if rec == 1:
-            # Plot Target spectrum vs. Selected response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y = 0.95)
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
-            if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)+2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)-2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-            for i in range(self.nGM):
-                ax[0].loglog(self.T,np.exp(self.rec_spec[i,:]),color = 'gray', lw=1,label='Selected');
-            
-            ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
-            ax[0].set_xlabel('Period [sec]')
-            ax[0].set_ylabel('Spectral Acceleration [g]')
-            ax[0].grid(True)
-            handles, labels = ax[0].get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
-            if self.cond == 1:
-                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-                   
-            # Sample and target standard deviations
-            ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-            ax[1].semilogx(self.T,np.std(self.rec_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
-            ax[1].set_xlabel('Period [sec]')
-            ax[1].set_ylabel('Dispersion')
-            ax[1].grid(True)
-            ax[1].legend(frameon = False)
-            ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[0].set_xlim([self.T[0],self.T[-1]])
-            ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-            ax[1].set_ylim(bottom=0)
-            if self.cond == 1:
-                ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-            plt.show()
-            
-            if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Selected.pdf'))
+                RSNs = ''
+                for i in self.rec_rsn:
+                    RSNs += str(int(i)) + ','
+    
+                RSNs = RSNs[:-1:]
+                files_before_download = set(os.listdir(self.outdir))
+                Download_Given(RSNs,self.outdir,driver)
+                files_after_download = set(os.listdir(self.outdir))
+                Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
+                file_extension = Downloaded_File[Downloaded_File.find('.')::]
+                time_tag = gmtime()
+                time_tag_str = f'{time_tag[0]}'
+                for i in range(1,len(time_tag)):
+                    time_tag_str += f'_{time_tag[i]}'
+                new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
+                Downloaded_File = os.path.join(self.outdir,Downloaded_File)
+                Downloaded_File_Rename = os.path.join(self.outdir,new_file_name)
+                os.rename(Downloaded_File,Downloaded_File_Rename)
+                self.Unscaled_rec_file = Downloaded_File_Rename
+        else: 
+            print('You have to use NGA_W2 database to use nga_download method.')
 
 def Baker_Jayaram_2008(T1, T2):
     """
-    
     Details
     -------
     Compute the inter-period correlation for any two Sa(T) values
@@ -1403,7 +1521,6 @@ def Baker_Jayaram_2008(T1, T2):
     -------
     rho: int
          Predicted correlation coefficient
-
     """
 
     t_min = min(T1, T2)
@@ -1434,110 +1551,8 @@ def Baker_Jayaram_2008(T1, T2):
 
     return rho
 
-def Sa_avg(bgmpe,scenario,T):
-    """
-
-    Details
-    -------
-    GMPM of average spectral acceleration
-    The code will get as input the selected periods, 
-    Magnitude, distance and all other parameters of the 
-    selected GMPM and 
-    will return the median and logarithmic Spectral 
-    acceleration of the product of the Spectral
-    accelerations at selected periods; 
-
-    Parameters
-    ----------
-    bgmpe : openquake object
-        the openquake gmpe object.
-    scenario : list
-        [sites, rup, dists] source, distance and site context 
-        of openquake gmpe object for the specified scenario.
-    T : numpy.ndarray
-        Array of interested Periods (sec).
-
-    Returns
-    -------
-    Sa : numpy.ndarray
-        Mean of logarithmic average spectral acceleration prediction.
-    sigma : numpy.ndarray
-       logarithmic standard deviation of average spectral acceleration prediction.
-
-    """
-    
-    n = len(T);
-    mu_lnSaTstar = np.zeros(n)
-    sigma_lnSaTstar = np.zeros(n)
-    MoC = np.zeros((n,n))
-    # Get the GMPE output
-    for i in range(n):
-        mu_lnSaTstar[i], stddvs_lnSaTstar = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=T[i]),[const.StdDev.TOTAL])
-        # convert to sigma_arb
-        # One should uncomment this line if the arbitary component is used for
-        # record selection.
-        # ro_xy = 0.79-0.23*np.log(T[k])
-        ro_xy = 1
-        sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0])**2)*(2/(1+ro_xy)))**0.5)
-        
-        for j in range(n):
-            rho = Baker_Jayaram_2008(T[i], T[j])
-            MoC [i,j] = rho
-
-    SPa_avg_meanLn = (1/n) *sum(mu_lnSaTstar) # logarithmic mean of Sa,avg
-
-    SPa_avg_std = 0
-    for i in range(n):
-        for j in range(n):
-            SPa_avg_std = SPa_avg_std  + (MoC[i,j] *sigma_lnSaTstar[i]*sigma_lnSaTstar[j]) # logarithmic Var of the Sa,avg
-
-    SPa_avg_std = SPa_avg_std*(1/n)**2
-    # compute mean of logarithmic average spectral acceleration
-    # and logarithmic standard deviation of 
-    # spectral acceleration prediction
-    Sa    = SPa_avg_meanLn
-    sigma = np.sqrt(SPa_avg_std)
-    return Sa, sigma
-
-def rho_AvgSA_SA(bgmpe,scenario,T,Tstar):
-    """
-    Details
-    -------  
-    function to compute the correlation between Spectra acceleration and AvgSA.
-    
-    Parameters
-    ----------
-    bgmpe : openquake object
-        the openquake gmpe object.
-    scenario : list
-        [sites, rup, dists] source, distance and site context 
-        of openquake gmpe object for the specified scenario.
-    T     : numpy.ndarray
-        Array of interested Periods to calculate correlation coefficient.
-
-    Tstar : numpy.ndarray
-        Period range where AvgSa is calculated.
-
-    Returns
-    -------
-    rho : int
-        Predicted correlation coefficient.
-
-    """
-    
-    rho=0
-    for j in range(len(Tstar)):
-        rho_bj = Baker_Jayaram_2008(T, Tstar[j])
-        _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),[const.StdDev.TOTAL])
-        rho = rho_bj*sig1[0][0] + rho
-
-    _, Avg_sig = Sa_avg(bgmpe,scenario,Tstar)
-    rho = rho/(len(Tstar)*Avg_sig)
-    return rho
-
 def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 100):
     """
-    
     Details
     -------
     Compute the RoTDxx IM of a pain of spectral quantities.
@@ -1564,7 +1579,6 @@ def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 100):
     -------
     RotDxx : numpy.ndarray
         Value of IM.
-
     """
     nGM, nT = Sa_1.shape
     theta = np.linspace(start=0, stop=np.pi, num=num_theta)
@@ -1579,26 +1593,59 @@ def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 100):
 
     return RotDxx
 
-def ReadNGA(inFilename, zipName=None, outFilename=None):
+def ContentFromZip(paths,zipName):
     """
+    Details
+    -------
+    This function reads the contents of all selected records
+    from the zipfile where the records are located
     
+    Parameters
+    ----------
+    paths : list
+        Containing file list which are going to be read from the zipfile.
+    zipName    : str
+        Path to the zip file where file lists defined in "paths" are located.
+
+    Returns
+    -------
+    contents   : dictonary
+        Containing raw contents of the files which are read from the zipfile.
+
+    """
+    contents = {}
+    with zipfile.ZipFile(zipName, 'r') as myzip:
+        for i in range(len(paths)):
+            with myzip.open(paths[i]) as myfile:
+                contents[i] = [x.decode('utf-8') for x in myfile.readlines()]    
+                
+    return contents
+
+def ReadNGA(inFilename=None, content=None, outFilename=None):
+    """
     Details
     -------
     This function process acceleration history for NGA data file (.AT2 format).
     
     Parameters
     ----------
-    inFilename : str
-        location and name of the input file.
-    zipName    : str
-        it is assumed that the database is located in this file.
+    inFilename : str, optional
+        Location and name of the input file.
+        The default is None
+    content    : str, optional
+        Raw content of the .AT2 file.
+        The default is None
     outFilename : str, optional
         location and name of the output file. 
         The default is None.
 
+    Notes
+    -----
+    At least one of the two variables must be defined: inFilename, content
+
     Returns
     -------
-    dt : float
+    dt   : float
         time interval of recorded points.
     npts : int
         number of points in ground motion record file.
@@ -1609,18 +1656,11 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
     acc  : numpy.array (n x 1)
         acceleration array, same length with time unit 
         usually in (g) unless stated as other.
-
     """
 
     try:
-        # Read the ground motion from zipped database folder
-        if not zipName is None:
-            with zipfile.ZipFile(zipName, 'r') as myzip:
-                with myzip.open(inFilename) as myfile:
-                    content = [x.decode('utf-8') for x in myfile.readlines()]
-                    
-        # Read the ground motion from unzipped database folder
-        else:
+        # Read the file content from inFilename
+        if content is None:
             with open(inFilename,'r') as inFileID:
                 content = inFileID.readlines()
         
@@ -1694,22 +1734,24 @@ def ReadNGA(inFilename, zipName=None, outFilename=None):
         npts = int(npts)
         return dt, npts, desc, t, acc
     
-    except IOError:
+    except:
         print("processMotion FAILED!: The record file is not in the directory")
+        print(inFilename)
 
-def ReadEXSIM(inFilename, zipName=None, outFilename=None):
+def ReadEXSIM(inFilename=None, content=None, outFilename=None):
     """
-    
     Details
     -------
     This function process acceleration history for EXSIM data file.
     
     Parameters
     ----------
-    inFilename : str
-        location and name of the input file.
-    zipName    : str
-        it is assumed that the database is located in this file.
+    inFilename : str, optional
+        Location and name of the input file.
+        The default is None
+    content    : str, optional
+        Raw content of the exsim record file.
+        The default is None
     outFilename : str, optional
         location and name of the output file. 
         The default is None.
@@ -1727,18 +1769,11 @@ def ReadEXSIM(inFilename, zipName=None, outFilename=None):
     acc  : numpy.array (n x 1)
         acceleration array, same length with time unit 
         usually in (g) unless stated as other.
-
     """
     
     try:
-        # Read the ground motion from zipped database folder
-        if not zipName is None:
-            with zipfile.ZipFile(zipName, 'r') as myzip:
-                with myzip.open(inFilename) as myfile:
-                    content = [x.decode('utf-8') for x in myfile.readlines()]
-                    
-        # Read the ground motion from unzipped database folder
-        else:
+        # Read the file content from inFilename
+        if content is None:
             with open(inFilename,'r') as inFileID:
                 content = inFileID.readlines()
     
@@ -1763,12 +1798,12 @@ def ReadEXSIM(inFilename, zipName=None, outFilename=None):
 
         return dt, npts, desc, t, acc
     
-    except IOError:
+    except:
         print("processMotion FAILED!: The record file is not in the directory")
+        print(inFilename)
     
 def create_outdir(outdir_path):
     """  
-
     Parameters
     ----------
     outdir_path : str
@@ -1777,14 +1812,12 @@ def create_outdir(outdir_path):
     Returns
     -------
     None.
-
     """
     shutil.rmtree(outdir_path, ignore_errors=True)
     os.makedirs(outdir_path)
     
-def RunTime():
+def RunTime(startTime):
     """
-
     Details
     -------
     Prints the time passed between startTime and Finishtime (now)
@@ -1792,12 +1825,11 @@ def RunTime():
 
     Parameters
     ----------
-    None.
+    startTime : The initial time obtained via time()
 
     Returns
     -------
     None.
-
     """
     finishTime = time()
     # Procedure to obtained elapsed time in Hr, Min, and Sec
@@ -1807,3 +1839,520 @@ def RunTime():
     timeMinutes = int(timeMinutes - timeHours*60)
     timeSeconds = timeSeconds - timeMinutes*60 - timeHours*3600
     print("Run time: %d hours: %d minutes: %.2f seconds"  % (timeHours, timeMinutes, timeSeconds))
+    
+def baseline_correction(values,dt,polynomial_type):
+  
+    """
+    Details
+    -------
+        This script will return baseline corrected values for the given signal
+    
+    Notes
+    -----
+        Applicable for Constant, Linear, Quadratic and Cubic polynomial functions
+        
+    References
+    ----------
+        Kramer, Steven L. 1996. Geotechnical Earthquake Engineering. Prentice Hall
+        
+    Parameters
+    ----------
+        values: numpy.ndarray
+            signal values      
+        dt: float          
+            sampling interval
+        polynomal_type: str
+            type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'    
+        
+    Returns
+    -------
+        values_corrected:   corrected values
+        
+    """   
+        
+    if polynomial_type == 'Constant':       n = 0
+    elif polynomial_type == 'Linear':       n = 1
+    elif polynomial_type == 'Quadratic':    n = 2
+    elif polynomial_type == 'Cubic':        n = 3
+    
+    time = np.linspace(0,(len(values)-1)*dt,len(values))    # Time array
+    P = np.polyfit(time,values,n);                          # Best fit line of values
+    po_va = np.polyval(P,time);                             # Matrix of best fit line
+    values_corrected = values - po_va;                      # Baseline corrected values
+    
+    return values_corrected
+
+def butterworth_filter(values,dt, cut_off=(0.1, 25), **kwargs):
+    """
+    Details
+    -------
+        This script will return filtered values for the given signal
+    
+    References
+    ----------
+        Kramer, Steven L. 1996. Geotechnical Earthquake Engineering, Prentice Hall
+        
+    Parameters
+    ----------
+        values: numpy.ndarray
+            Input signal
+        cut_off: tuple, list, optional          
+            Lower and upper cut off frequencies for the filter, if None then no filter. 
+            e.g. (None, 15) applies a lowpass filter at 15Hz, whereas (0.1, 10) applies
+            a bandpass filter at 0.1Hz to 10Hz.
+        filter_order: int        
+            Order of the Butterworth filter (default = 4)
+        remove_gibbs: str, the default is None.
+            Pads with zeros to remove the Gibbs filter effect
+            if = 'start' then pads at start,
+            if = 'end' then pads at end,
+            if = 'mid' then pads half at start and half at end
+        
+        kwargs: keyword arguments, optional
+            gibbs_extra: int, the default is 1
+                Each increment of the value doubles the record length using zero padding.
+            gibbs_range: int, the default is 50
+                gibbs index range
+    Returns
+    -------
+        values_filtered: numpy.ndarray
+            Filtered signal
+    """
+    
+    if isinstance(cut_off, list) or isinstance(cut_off, tuple):
+        pass
+    else:
+        raise ValueError("cut_off must be list or tuple.")
+    if len(cut_off) != 2:
+        raise ValueError("cut_off must be length 2.")
+    if cut_off[0] is not None and cut_off[1] is not None:
+        filter_type = "band"
+        cut_off = np.array(cut_off)
+    elif cut_off[0] is None:
+        filter_type = 'low'
+        cut_off = cut_off[1]
+    else:
+        filter_type = 'high'
+        cut_off = cut_off[0]
+
+    filter_order = kwargs.get('filter_order', 4)
+    remove_gibbs = kwargs.get('remove_gibbs', None)
+    gibbs_extra = kwargs.get('gibbs_extra', 1)
+    gibbs_range = kwargs.get('gibbs_range', 50)
+    sampling_rate = 1.0 / dt
+    nyq = sampling_rate * 0.5
+
+    values_filtered = values
+    org_len = len(values_filtered)
+
+    if remove_gibbs is not None:
+        # Pad end of record with extra zeros then cut it off after filtering
+        nindex = int(np.ceil(np.log2(len(values_filtered)))) + gibbs_extra
+        new_len = 2 ** nindex
+        diff_len = new_len - org_len
+        if remove_gibbs == 'start':
+            s_len = 0
+            f_len = s_len + org_len
+        elif remove_gibbs == 'end':
+            s_len = diff_len
+            f_len = s_len + org_len
+        else:
+            s_len = int(diff_len / 2)
+            f_len = s_len + org_len
+
+        end_value = np.mean(values_filtered[-gibbs_range:])
+        start_value = np.mean(values_filtered[:gibbs_range])
+        temp = start_value * np.ones(new_len)
+        temp[f_len:] = end_value
+        temp[s_len:f_len] = values_filtered
+        values_filtered = temp
+    else:
+        s_len = 0
+        f_len = org_len
+
+    wp = cut_off / nyq
+    b, a = butter(filter_order, wp, btype=filter_type)
+    values_filtered = filtfilt(b, a, values_filtered)
+    # removing extra zeros from gibbs effect
+    values_filtered = values_filtered[s_len:f_len]
+
+    return values_filtered
+
+def gm_parameters(Ag,dt,T,xi):
+    """
+    Details
+    -------
+        This script will return spectra and ground motion parameters for a given record
+        
+    References
+    ---------- 
+        Kramer, Steven L. 1996. Geotechnical Earthquake Engineering, Prentice Hall
+        Chopra, A.K. 2012. Dynamics of Structures: Theory and 
+        Applications to Earthquake Engineering, Prentice Hall.
+        
+    Parameters
+    ----------
+        Ag: numpy.ndarray    
+            Acceleration values [m/s2]
+        dt: float
+            Time step [sec]
+        T:  float, numpy.ndarray
+            Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+        xi: float
+            Damping ratio, e.g. 0.05 for 5%
+        
+    Returns
+    -------
+    	param: dictionary
+            Contains the following intensity measures
+    		PSa(T): numpy.ndarray       
+                Elastic pseudo-acceleration response spectrum [m/s2]
+    		PSv(T): numpy.ndarray   
+                Elastic pseudo-velocity response spectrum [m/s]
+    		Sd(T): numpy.ndarray 
+                Elastic displacement response spectrum  - relative displacement [m]
+    		Sv(T): numpy.ndarray 
+                Elastic velocity response spectrum - relative velocity at [m/s]
+    		Sa(T): numpy.ndarray 
+                Elastic accleration response spectrum - total accelaration [m/s2]
+    		Ei_r(T): numpy.ndarray 
+                Relative input energy spectrum for elastic system [N.m]
+    		Ei_a(T): numpy.ndarray 
+                Absolute input energy spectrum for elastic system [N.m]
+    		Periods: numpy.ndarray 
+                Periods where spectral values are calculated [sec]
+    		FAS: numpy.ndarray 
+                Fourier amplitude spectra
+    		PAS: numpy.ndarray 
+                Power amplitude spectra
+    		PGA: float
+                Peak ground acceleration [m/s2]
+    		PGV: float
+                Peak ground velocity [m/s]
+    		PGD: float
+                Peak ground displacement [m]
+    		Aint: numpy.ndarray 
+                Arias intensity ratio vector with time [m/s]
+    		Arias: float 
+                Maximum value of arias intensity ratio [m/s]
+    		HI: float
+                Housner intensity ratio [m]
+                Requires T to be defined between (0.1-2.5 sec)
+                Otherwise not applicable, and equal to 'N.A'
+    		CAV: float
+                Cumulative absolute velocity [m/s]        
+    		t_5_75: list
+                Significant duration time vector between 5% and 75% of energy release (from Aint)
+    		D_5_75: float
+                Significant duration between 5% and 75% of energy release (from Aint)
+    		t_5_95: list    
+                Significant duration time vector between 5% and 95% of energy release (from Aint)
+    		D_5_95: float
+                Significant duration between 5% and 95% of energy release (from Aint)
+    		t_bracketed: list 
+                Bracketed duration time vector (acc>0.05g)
+                Not applicable, in case of low intensity records, 
+                Thus, equal to 'N.A'
+    		D_bracketed: float
+                Bracketed duration (acc>0.05g)
+                Not applicable, in case of low intensity records, 
+                Thus, equal to 'N.A'
+    		t_uniform: list 
+                Uniform duration time vector (acc>0.05g)
+                Not applicable, in case of low intensity records, 
+                Thus, equal to 'N.A'
+    		D_uniform: float 
+                Uniform duration (acc>0.05g)
+                Not applicable, in case of low intensity records, 
+                Thus, equal to 'N.A'
+    		Tm: float
+                Mean period
+    		Tp: float             
+                Predominant Period
+    		aRMS: float 
+                Root mean square root of acceleration [m/s2]
+    		vRMS: float
+                Root mean square root of velocity [m/s]
+    		dRMS: float  
+                Root mean square root of displacement [m]
+    		Ic: float     
+                Characteristic intensity
+                End time might which is used herein, is not always a good choice
+    		ASI: float   
+                Acceleration spectrum intensity [m/s]
+                Requires T to be defined between (0.1-0.5 sec)
+                Otherwise not applicable, and equal to 'N.A'
+    		MASI: float [m]
+                Modified acceleration spectrum intensity
+                Requires T to be defined between (0.1-2.5 sec)
+                Otherwise not applicable, and equal to 'N.A'
+    		VSI: float [m]
+                Velocity spectrum intensity
+                Requires T to be defined between (0.1-2.5 sec)
+                Otherwise not applicable, and equal to 'N.A'
+    """
+        
+    # INITIALIZATION
+    T = T[T!=0] # do not use T = zero for response spectrum calculations
+    param = {'Periods':T}
+    
+    # GET SPECTRAL VALUES
+    param['Sa'], param['Sv'], param['Sd'], param['PSa'], param['PSv'], param['Ei_r'], param['Ei_a'] = eq_spectra(Ag,dt,T,xi)
+
+    # GET PEAK GROUND ACCELERATION, VELOCITY AND DISPLACEMENT
+    t = np.linspace(0,(len(Ag)-1)*dt,len(Ag))
+    Vg = integrate.cumtrapz(Ag, t, initial=0)
+    Dg = integrate.cumtrapz(Vg, t, initial=0)
+    param['PGA'] = np.max(np.abs(Ag))
+    param['PGV'] = np.max(np.abs(Vg))
+    param['PGD'] = np.max(np.abs(Dg))
+    
+    # GET ARIAS INTENSITY
+    Aint = np.cumsum(Ag**2)*np.pi*dt/(2*9.81)
+    param['Arias'] = Aint[-1]
+    temp = np.zeros((len(Aint),2)); temp[:,0] = t; temp[:,1] = Aint;
+    param['Aint'] = temp
+    
+    # GET HOUSNER INTENSITY
+    try:
+        index1 = np.where(T==0.1)[0][0]
+        index2 = np.where(T==2.5)[0][0]
+        param['HI'] = np.trapz(param['PSv'][index1:index2],T[index1:index2])
+    except:
+        param['HI'] = 'N.A.'
+    
+    # SIGNIFICANT DURATION (5%-75% Ia)
+    mask = (Aint>=0.05*Aint[-1])*(Aint<=0.75*Aint[-1])
+    timed = t[mask]
+    t1 = round(timed[0],3); t2 = round(timed[-1],3)
+    param['t_5_75'] = [t1,t2]
+    param['D_5_75'] = round(t2-t1,3)
+    
+    # SIGNIFICANT DURATION (5%-95% Ia)
+    mask = (Aint>=0.05*Aint[-1])*(Aint<=0.95*Aint[-1])
+    timed = t[mask]
+    t1 = round(timed[0],3); t2 = round(timed[-1],3)
+    param['t_5_95'] = [t1,t2]
+    param['D_5_95'] = round(t2-t1,3)
+    
+    # BRACKETED DURATION (0.05g)
+    try:
+        mask = np.abs(Ag)>=0.05*9.81; indices = np.where(mask)[0]
+        # mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag)); indices = np.where(mask)[0]
+        t1 = round(t[indices[0]],3); t2 = round(t[indices[-1]],3);   
+        param['t_bracketed'] = [t1,t2]
+        param['D_bracketed'] = round(t2-t1,3)
+    except: # in case of ground motions with low intensities
+        param['t_bracketed'] = 'N.A.'
+        param['D_bracketed'] = 'N.A.'
+        
+    # UNIFORM DURATION (0.05g)
+    try:
+        mask = np.abs(Ag)>=0.05*9.81; indices = np.where(mask)[0]
+        # mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag)); indices = np.where(mask)[0]
+        t_treshold = t[indices]
+        param['t_uniform'] = [t_treshold]
+        param['D_uniform'] = round((len(t_treshold)-1)*dt)
+    except: # in case of ground motions with low intensities
+        param['t_uniform'] = 'N.A.'
+        param['D_uniform'] = 'N.A.'
+
+    # CUMULATVE ABSOLUTE VELOCITY
+    param['CAV'] = np.trapz(np.abs(Ag),t)
+    
+    # CHARACTERISTIC INTENSITY, ROOT MEAN SQUARE OF ACC, VEL, DISP
+    Td = t[-1] # note this might not be the best indicative, different Td might be chosen
+    param['aRMS'] = np.sqrt(np.trapz(Ag**2,t)/Td)
+    param['vRMS'] = np.sqrt(np.trapz(Vg**2,t)/Td)
+    param['dRMS'] = np.sqrt(np.trapz(Dg**2,t)/Td)
+    param['Ic'] = param['aRMS']**(1.5)*np.sqrt(Td)
+    
+    # ACCELERATION AND VELOCITY SPECTRUM INTENSITY
+    try:
+        index3 = np.where(T==0.5)[0][0]
+        param['ASI'] = np.trapz(param['Sa'][index1:index3],T[index1:index3])
+    except:
+        param['ASI'] = 'N.A.'
+    try:
+        param['MASI'] = np.trapz(param['Sa'][index1:index2],T[index1:index2])
+        param['VSI'] = np.trapz(param['Sv'][index1:index2],T[index1:index2])
+    except:
+        param['MASI'] = 'N.A.'
+        param['VSI'] = 'N.A.'       
+    
+    # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
+    # Number of sample points
+    N = len(Ag)
+    # sample spacing
+    Famp = scipy.fftpack.fft(Ag)
+    Famp = 2.0/N * np.abs(Famp[:N//2])
+    freq = np.linspace(0.0, 1.0/(2.0*dt), int(N/2))
+    Pamp = Famp**2/(np.pi*t[-1]*param['aRMS']**2);
+    FAS = np.zeros((len(Famp),2)); FAS[:,0] = freq; FAS[:,1] = Famp;
+    PAS = np.zeros((len(Famp),2)); PAS[:,0] = freq; PAS[:,1] = Pamp;
+    param['FAS'] = FAS
+    param['PAS'] = FAS
+    
+    # MEAN PERIOD
+    mask = (freq>0.25)*(freq<20) ; indices = np.where(mask)[0]
+    fi = freq[indices]
+    Ci = Famp[indices]
+    param['Tm'] = np.sum(Ci**2/fi)/np.sum(Ci**2)
+    
+    # PREDOMINANT PERIOD
+    mask = param['Sa'] == max(param['Sa']); indices = np.where(mask)[0]
+    param['Tp'] = T[indices]
+    
+    return param
+
+@njit
+def eq_spectra(Ag,dt,T,xi):
+    """
+    Details
+    -------
+        This script will return the all the spectral values for a given record
+        It currently uses Newmark Beta Method
+    
+    References
+    ---------- 
+        Chopra, A.K. 2012. Dynamics of Structures: Theory and 
+        Applications to Earthquake Engineering, Prentice Hall.
+		N. M. Newmark, “A Method of Computation for Structural Dynamics,”
+		ASCE Journal of the Engineering Mechanics Division, Vol. 85, 1959, pp. 67-94.
+    
+    Notes: 
+        * Uses numba decorator to increase analysis speed!
+        * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
+        * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
+        * Average acceleration method is unconditionally stable,
+          whereas linear acceleration method is stable only if dt/Tn <= 0.55
+          Linear acceleration method is preferable due to its accuracy.
+        
+    Parameters
+    ----------
+        Ag: numpy.ndarray    
+            Acceleration values [m/s2]
+        dt: float
+            Time step [sec]
+        T:  float, numpy.ndarray
+            Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+        xi: float
+            Damping ratio, e.g. 0.05 for 5%
+        
+    Returns
+    -------
+  		PSa(T): numpy.ndarray       
+              Elastic pseudo-acceleration response spectrum [m/s2]
+  		PSv(T): numpy.ndarray   
+              Elastic pseudo-velocity response spectrum [m/s]
+  		Sd(T): numpy.ndarray 
+              Elastic displacement response spectrum  - relative displacement [m]
+  		Sv(T): numpy.ndarray 
+              Elastic velocity response spectrum - relative velocity at [m/s]
+  		Sa(T): numpy.ndarray 
+              Elastic accleration response spectrum - total accelaration [m/s2]
+  		Ei_r(T): numpy.ndarray 
+              Relative input energy spectrum for elastic system [N.m]
+  		Ei_a(T): numpy.ndarray 
+              Absolute input energy spectrum for elastic system [N.m]
+    """
+
+    # Get the length of acceleration history array
+    n1 = len(Ag)
+    # Get the length of period array
+    n2 = len(T)
+
+    # Create the time array
+    t = np.linspace(0,(n1-1)*dt,n1)
+    
+    # Get ground velocity and displacement through integration
+    Vg = np.zeros(n1)
+    Dg = np.zeros(n1)
+    for i in range(2,n1+1):
+        Vg[i-1] = np.trapz(Ag[:i],t[:i])
+        Dg[i-1] = np.trapz(Vg[:i],t[:i])
+    
+    # Initilalize the input energy arrays
+    Ei_r = np.zeros(n2) # Relative input energy
+    Ei_a = np.zeros(n2) # Absolute input energy
+    
+    # Mass (kg)
+    m = 1                   
+    
+    # Assign the external force
+    p = -m*Ag
+    
+    # Initalize spectra
+    Sa = np.zeros(n2)
+    Sv = np.zeros(n2)
+    Sd = np.zeros(n2)
+    PSv = np.zeros(n2)
+    PSa = np.zeros(n2)
+    
+    # Carry out linear time history analysis for SDOF system
+    def analysis(T):
+        # Calculate system properties which depend on period
+        fn = 1/T             # frequency
+        wn = 2*np.pi*fn      # circular natural frequency
+        k = m*wn**2          # actual stiffness
+        c = 2*m*wn*xi        # actual damping coefficient
+        
+        # Newmark Beta Method coefficients
+        if dt/T<=0.55: # Linear acceleartion method
+            Gamma = 1/2; Beta = 1/6
+        else: # Use average acceleration method
+            Gamma = 1/2; Beta = 1/4
+             
+        # Compute the constants used in Newmark's integration
+        a1 = Gamma/(Beta*dt)  
+        a2 = 1/(Beta*dt**2)
+        a3 = 1/(Beta*dt)
+        a4 = Gamma/Beta
+        a5 = 1/(2*Beta)
+        a6 = (Gamma/(2*Beta)-1)*dt
+        kf = k + a1*c + a2*m
+        a = a3*m + a4*c
+        b = a5*m + a6*c
+        
+        # Initialize the history arrays
+        u = np.zeros(n1)        # relative displacement history
+        v = np.zeros(n1)        # relative velocity history
+        ac = np.zeros(n1)       # relative acceleration history
+        ac_total = np.zeros(n1) # total acceleration history
+        ei_r = np.zeros(n1)     # Relative input energy history
+        ei_a = np.zeros(n1)     # Absolute input energy history
+    
+        # Set the Initial Conditions
+        u[0] = 0
+        v[0] = 0
+        ac[0] = (p[0] - c*v[0] - k*u[0])/m
+        ac_total[0] = ac[0] + Ag[0]
+
+        for i in range(n1-1):
+            dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
+            du = dpf/kf
+            dv = a1*du - a4*v[i] - a6*ac[i]
+            da = a2*du - a3*v[i] - a5*ac[i]
+        
+            # Update history variables
+            u[i+1] = u[i]+du
+            v[i+1] = v[i]+dv
+            ac[i+1] = ac[i]+da
+            ac_total[i+1] = ac[i+1] + Ag[i+1]
+            ei_r[i+1] = ei_r[i] - 1/2*(u[i+1] - u[i])*m*(Ag[i+1] + Ag[i])
+            ei_a[i+1] = ei_a[i] - 1/2*(ac_total[i+1] - ac_total[i])*m*(Dg[i+1] + Dg[i])
+   
+        return u, v, ac, ac_total, ei_r, ei_a
+    
+    for j in range(n2):
+        u, v, ac, ac_total, ei_r, ei_a = analysis(T[j])
+        # Calculate spectral values
+        Sd[j] = np.max(np.abs((u)))
+        Sv[j] = np.max(np.abs((v)))
+        Sa[j] = np.max(np.abs((ac_total)))
+        PSv[j] = (2*np.pi/T[j])*Sd[j]
+        PSa[j] = ((2*np.pi/T[j])**2)*Sd[j]
+        Ei_r[j] = ei_r[-1]
+        Ei_a[j] = ei_a[-1]
+        
+    return Sa, Sv, Sd, PSa, PSv, Ei_r, Ei_a

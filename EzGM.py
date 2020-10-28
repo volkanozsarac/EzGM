@@ -791,6 +791,16 @@ class cs_master:
         # Optimizing the selected subset of ground motions
         # Currently only option is to use Greedy subset modification procedure
         # This seems to be sufficient enough
+        @njit
+        def penalize(devTotal,sampleSmall,mu_ln,sigma_ln,nGM,penalty):
+            """
+            This function is used to penalize the bad spectra
+            njit speeds up the computaton
+            """
+            for m in range(nGM):
+                devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(mu_ln + 3*sigma_ln))) * penalty
+            return devTotal
+
         for k in range(self.nLoop): # Number of passes
             
             for i in range(self.nGM): # Loop for nGM
@@ -824,8 +834,9 @@ class cs_master:
                     
                     # Penalize bad spectra (set penalty to zero if this is not required)
                     if self.penalty > 0:
-                        for m in range(sampleSmall.shape[0]):
-                            devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(self.mu_ln + 3*self.sigma_ln))) * penalty
+                        # for m in range(sampleSmall.shape[0]):
+                        #     devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(self.mu_ln + 3*self.sigma_ln))) * penalty
+                        devTotal = penalize(devTotal,sampleSmall,self.mu_ln,self.sigma_ln,nGM,penalty)
                     
                     # Check if we exceed the scaling limit
                     if scaleFac[j] > self.maxScale or np.any(np.array(recID) == j):

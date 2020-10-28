@@ -49,7 +49,7 @@ class cs_master:
         3) Scaling and processing of selected ground motion records
     """
     
-    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W1', T_resample = [0,0.05], pInfo = 1):
+    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W1', pInfo = 1):
         """
         Details
         -------
@@ -58,18 +58,14 @@ class cs_master:
         
         Parameters
         ----------
-        Tstar    : int, float, list, the default is None.
-            Conditioning period range [sec].
+        Tstar    : int, float, numpy.ndarray, the default is None.
+            Conditioning period or periods in case of AvgSa [sec].
         gmpe     : str, optional
             GMPE model (see OpenQuake library). 
             The default is 'Boore_Atkinson_2008'.
         database : str, optional
             database to use, NGA_W1, NGA_W2, EXSIM_Duzce, etc.
-            The default is NGA_W1.
-       T_resample: list, optional
-            flag to create a new uniform period array with step size T_resample[1] sec
-            The spectral values will be interpolated for this new period array
-            The default = [0,0.1]. If T_resample[0] = 0 existing period array will be used.           
+            The default is NGA_W1.        
         pInfo    : int, optional
             flag to print required input for the gmpe which is going to be used. 
             (0: no, 1:yes)
@@ -83,35 +79,13 @@ class cs_master:
         # add Tstar to self
         if isinstance(Tstar,int) or isinstance(Tstar,float):
             self.Tstar = np.array([Tstar])
-        elif isinstance(Tstar,list):
-            self.Tstar = np.asarray(Tstar)
+        elif isinstance(Tstar,numpy.ndarray):
+            self.Tstar = Tstar    
         
         # Add the input the ground motion database to use
         matfile = os.path.join('Meta_Data',database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
-        
-        # Resample the period array and the spectra via interpolation
-        if T_resample[0]:
-            step = T_resample[1]
-            Periods = np.append(np.array([0.01, 0.02]),np.arange(step,self.database['Periods'][-1],step))
-            f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)            
-            Sa_int = f(Periods)
-            temp = self.database['Sa_1'][:,-1].reshape(len(self.database['Sa_1'][:,-1]),1)
-            self.database['Sa_1'] = np.append(Sa_int, temp, axis=1)
-    
-            if database.startswith("NGA"):
-                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'],axis=1)            
-                Sa_int = f(Periods)
-                temp = self.database['Sa_2'][:,-1].reshape(len(self.database['Sa_2'][:,-1]),1)
-                self.database['Sa_2'] = np.append(Sa_int, temp, axis=1)
-                
-                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'],axis=1)            
-                Sa_int = f(Periods)
-                temp = self.database['Sa_RotD50'][:,-1].reshape(len(self.database['Sa_RotD50'][:,-1]),1)
-                self.database['Sa_RotD50'] = np.append(Sa_int, temp, axis=1)
-                
-            self.database['Periods'] = np.append(Periods,self.database['Periods'][-1])
         
         # check if AvgSa or Sa is used as IM, 
         # then in case of Sa(T*) add T* and Sa(T*) if not present
@@ -292,7 +266,7 @@ class cs_master:
                 [sites, rup, dists] source, distance and site context 
                 of openquake gmpe object for the specified scenario.
             T     : numpy.ndarray
-                Array of interested Periods to calculate correlation coefficient.
+                Array of interested period to calculate correlation coefficient.
         
             Tstar : numpy.ndarray
                 Period range where AvgSa is calculated.
@@ -323,6 +297,9 @@ class cs_master:
         self.cond = cond
         self.useVar = useVar
         
+        if cond == 0: # there is no conditioning period
+            del self.Tstar
+            
         # Get number of scenarios, and their contribution
         nScenarios = len(rup_param['mag'])
         if Hcont is None:
@@ -336,17 +313,6 @@ class cs_master:
         temp = np.abs(self.database['Periods'] - np.max(T_Tgt_range))
         idx2 = np.where(temp==np.min(temp))[0][0]
         T_Tgt = self.database['Periods'][idx1:idx2+1]
-
-        if cond == 0:
-            del self.Tstar
-            
-        elif len(self.Tstar) != 1:
-            # Define the array for AvgSa periods
-            Tlower = np.min(self.Tstar); temp = np.abs(T_Tgt-Tlower)
-            idx1 = np.where(temp==np.min(temp))[0][0]
-            Tupper = np.max(self.Tstar); temp = np.abs(T_Tgt-Tupper)
-            idx2 = np.where(temp==np.min(temp))[0][0]
-            self.Tstar = T_Tgt[idx1:idx2+1]
 
         # Get number of scenarios, and their contribution
         Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont),len(T_Tgt),1)
@@ -380,7 +346,8 @@ class cs_master:
                 if key == 'mag':
                     temp = np.array([rup_param[key][n]])
                 else:                     
-                    temp = np.array([rup_param[key]])
+                    # temp = np.array([rup_param[key]])
+                    temp = rup_param[key]
                 setattr(rup, key, temp)
                     
             dists = gsim.base.DistancesContext()
@@ -476,11 +443,9 @@ class cs_master:
             if epsilon is None:
                 self.im_Tstar = im_Tstar
             else:
-                # indices where IM is going to be calculated
-                ind = []
-                for k in range(len(self.Tstar)):
-                    ind.append(np.where(self.T == self.Tstar[k])[0][0])
-                self.im_Tstar = np.exp(np.sum(self.mu_ln[ind])/len(self.Tstar))
+                f = interpolate.interp1d(self.T,np.exp(self.mu_ln)) 
+                Sa_int = f(self.Tstar)
+                self.im_Tstar = np.exp(np.sum(np.log(Sa_int))/len(self.Tstar))
                 self.epsilon = epsilon
         
         print('Target spectrum is created.')
@@ -779,13 +744,15 @@ class cs_master:
         finalScaleFac = np.ones((self.nGM))
         sampleSmall = np.ones((self.nGM,sampleBig.shape[1]))
         
-        if self.cond == 1:
-            ind1 = [] # indices where IML is going to be calculated
-            ind2 = [] # indices where IML is not going to be calculated
-            for k in range(len(self.Tstar)):
-                ind1.append(np.where(self.T == self.Tstar[k])[0][0])
-                ind2.append(np.where(self.T != self.Tstar[k])[0][0])
-        
+        if self.cond == 1 and self.isScaled == 1:
+            # Calculate IMLs for the sample
+            f = interpolate.interp1d(self.T,np.exp(sampleBig),axis=1)
+            sampleBig_imls = np.exp(np.sum(np.log(f(self.Tstar)),axis=1)/len(self.Tstar))
+                
+        if self.cond == 1 and len(self.Tstar) == 1:
+            # These indices are required in case IM = Sa(T) to break the loop
+            ind2 = (np.where(self.T != self.Tstar[0])[0][0]).tolist()
+            
         # Find nGM ground motions, inital subset
         for i in range(self.nGM):
             err = np.zeros((nBig))
@@ -797,8 +764,7 @@ class cs_master:
                 if self.isScaled == 1: # Calculate scaling facator
                 
                     if self.cond == 1: # Calculate using conditioning IML
-                        rec_iml=np.exp(np.sum(sampleBig[j,ind1])/len(self.Tstar))
-                        scaleFac[j] = self.im_Tstar/rec_iml
+                        scaleFac[j] = self.im_Tstar/sampleBig_imls[j]
                         
                     elif self.cond == 0: # Calculate using minimization of mean squared root error
                         scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
@@ -835,18 +801,20 @@ class cs_master:
                 recID = np.delete(recID, i)
                 
                 # Try to add a new spectra to the subset list
-                for j in range(nBig):
-                    # Get the scaling factor and do the scaling
-                    if self.isScaled == 1:
-
-                        if self.cond == 1: # Calculate using conditioning IML
-                            # Calculate the intensity measure level (AvgSa or Sa)
-                            rec_Avg=np.exp(np.sum(sampleBig[j,ind1])/len(self.Tstar))
-                            scaleFac[j] = self.im_Tstar/rec_Avg
+                for j in range(nBig):  
+                    
+                    # Calculate the scaling factor
+                    if self.isScaled == 1: 
                         
-                        elif self.cond == 0: # Calculate using minimization of mean squared root error
+                        # using conditioning IML
+                        if self.cond == 1: 
+                            scaleFac[j] = self.im_Tstar/sampleBig_imls[j]
+                            
+                        # using minimization of mean squared root error
+                        elif self.cond == 0: 
                             scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
-                        
+                    
+                    # Add to the sample the scaled spectra
                     sampleSmall = np.concatenate((sampleSmall,sampleBig[j,:].reshape(1,sampleBig.shape[1]) + np.log(scaleFac[j])),axis=0)
 
                     # Greedy subset modification procedure
@@ -881,7 +849,7 @@ class cs_master:
                 recID = np.concatenate((recID[:i],np.array([minID]),recID[i:]))
             
             # Lets check if the selected ground motions are good enough, if the errors are sufficiently small stop!
-            if self.cond == 1 and len(ind1) == 1: # if conditioned on SaT, ignore error at T*
+            if self.cond == 1 and len(self.Tstar) == 1: # if conditioned on SaT, ignore error at T*
                 medianErr = np.max(np.abs(np.exp(np.mean(sampleSmall[:,ind2],axis=0)) - np.exp(self.mu_ln[ind2]))/np.exp(self.mu_ln[ind2]))*100
                 stdErr = np.max(np.abs(np.std(sampleSmall[:,ind2], axis=0) - self.sigma_ln[ind2])/self.sigma_ln[ind2])*100  
             else:

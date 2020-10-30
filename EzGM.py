@@ -1300,13 +1300,13 @@ class cs_master:
             """
             paths = sys.path
             package = [i for i in paths if 'site-packages' in i][0]
-            if 'win' in sys.platform:
+            if sys.platform.startswith('win'):
                 current_platform = 'win32'
                 aim_driver = 'chromedriver.exe'
-            elif 'linux' in sys.platform:
+            elif sys.platform.startswith('linux'):
                 current_platform = 'linux64'
                 aim_driver = 'chromedriver'
-            else:       
+            elif sys.platform.startswith('darwin'):       
                 current_platform = 'mac64'
                 aim_driver = 'chromedriver'
             if aim_driver not in os.listdir(package):
@@ -1340,17 +1340,17 @@ class cs_master:
             prefs = {"download.default_directory" : Download_Dir}
             ChromeOptions.add_experimental_option("prefs",prefs)
             ChromeOptions.headless = True
-            if 'win' in sys.platform:
+            if sys.platform.startswith('win'):
                 aim_driver = 'chromedriver.exe'
-            elif 'linux' in sys.platform:
+            elif sys.platform.startswith('linux'):
                 aim_driver = 'chromedriver'
-            else:       
+            elif sys.platform.startswith('darwin'):   
                 aim_driver = 'chromedriver'
             path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0] , aim_driver)
             if not os.path.exists(path_of_driver):
                 print('Downloading the chromedriver!!')
                 seek_and_download()
-                if 'linux' in sys.platform:
+                if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
                     os.chmod(path_of_driver, 0o777)
             driver = webdriver.Chrome(executable_path = path_of_driver ,options=ChromeOptions)
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'

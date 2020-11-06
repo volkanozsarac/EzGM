@@ -4,9 +4,9 @@
 |    EzGM                                                               |
 |    Toolbox for ground motion record                                   |
 |    selection and processing                                           |
-|    Version: 0.4                                                       |
+|    Version: 0.5                                                       |
 |                                                                       |
-|    Created on 23/10/2020                                              |
+|    Created on 06/11/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -552,10 +552,10 @@ class cs_master:
                 SaKnown = np.sqrt(self.database['Sa_1']*self.database['Sa_2'])
             elif 'RotD50': # SaKnown = Sa_RotD50.
                 SaKnown = self.database['Sa_RotD50']
-            elif self.Sa_def[:4] == 'RotD': # SaKnown = Sa_RotDxx.
-                xx = int(self.Sa_def[4:])
-                SaKnown = get_RotDxx(self.database['Sa_1'], self.database['Sa_2'], xx, num_theta = 100)
-                
+            else:
+                print('Unexpected Sa definition, exiting...')
+                sys.exit()
+
             soil_Vs30  = self.database['soil_Vs30']
             Mw         = self.database['magnitude']
             Rjb        = self.database['Rjb']
@@ -661,7 +661,7 @@ class cs_master:
             2 for two-component selection and average component sigma. 
         Sa_def : str, optional, the default is 'RotD50'.
             The spectra definition. Necessary if selection = 2.
-            'GeoMean' or 'RotDxx', where xx the percentile to use. 
+            'GeoMean' or 'RotD50'. 
         isScaled : int, optional, the default is 1.
             0 not to allow use of amplitude scaling for spectral matching.
             1 to allow use of amplitude scaling for spectral matching.
@@ -1537,48 +1537,6 @@ def Baker_Jayaram_2008(T1, T2):
 
     return rho
 
-def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 100):
-    """
-    Details
-    -------
-    Compute the RoTDxx IM of a pain of spectral quantities.
-    
-    References
-    ----------
-    Boore DM. Orientation-independent, nongeometric-mean measures of seismic
-    intensity from two horizontal components of motion. Bulletin of the
-    Seismological Society of America 2010; 100(4): 1830–1835.
-    DOI: 10.1785/0120090400.
-
-    Parameters
-    ----------
-    Sa_1 : numpy.ndarray
-        Spectral acceleration values in direction 1.
-    Sa_2 : numpy.ndarray
-        Spectral acceleration values in direction 2.
-    xx : int
-        Value of RoTDxx to compute.
-    num_theta : int, optional
-        Number of rotations to consider between 0 and 180°. The default is 100.
-
-    Returns
-    -------
-    RotDxx : numpy.ndarray
-        Value of IM.
-    """
-    nGM, nT = Sa_1.shape
-    theta = np.linspace(start=0, stop=np.pi, num=num_theta)
-
-    Rot = np.zeros((num_theta, nT))
-    RotDxx = np.zeros((nGM,nT))
-    for i in range(nGM):
-        for j in range(num_theta):
-            Rot[j,:] = Sa_1[i,:]*np.cos(theta[j])+Sa_2[i,:]*np.sin(theta[j])
-        
-        RotDxx[i,:] = np.percentile(Rot,xx,axis=0)
-
-    return RotDxx
-
 def ContentFromZip(paths,zipName):
     """
     Details
@@ -2218,7 +2176,7 @@ def eq_spectra(Ag,dt,T,xi):
     Parameters
     ----------
     Ag: numpy.ndarray    
-        Acceleration values [m/s2]
+        Acceleration values
     dt: float
         Time step [sec]
     T:  float, numpy.ndarray
@@ -2229,19 +2187,19 @@ def eq_spectra(Ag,dt,T,xi):
     Returns
     -------
     PSa(T): numpy.ndarray       
-        Elastic pseudo-acceleration response spectrum [m/s2]
+        Elastic pseudo-acceleration response spectrum 
     PSv(T): numpy.ndarray   
-        Elastic pseudo-velocity response spectrum [m/s]
+        Elastic pseudo-velocity response spectrum
     Sd(T): numpy.ndarray 
-        Elastic displacement response spectrum  - relative displacement [m]
+        Elastic displacement response spectrum  - relative displacement
     Sv(T): numpy.ndarray 
-        Elastic velocity response spectrum - relative velocity at [m/s]
+        Elastic velocity response spectrum - relative velocity at
     Sa(T): numpy.ndarray 
-        Elastic accleration response spectrum - total accelaration [m/s2]
+        Elastic accleration response spectrum - total accelaration
     Ei_r(T): numpy.ndarray 
-        Relative input energy spectrum for elastic system [N.m]
+        Relative input energy spectrum for elastic system
     Ei_a(T): numpy.ndarray 
-        Absolute input energy spectrum for elastic system [N.m]
+        Absolute input energy spectrum for elastic system
     """
 
     # Get the length of acceleration history array
@@ -2343,3 +2301,184 @@ def eq_spectra(Ag,dt,T,xi):
         Ei_a[j] = ei_a[-1]
         
     return Sa, Sv, Sd, PSa, PSv, Ei_r, Ei_a
+
+@njit
+def RotD_spectra(Ag1,Ag2,dt,T,xi):
+    
+    """
+    Details
+    -------
+    This script will return the all the spectral values for a given record
+    It currently uses Newmark Beta Method
+    
+    References
+    ---------- 
+        Chopra, A.K. 2012. Dynamics of Structures: Theory and 
+    Applications to Earthquake Engineering, Prentice Hall.
+        N. M. Newmark, “A Method of Computation for Structural Dynamics,”
+    ASCE Journal of the Engineering Mechanics Division, Vol. 85, 1959, pp. 67-94.
+        Boore, D. M. (2006). Orientation-Independent Measures of Ground Motion. 
+    Bulletin of the Seismological Society of America, 96(4A), 1502–1511.
+        Boore, D. M. (2010). Orientation-Independent, Nongeometric-Mean Measures 
+    of Seismic Intensity from Two Horizontal Components of Motion. 
+    Bulletin of the Seismological Society of America, 100(4), 1830–1835.
+    
+    Notes
+    -----
+    * Uses numba decorator to increase analysis speed!
+    * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
+    * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
+    * Average acceleration method is unconditionally stable,
+      whereas linear acceleration method is stable only if dt/Tn <= 0.55
+      Linear acceleration method is preferable due to its accuracy.
+        
+    Parameters
+    ----------
+    Ag1 : numpy.ndarray    
+        Acceleration values of 1st horizontal ground motion component
+    Ag2 : numpy.ndarray    
+        Acceleration values of 2nd horizontal ground motion component
+    dt: float
+        Time step [sec]
+    T:  float, numpy.ndarray
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+    xi: float
+        Damping ratio, e.g. 0.05 for 5%
+        
+    Returns
+    -------
+    Sa_1: numpy.ndarray       
+        Elastic pseudo-acceleration response spectrum of 1st ground motion component
+    Sa_1: numpy.ndarray   
+        Elastic pseudo-acceleration response spectrum of 2nd ground motion component
+    Sa_RotD50: numpy.ndarray 
+        Median of RotD spectra
+    Sa_RotD100: numpy.ndarray 
+        Maximum of RotD spectra
+    """
+    
+    # Carry out linear time history analysis for SDOF system
+    def analysis(Ag,T):
+
+        # Get the length of acceleration history array
+        n = len(Ag)        
+
+        # Mass (kg)
+        m = 1                   
+        
+        # Assign the external force
+        p = -m*Ag
+        
+        # Calculate system properties which depend on period
+        fn = 1/T             # frequency
+        wn = 2*np.pi*fn      # circular natural frequency
+        k = m*wn**2          # actual stiffness
+        c = 2*m*wn*xi        # actual damping coefficient
+        
+        # Newmark Beta Method coefficients
+        if dt/T<=0.55: # Linear acceleartion method
+            Gamma = 1/2; Beta = 1/6
+        else: # Use average acceleration method
+            Gamma = 1/2; Beta = 1/4
+             
+        # Compute the constants used in Newmark's integration
+        a1 = Gamma/(Beta*dt)  
+        a2 = 1/(Beta*dt**2)
+        a3 = 1/(Beta*dt)
+        a4 = Gamma/Beta
+        a5 = 1/(2*Beta)
+        a6 = (Gamma/(2*Beta)-1)*dt
+        kf = k + a1*c + a2*m
+        a = a3*m + a4*c
+        b = a5*m + a6*c
+        
+        # Initialize the history arrays
+        u = np.zeros(n)        # relative displacement history
+        v = np.zeros(n)        # relative velocity history
+        ac = np.zeros(n)       # relative acceleration history
+    
+        # Set the Initial Conditions
+        u[0] = 0
+        v[0] = 0
+        ac[0] = (p[0] - c*v[0] - k*u[0])/m
+
+        for i in range(n-1):
+            dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
+            du = dpf/kf
+            dv = a1*du - a4*v[i] - a6*ac[i]
+            da = a2*du - a3*v[i] - a5*ac[i]
+        
+            # Update history variables
+            u[i+1] = u[i]+du
+            v[i+1] = v[i]+dv
+            ac[i+1] = ac[i]+da
+   
+        return u
+
+    Sa_1 = []
+    Sa_2 = []
+    Sa_RotD50 = []
+    Sa_RotD100 = []
+
+    for j in range(len(T)):
+        u1 = analysis(Ag1, T[j])
+        u2 = analysis(Ag2, T[j])
+        # Calculate spectral values
+        Sd_1 = np.max(np.abs((u1)))
+        Sd_2 = np.max(np.abs((u2)))
+        Sa_1.append(((2*np.pi/T[j])**2)*Sd_1)
+        Sa_2.append(((2*np.pi/T[j])**2)*Sd_2)
+        
+        # RotD definition is taken from Boore 2010.
+        Rot_Disp = np.zeros((180,1))
+        for theta in range (0,180,1):
+            Rot_Disp[theta,0] = np.max(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta)))
+            
+        Rot_Acc = Rot_Disp*(2*np.pi/T[j])**2
+        Sa_RotD50.append(np.median(Rot_Acc))
+        Sa_RotD100.append(np.max(Rot_Acc))
+      
+    Sa_1, Sa_2, Sa_RotD50, Sa_RotD100 = np.array(Sa_1), np.array(Sa_2), np.array(Sa_RotD50), np.array(Sa_RotD100)
+    return Sa_1, Sa_2, Sa_RotD50, Sa_RotD100
+
+def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 180):
+    """
+    Details
+    -------
+    Compute the RoTDxx IM of a pain of spectral quantities.
+    
+    References
+    ----------
+    Boore DM. Orientation-independent, nongeometric-mean measures of seismic
+    intensity from two horizontal components of motion. Bulletin of the
+    Seismological Society of America 2010; 100(4): 1830–1835.
+    DOI: 10.1785/0120090400.
+
+    Parameters
+    ----------
+    Sa_1 : numpy.ndarray
+        Spectral acceleration values in direction 1.
+    Sa_2 : numpy.ndarray
+        Spectral acceleration values in direction 2.
+    xx : int
+        Value of RoTDxx to compute.
+    num_theta : int, optional
+        Number of rotations to consider between 0 and 180°. The default is 100.
+
+    Returns
+    -------
+    RotDxx : numpy.ndarray
+        Value of IM.
+    """
+    nGM, nT = Sa_1.shape
+    theta = np.linspace(start=0, stop=np.pi, num=num_theta)
+
+    Rot = np.zeros((num_theta, nT))
+    RotDxx = np.zeros((nGM,nT))
+    for i in range(nGM):
+        for j in range(num_theta):
+            Rot[j,:] = Sa_1[i,:]*np.cos(theta[j])+Sa_2[i,:]*np.sin(theta[j])
+        
+        RotDxx[i,:] = np.percentile(Rot,xx,axis=0)
+
+    return RotDxx

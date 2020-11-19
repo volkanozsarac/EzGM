@@ -28,7 +28,7 @@ import numpy.matlib
 from scipy.stats import skew
 from scipy.signal import butter, filtfilt
 import scipy.integrate as integrate
-import scipy.fftpack
+from scipy.fft import fft, fftfreq, fftshift
 from scipy.io import loadmat
 from scipy import interpolate
 import matplotlib.pyplot as plt
@@ -896,11 +896,11 @@ class cs_master:
         else:
             self.rec_rsn = None
             
-    def write(self, cs = 0, recs = 1):
+    def write(self, cs = 0, recs = 1, recs_f = ''):
         
         if recs == 1:
             # set the directories and file names
-            zipName = 'Records.zip'
+            zipName = os.path.join(recs_f,self.database['Name'] + '.zip')
             at2 = 'at2'
             if self.database['Name'] == 'NGA_W2':
                 at2 = 'AT2'
@@ -927,7 +927,7 @@ class cs_master:
             
             if self.database['Name'].startswith('NGA'):
                 
-                if zipName!='Records.zip':
+                if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
                     rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
                 else:
                     rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]
@@ -946,7 +946,7 @@ class cs_master:
                 # Save the H2 gm components
                 if not self.rec_h2 is None:
                     
-                    if zipName!='Records.zip':
+                    if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
                         rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
                     else:
                         rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]   
@@ -2125,12 +2125,14 @@ def gm_parameters(Ag,dt,T,xi):
         param['VSI'] = 'N.A.'       
     
     # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
-    # Number of sample points
-    N = len(Ag)
-    # sample spacing
-    Famp = scipy.fftpack.fft(Ag)
-    Famp = 2.0/N * np.abs(Famp[:N//2])
-    freq = np.linspace(0.0, 1.0/(2.0*dt), int(N/2))
+    # Number of sample points, add zeropads
+    N = 2 ** int(np.ceil(np.log2(len(Ag))))
+    Famp = fft(Ag,N)
+    Famp = np.abs(fftshift(Famp))*dt
+    freq = fftfreq(N, dt)
+    freq = fftshift(freq)
+    Famp = Famp[freq>0]
+    freq = freq[freq>0]
     Pamp = Famp**2/(np.pi*t[-1]*param['aRMS']**2);
     FAS = np.zeros((len(Famp),2)); FAS[:,0] = freq; FAS[:,1] = Famp;
     PAS = np.zeros((len(Famp),2)); PAS[:,0] = freq; PAS[:,1] = Pamp;

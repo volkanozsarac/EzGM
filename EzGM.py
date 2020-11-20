@@ -941,7 +941,7 @@ class cs_master:
                 if not self.rec_h2 is None:
                     
                     if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
-                        rec_paths = self.rec_h2[i]
+                        rec_paths = self.rec_h2
                     else:
                         rec_paths = [self.database['Name']+'/'+self.rec_h2[i] for i in range(n)]
                         

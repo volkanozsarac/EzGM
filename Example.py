@@ -20,7 +20,7 @@ cs.select(nGM=10, selection=2, Sa_def='RotD50', isScaled = 1, maxScale = 4,
 cs.plot(tgt = 0, sim = 1, rec = 1, save = 1, show = 1)
 
 # 4.) Download selected ground motions from NGA-West2 Database [http://ngawest2.berkeley.edu/]
-# cs.nga_download(username = 'example_username', pwd = 'example_password123456')
+cs.nga_download(username = 'example_username', pwd = 'example_password123456')
 
 # 5.) !!! Write the selected ground motions to the text files and locate in output directory
 # You have to have records already inside recs_f\database.zip file for this option or

@@ -7,6 +7,7 @@
 |    Version: 0.5                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
+|    Update on 20/11/2020                                               |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -572,18 +573,13 @@ class cs_master:
         # notAllowed = []
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-        # remove these as J. Baker does for this metadata
-        if self.database['Name'] == "NGA_W2":
-            temp1 = np.arange(4576,4839,1)
-            temp2 = np.arange(6992,8055,1)
-            temp3 = np.array([9193])
-            notAllowed.extend(temp1.tolist())
-            notAllowed.extend(temp2.tolist())
-            notAllowed.extend(temp3.tolist())
-            if self.selection == 1:
-                notAllowed.extend((self.database['NGA_num'][-1]+temp1).tolist())
-                notAllowed.extend((self.database['NGA_num'][-1]+temp2).tolist())
-                notAllowed.extend((self.database['NGA_num'][-1]+temp3).tolist())               
+
+        # if self.database['Name'] == "NGA_W2":
+        #     # do not use these records from PEER
+        #     temp = self.database['NotAllowed']-1 # substract 1 to get indices
+        #     notAllowed.extend(temp.tolist())
+        #     if self.selection == 1:
+        #         notAllowed.extend((self.database['NGA_num'][-1]+temp).tolist())            
             
         if not self.Vs30_lim is None: # limiting values on soil exist
             mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
@@ -901,9 +897,7 @@ class cs_master:
         if recs == 1:
             # set the directories and file names
             zipName = os.path.join(recs_f,self.database['Name'] + '.zip')
-            at2 = 'at2'
             if self.database['Name'] == 'NGA_W2':
-                at2 = 'AT2'
                 try:
                     zipName = self.Unscaled_rec_file
                 except:
@@ -928,16 +922,16 @@ class cs_master:
             if self.database['Name'].startswith('NGA'):
                 
                 if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
-                    rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
+                    rec_paths = self.rec_h1
                 else:
-                    rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]
+                    rec_paths = [self.database['Name']+'/'+self.rec_h1[i] for i in range(n)]
                 contents = ContentFromZip(rec_paths,zipName)
                 
                 # Save the H1 gm components
                 for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadNGA(content = contents[i])
+                    dts[i], _, _, t, inp_acc = ReadNGA(inFilename = self.rec_h1[i],content = contents[i])
                     durs[i] = t[-1]
-                    gmr_file = 'GMR_'+str(i+1)+'.txt'
+                    gmr_file = self.rec_h1[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
                     path = os.path.join(self.outdir,gmr_file)
                     acc_Sc = self.rec_scale[i] * inp_acc
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
@@ -947,14 +941,14 @@ class cs_master:
                 if not self.rec_h2 is None:
                     
                     if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
-                        rec_paths = [self.rec_h1[i][:-3] + at2 for i in range(n)]
+                        rec_paths = self.rec_h2[i]
                     else:
-                        rec_paths = [self.database['Name']+'/'+self.rec_h1[i][:-3] + at2 for i in range(n)]   
+                        rec_paths = [self.database['Name']+'/'+self.rec_h2[i] for i in range(n)]
                         
                     contents = ContentFromZip(rec_paths,zipName)
                     for i in range(n):
-                        _, _, _, _, inp_acc = ReadNGA(content = contents[i])
-                        gmr_file = 'GMR_'+str(n+i+1)+'.txt'
+                        _, _, _, _, inp_acc = ReadNGA(inFilename = self.rec_h2[i],content = contents[i])
+                        gmr_file = self.rec_h2[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
                         path = os.path.join(self.outdir,gmr_file)
                         acc_Sc = self.rec_scale[i] * inp_acc
                         np.savetxt(path, acc_Sc, fmt='%1.4e')
@@ -969,9 +963,9 @@ class cs_master:
                 contents = ContentFromZip(rec_paths,zipName)
                 
                 for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadEXSIM(content = contents[i])
+                    dts[i], _, _, t, inp_acc = ReadEXSIM(inFilename = self.rec_h1[i],content = contents[i])
                     durs[i] = t[-1]
-                    gmr_file = 'GMR_'+str(i+1)+'.txt'
+                    gmr_file = self.rec_h1[i][:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
                     path = os.path.join(self.outdir,gmr_file)
                     acc_Sc = self.rec_scale[i] * inp_acc * sf
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
@@ -1607,7 +1601,7 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
         if content is None:
             with open(inFilename,'r') as inFileID:
                 content = inFileID.readlines()
-        
+    
         # check the first line
         temp = str(content[0]).split()
         try:
@@ -1617,10 +1611,10 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
         except:
             # description is in the begining
             flag = 0
-        
+    
         counter = 0
         desc, row4Val, acc_data = "","",[]
-                
+    
         if flag == 1:
             for x in content:
                 if counter == len(content)-3:
@@ -1630,12 +1624,15 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                     if row4Val[0][0] == 'N':
                         val = row4Val.split()
                         npts = float(val[(val.index('NPTS='))+1].rstrip(','))
-                        dt = float(val[(val.index('DT='))+1])
+                        try:
+                            dt = float(val[(val.index('DT='))+1])
+                        except:
+                            dt = float(val[(val.index('DT='))+1].replace('SEC,',''))
                     else:
                         val = row4Val.split()
                         npts = float(val[0])
                         dt = float(val[1])
-                        
+    
                 elif counter < len(content)-4:
                     data = str(x).split()
                     for value in data:
@@ -1643,7 +1640,7 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                         acc_data.append(a)
                     acc = np.asarray(acc_data)
                 counter = counter + 1
-
+    
         if flag == 0:
             for x in content:
                 if counter == 1:
@@ -1653,12 +1650,15 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                     if row4Val[0][0] == 'N':
                         val = row4Val.split()
                         npts = float(val[(val.index('NPTS='))+1].rstrip(','))
-                        dt = float(val[(val.index('DT='))+1])
+                        try:
+                            dt = float(val[(val.index('DT='))+1])
+                        except:
+                            dt = float(val[(val.index('DT='))+1].replace('SEC,',''))
                     else:
                         val = row4Val.split()
                         npts = float(val[0])
                         dt = float(val[1])
-                        
+    
                 elif counter > 3:
                     data = str(x).split()
                     for value in data:
@@ -1666,15 +1666,15 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                         acc_data.append(a)
                     acc = np.asarray(acc_data)
                 counter = counter + 1
-            
+    
         t = [] # save time history
         for i in range (0,len(acc_data)):
             ti = i * dt
             t.append(ti)
-            
+    
         if outFilename is not None:
             np.savetxt(outFilename, acc, fmt='%1.4e')
-
+    
         npts = int(npts)
         return dt, npts, desc, t, acc
     
@@ -2442,45 +2442,3 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
       
     Sa_1, Sa_2, Sa_RotD50, Sa_RotD100 = np.array(Sa_1), np.array(Sa_2), np.array(Sa_RotD50), np.array(Sa_RotD100)
     return Sa_1, Sa_2, Sa_RotD50, Sa_RotD100
-
-def get_RotDxx(Sa_1, Sa_2, xx, num_theta = 180):
-    """
-    Details
-    -------
-    Compute the RoTDxx IM of a pain of spectral quantities.
-    
-    References
-    ----------
-    Boore DM. Orientation-independent, nongeometric-mean measures of seismic
-    intensity from two horizontal components of motion. Bulletin of the
-    Seismological Society of America 2010; 100(4): 1830–1835.
-    DOI: 10.1785/0120090400.
-
-    Parameters
-    ----------
-    Sa_1 : numpy.ndarray
-        Spectral acceleration values in direction 1.
-    Sa_2 : numpy.ndarray
-        Spectral acceleration values in direction 2.
-    xx : int
-        Value of RoTDxx to compute.
-    num_theta : int, optional
-        Number of rotations to consider between 0 and 180°. The default is 100.
-
-    Returns
-    -------
-    RotDxx : numpy.ndarray
-        Value of IM.
-    """
-    nGM, nT = Sa_1.shape
-    theta = np.linspace(start=0, stop=np.pi, num=num_theta)
-
-    Rot = np.zeros((num_theta, nT))
-    RotDxx = np.zeros((nGM,nT))
-    for i in range(nGM):
-        for j in range(num_theta):
-            Rot[j,:] = Sa_1[i,:]*np.cos(theta[j])+Sa_2[i,:]*np.sin(theta[j])
-        
-        RotDxx[i,:] = np.percentile(Rot,xx,axis=0)
-
-    return RotDxx

@@ -50,7 +50,7 @@ class cs_master:
         3) Scaling and processing of selected ground motion records
     """
     
-    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W1', pInfo = 1):
+    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W2', pInfo = 1):
         """
         Details
         -------
@@ -63,9 +63,9 @@ class cs_master:
             Conditioning period or periods in case of AvgSa [sec].
         gmpe     : str, optional
             GMPE model (see OpenQuake library). 
-            The default is 'Boore_Atkinson_2008'.
+            The default is 'Boore_EtAl_2014'.
         database : str, optional
-            database to use, NGA_W1, NGA_W2, EXSIM_Duzce, etc.
+            database to use: NGA_W2, EXSIM_Duzce, etc.
             The default is NGA_W1.        
         pInfo    : int, optional
             flag to print required input for the gmpe which is going to be used. 
@@ -528,7 +528,7 @@ class cs_master:
         
         if self.selection == 1: # SaKnown = Sa_arb
 
-            if self.database['Name'].startswith('NGA'):
+            if self.database['Name'] == "NGA_W2":
             
                 SaKnown    = np.append(self.database['Sa_1'],self.database['Sa_2'], axis=0)
                 soil_Vs30  = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
@@ -536,9 +536,7 @@ class cs_master:
                 Rjb        = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)  
                 fault      = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
                 Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-                
-                if self.database['Name'] == 'NGA_W2':
-                    NGA_num = np.append(self.database['NGA_num'],self.database['NGA_num'], axis=0)
+                NGA_num = np.append(self.database['NGA_num'],self.database['NGA_num'], axis=0)
             
             elif self.database['Name'].startswith("EXSIM"):
                 SaKnown    = self.database['Sa_1']
@@ -563,23 +561,13 @@ class cs_master:
             fault      = self.database['mechanism']
             Filename_1 = self.database['Filename_1']
             Filename_2 = self.database['Filename_2']
-            
-            if self.database['Name'] == 'NGA_W2':
-                NGA_num = self.database['NGA_num']
+            NGA_num = self.database['NGA_num']
                 
         perKnown = self.database['Periods']        
         
         # Limiting the records to be considered using the `notAllowed' variable
-        # notAllowed = []
         # Sa cannot be negative or zero, remove these.
-        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-
-        # if self.database['Name'] == "NGA_W2":
-        #     # do not use these records from PEER
-        #     temp = self.database['NotAllowed']-1 # substract 1 to get indices
-        #     notAllowed.extend(temp.tolist())
-        #     if self.selection == 1:
-        #         notAllowed.extend((self.database['NGA_num'][-1]+temp).tolist())            
+        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()        
             
         if not self.Vs30_lim is None: # limiting values on soil exist
             mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
@@ -723,6 +711,7 @@ class cs_master:
         
         # Exsim provides a single gm component
         if self.database['Name'].startswith("EXSIM"):
+            print('Warning! Selection = 1 for this database')
             self.selection = 1
         
         # Simulate response spectra
@@ -892,7 +881,36 @@ class cs_master:
         else:
             self.rec_rsn = None
             
-    def write(self, cs = 0, recs = 1, recs_f = ''):
+    def write(self, obj = 0, recs = 1, recs_f = ''):
+        """
+        
+        Details
+        -------
+        Writes the cs_master object, selected and scaled records
+        
+        Parameters
+        ----------
+        obj : int, optional
+            flag to write the object into the pickle file. The default is 0.
+        recs : int, optional
+            flag to write the selected and scaled time histories. 
+            The default is 1.
+        recs_f : str, optional
+            This is option could be used if the user already has all the 
+            records in database. This is the folder path which contains 
+            "database.zip" file. The records must be placed inside
+            recs_f/database.zip/database/ 
+            The default is ''.
+
+        Notes
+        -----
+        0: no, 1: yes
+
+        Returns
+        -------
+        None.
+
+        """
         
         if recs == 1:
             # set the directories and file names
@@ -919,7 +937,7 @@ class cs_master:
                 
             h1s = open(path_H1, 'w')      
             
-            if self.database['Name'].startswith('NGA'):
+            if self.database['Name'] == 'NGA_W2':
                 
                 if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
                     rec_paths = self.rec_h1
@@ -975,7 +993,7 @@ class cs_master:
             np.savetxt(path_dts,dts, fmt='%.5f')
             np.savetxt(path_durs,durs, fmt='%.5f')
             
-        if cs == 1:
+        if obj == 1:
             # save some info as pickle obj
             path_cs = os.path.join(self.outdir,'CS.pkl')  
             cs_obj = vars(copy.deepcopy(self)) # use copy.deepcopy to create independent obj
@@ -1016,7 +1034,7 @@ class cs_master:
             
         Notes
         -----
-        0: off, 1: on
+        0: no, 1: yes
 
         Returns
         -------
@@ -1536,7 +1554,7 @@ def ContentFromZip(paths,zipName):
     Details
     -------
     This function reads the contents of all selected records
-    from the zipfile where the records are located
+    from the zipfile in which the records are located
     
     Parameters
     ----------

@@ -2175,7 +2175,7 @@ def gm_parameters(Ag,dt,T,xi):
     # Mass (kg)
     m = 1
     # Carry out linear time history analyses for SDOF system
-    u,v,ac,ac_tot = sdof_ltha(Ag = Ag, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    u,v,ac,ac_tot = sdof_ltha(Ag, dt, T, xi, m)
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs((u)),axis = 0)
     param['Sv'] = np.max(np.abs((v)),axis = 0)
@@ -2344,15 +2344,15 @@ def RotDxx_spectrum(Ag1,Ag2,dt,T,xi,xx):
     elif len(Ag2) > len(Ag1):
         Ag1 = np.append(Ag1,np.zeros(len(Ag2)-len(Ag1)))
         
-    # Get the length of period array    
+    # Get the length of period array 
     n2 = max(T.shape)
     
     # Mass (kg)
     m = 1
 
     # Carry out linear time history analyses for SDOF system
-    u1,_,_,_ = sdof_ltha(Ag = Ag1, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
-    u2,_,_,_ = sdof_ltha(Ag = Ag2, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    u1,_,_,_ = sdof_ltha(Ag1, dt, T, xi, m)
+    u2,_,_,_ = sdof_ltha(Ag2, dt, T, xi, m)
     
     # RotD definition is taken from Boore 2010.
     Rot_Disp = np.zeros((180,n2))

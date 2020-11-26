@@ -1941,6 +1941,111 @@ def butterworth_filter(values,dt, cut_off=(0.1, 25), **kwargs):
 
     return values_filtered
 
+def sdof_elastic_analysis(Ag,dt,T,xi,m):
+    """
+    Details
+    -------
+    This script will carry out linear time history analysis for SDOF system
+    It currently uses Newmark Beta Method
+    
+    References
+    ---------- 
+    Chopra, A.K. 2012. Dynamics of Structures: Theory and 
+    Applications to Earthquake Engineering, Prentice Hall.
+    N. M. Newmark, “A Method of Computation for Structural Dynamics,”
+    ASCE Journal of the Engineering Mechanics Division, Vol. 85, 1959, pp. 67-94.
+    
+    Notes
+    -----
+    * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
+    * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
+    * Average acceleration method is unconditionally stable,
+      whereas linear acceleration method is stable only if dt/Tn <= 0.55
+      Linear acceleration method is preferable due to its accuracy.
+    
+    Parameters
+    ----------
+    Ag: numpy.ndarray    
+        Acceleration values
+    dt: float
+        Time step [sec]
+    T:  float, numpy.ndarray
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+    xi: float
+        Damping ratio, e.g. 0.05 for 5%
+    m:  float
+        Mass of SDOF system
+        
+    Returns
+    -------
+    u: numpy.ndarray       
+        Relative displacement response history
+    v: numpy.ndarray   
+        Relative velocity response history
+    ac: numpy.ndarray 
+        Relative acceleration response history
+    ac_tot: numpy.ndarray 
+        Total acceleration response history
+    """
+    
+    # Get the length of acceleration history array
+    n1 = max(Ag.shape)
+    # Get the length of period array
+    n2 = max(T.shape); T = T.reshape((1,n2))
+    
+    # Assign the external force
+    p = -m*Ag
+    
+    # Calculate system properties which depend on period
+    fn = np.ones(T.shape); fn = 1/T             # frequency
+    wn = np.ones(T.shape); wn = 2*np.pi*fn      # circular natural frequency
+    k  = np.ones(T.shape); k = m*wn**2          # actual stiffness
+    c  = np.ones(T.shape); c = 2*m*wn*xi        # actual damping coefficient
+    
+    # Newmark Beta Method coefficients
+    Gamma = np.ones((1,n2))*(1/2)
+    # Use linear acceleration method for dt/T<=0.55
+    Beta = np.ones((1,n2))*1/6
+    # Use average acceleration method for dt/T>0.55
+    Beta[np.where(dt/T > 0.55)] = 1/4
+    
+    # Compute the constants used in Newmark's integration
+    a1 = Gamma/(Beta*dt)
+    a2 = 1/(Beta*dt**2)
+    a3 = 1/(Beta*dt)
+    a4 = Gamma/Beta
+    a5 = 1/(2*Beta)
+    a6 = (Gamma/(2*Beta)-1)*dt
+    kf = k + a1*c + a2*m
+    a = a3*m + a4*c
+    b = a5*m + a6*c
+    
+    # Initialize the history arrays
+    u = np.zeros((n1,n2))        # relative displacement history
+    v = np.zeros((n1,n2))        # relative velocity history
+    ac = np.zeros((n1,n2))       # relative acceleration history
+    ac_tot = np.zeros((n1,n2)) # total acceleration history
+
+    # Set the Initial Conditions
+    u[0] = 0
+    v[0] = 0
+    ac[0] = (p[0] - c*v[0] - k*u[0])/m
+    ac_tot[0] = ac[0] + Ag[0]
+
+    for i in range(n1-1):
+        dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
+        du = dpf/kf
+        dv = a1*du - a4*v[i] - a6*ac[i]
+        da = a2*du - a3*v[i] - a5*ac[i]
+    
+        # Update history variables
+        u[i+1] = u[i]+du
+        v[i+1] = v[i]+dv
+        ac[i+1] = ac[i]+da
+        ac_tot[i+1] = ac[i+1] + Ag[i+1]
+   
+    return u,v,ac,ac_tot
+
 def gm_parameters(Ag,dt,T,xi):
     """
     Details
@@ -2059,12 +2164,31 @@ def gm_parameters(Ag,dt,T,xi):
     param = {'Periods':T}
     
     # GET SPECTRAL VALUES
-    param['Sa'], param['Sv'], param['Sd'], param['PSa'], param['PSv'], param['Ei_r'], param['Ei_a'] = eq_spectra(Ag,dt,T,xi)
+    # Get the length of acceleration history array
+    n1 = max(Ag.shape)
+    # Get the length of period array
+    n2 = max(T.shape)
+    # Create the time array
+    t = np.linspace(0,(n1-1)*dt,n1)
+    # Get ground velocity and displacement through integration
+    Vg = cumtrapz(Ag, t, initial=0)
+    Dg = cumtrapz(Vg, t, initial=0)
+    # Mass (kg)
+    m = 1
+    # Carry out linear time history analyses for SDOF system
+    u,v,ac,ac_tot = sdof_elastic_analysis(Ag = Ag, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    # Calculate the spectral values
+    param['Sd'] = np.max(np.abs((u)),axis = 0)
+    param['Sv'] = np.max(np.abs((v)),axis = 0)
+    param['Sa'] = np.max(np.abs((ac_tot)),axis = 0)
+    param['PSv'] = (2*np.pi/T)*param['Sd']
+    param['PSa'] = ((2*np.pi/T)**2)*param['Sd']
+    ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0)*m
+    ei_a = cumtrapz(-numpy.matlib.repmat(Dg, n2, 1).T, ac_tot, axis=0, initial=0)*m
+    param['Ei_r'] = ei_r[-1]
+    param['Ei_a'] = ei_a[-1]
 
     # GET PEAK GROUND ACCELERATION, VELOCITY AND DISPLACEMENT
-    t = np.linspace(0,(len(Ag)-1)*dt,len(Ag))
-    Vg = integrate.cumtrapz(Ag, t, initial=0)
-    Dg = integrate.cumtrapz(Vg, t, initial=0)
     param['PGA'] = np.max(np.abs(Ag))
     param['PGV'] = np.max(np.abs(Vg))
     param['PGD'] = np.max(np.abs(Dg))
@@ -2169,162 +2293,7 @@ def gm_parameters(Ag,dt,T,xi):
     
     return param
 
-@njit
-def eq_spectra(Ag,dt,T,xi):
-    """
-    Details
-    -------
-    This script will return the all the spectral values for a given record
-    It currently uses Newmark Beta Method
-    
-    References
-    ---------- 
-    Chopra, A.K. 2012. Dynamics of Structures: Theory and 
-    Applications to Earthquake Engineering, Prentice Hall.
-    N. M. Newmark, “A Method of Computation for Structural Dynamics,”
-    ASCE Journal of the Engineering Mechanics Division, Vol. 85, 1959, pp. 67-94.
-    
-    Notes
-    -----
-    * Uses numba decorator to increase analysis speed!
-    * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
-    * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
-    * Average acceleration method is unconditionally stable,
-      whereas linear acceleration method is stable only if dt/Tn <= 0.55
-      Linear acceleration method is preferable due to its accuracy.
-        
-    Parameters
-    ----------
-    Ag: numpy.ndarray    
-        Acceleration values
-    dt: float
-        Time step [sec]
-    T:  float, numpy.ndarray
-        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
-    xi: float
-        Damping ratio, e.g. 0.05 for 5%
-        
-    Returns
-    -------
-    PSa(T): numpy.ndarray       
-        Elastic pseudo-acceleration response spectrum 
-    PSv(T): numpy.ndarray   
-        Elastic pseudo-velocity response spectrum
-    Sd(T): numpy.ndarray 
-        Elastic displacement response spectrum  - relative displacement
-    Sv(T): numpy.ndarray 
-        Elastic velocity response spectrum - relative velocity at
-    Sa(T): numpy.ndarray 
-        Elastic accleration response spectrum - total accelaration
-    Ei_r(T): numpy.ndarray 
-        Relative input energy spectrum for elastic system
-    Ei_a(T): numpy.ndarray 
-        Absolute input energy spectrum for elastic system
-    """
-
-    # Get the length of acceleration history array
-    n1 = len(Ag)
-    # Get the length of period array
-    n2 = len(T)
-
-    # Create the time array
-    t = np.linspace(0,(n1-1)*dt,n1)
-    
-    # Get ground velocity and displacement through integration
-    Vg = np.zeros(n1)
-    Dg = np.zeros(n1)
-    for i in range(2,n1+1):
-        Vg[i-1] = np.trapz(Ag[:i],t[:i])
-        Dg[i-1] = np.trapz(Vg[:i],t[:i])
-    
-    # Initilalize the input energy arrays
-    Ei_r = np.zeros(n2) # Relative input energy
-    Ei_a = np.zeros(n2) # Absolute input energy
-    
-    # Mass (kg)
-    m = 1                   
-    
-    # Assign the external force
-    p = -m*Ag
-    
-    # Initalize spectra
-    Sa = np.zeros(n2)
-    Sv = np.zeros(n2)
-    Sd = np.zeros(n2)
-    PSv = np.zeros(n2)
-    PSa = np.zeros(n2)
-    
-    # Carry out linear time history analysis for SDOF system
-    def analysis(T):
-        # Calculate system properties which depend on period
-        fn = 1/T             # frequency
-        wn = 2*np.pi*fn      # circular natural frequency
-        k = m*wn**2          # actual stiffness
-        c = 2*m*wn*xi        # actual damping coefficient
-        
-        # Newmark Beta Method coefficients
-        if dt/T<=0.55: # Linear acceleartion method
-            Gamma = 1/2; Beta = 1/6
-        else: # Use average acceleration method
-            Gamma = 1/2; Beta = 1/4
-             
-        # Compute the constants used in Newmark's integration
-        a1 = Gamma/(Beta*dt)  
-        a2 = 1/(Beta*dt**2)
-        a3 = 1/(Beta*dt)
-        a4 = Gamma/Beta
-        a5 = 1/(2*Beta)
-        a6 = (Gamma/(2*Beta)-1)*dt
-        kf = k + a1*c + a2*m
-        a = a3*m + a4*c
-        b = a5*m + a6*c
-        
-        # Initialize the history arrays
-        u = np.zeros(n1)        # relative displacement history
-        v = np.zeros(n1)        # relative velocity history
-        ac = np.zeros(n1)       # relative acceleration history
-        ac_total = np.zeros(n1) # total acceleration history
-        ei_r = np.zeros(n1)     # Relative input energy history
-        ei_a = np.zeros(n1)     # Absolute input energy history
-    
-        # Set the Initial Conditions
-        u[0] = 0
-        v[0] = 0
-        ac[0] = (p[0] - c*v[0] - k*u[0])/m
-        ac_total[0] = ac[0] + Ag[0]
-
-        for i in range(n1-1):
-            dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
-            du = dpf/kf
-            dv = a1*du - a4*v[i] - a6*ac[i]
-            da = a2*du - a3*v[i] - a5*ac[i]
-        
-            # Update history variables
-            u[i+1] = u[i]+du
-            v[i+1] = v[i]+dv
-            ac[i+1] = ac[i]+da
-            ac_total[i+1] = ac[i+1] + Ag[i+1]
-            ei_r[i+1] = ei_r[i] - 1/2*(u[i+1] - u[i])*m*(Ag[i+1] + Ag[i])
-            ei_a[i+1] = ei_a[i] - 1/2*(ac_total[i+1] - ac_total[i])*m*(Dg[i+1] + Dg[i])
-   
-        return u, v, ac, ac_total, ei_r, ei_a
-    
-    for j in range(n2):
-        u, v, ac, ac_total, ei_r, ei_a = analysis(T[j])
-        # Calculate spectral values
-        Sd[j] = np.max(np.abs((u)))
-        Sv[j] = np.max(np.abs((v)))
-        Sa[j] = np.max(np.abs((ac_total)))
-        PSv[j] = (2*np.pi/T[j])*Sd[j]
-        PSa[j] = ((2*np.pi/T[j])**2)*Sd[j]
-        Ei_r[j] = ei_r[-1]
-        Ei_a[j] = ei_a[-1]
-        
-    return Sa, Sv, Sd, PSa, PSv, Ei_r, Ei_a
-
-@njit
 def RotD_spectra(Ag1,Ag2,dt,T,xi):
-    
     """
     Details
     -------
@@ -2335,8 +2304,6 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
     ---------- 
         Chopra, A.K. 2012. Dynamics of Structures: Theory and 
     Applications to Earthquake Engineering, Prentice Hall.
-        N. M. Newmark, “A Method of Computation for Structural Dynamics,”
-    ASCE Journal of the Engineering Mechanics Division, Vol. 85, 1959, pp. 67-94.
         Boore, D. M. (2006). Orientation-Independent Measures of Ground Motion. 
     Bulletin of the Seismological Society of America, 96(4A), 1502–1511.
         Boore, D. M. (2010). Orientation-Independent, Nongeometric-Mean Measures 
@@ -2345,7 +2312,6 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
     
     Notes
     -----
-    * Uses numba decorator to increase analysis speed!
     * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
     * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
     * Average acceleration method is unconditionally stable,
@@ -2376,87 +2342,37 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
     Sa_RotD100: numpy.ndarray 
         Maximum of RotD spectra
     """
+
+    # Verify if the length of arrays are the same
+    if len(Ag1) == len(Ag2):
+        pass
+    elif len(Ag1) > len(Ag2):
+        Ag2 = np.append(Ag2,np.zeros(len(Ag1)-len(Ag2)))
+    elif len(Ag2) > len(Ag1):
+        Ag1 = np.append(Ag1,np.zeros(len(Ag2)-len(Ag1)))
+        
+    # Get the length of period array    
+    n2 = max(T.shape)
     
-    # Carry out linear time history analysis for SDOF system
-    def analysis(Ag,T):
+    # Mass (kg)
+    m = 1
 
-        # Get the length of acceleration history array
-        n = len(Ag)        
-
-        # Mass (kg)
-        m = 1                   
-        
-        # Assign the external force
-        p = -m*Ag
-        
-        # Calculate system properties which depend on period
-        fn = 1/T             # frequency
-        wn = 2*np.pi*fn      # circular natural frequency
-        k = m*wn**2          # actual stiffness
-        c = 2*m*wn*xi        # actual damping coefficient
-        
-        # Newmark Beta Method coefficients
-        if dt/T<=0.55: # Linear acceleartion method
-            Gamma = 1/2; Beta = 1/6
-        else: # Use average acceleration method
-            Gamma = 1/2; Beta = 1/4
-             
-        # Compute the constants used in Newmark's integration
-        a1 = Gamma/(Beta*dt)  
-        a2 = 1/(Beta*dt**2)
-        a3 = 1/(Beta*dt)
-        a4 = Gamma/Beta
-        a5 = 1/(2*Beta)
-        a6 = (Gamma/(2*Beta)-1)*dt
-        kf = k + a1*c + a2*m
-        a = a3*m + a4*c
-        b = a5*m + a6*c
-        
-        # Initialize the history arrays
-        u = np.zeros(n)        # relative displacement history
-        v = np.zeros(n)        # relative velocity history
-        ac = np.zeros(n)       # relative acceleration history
+    # Carry out linear time history analyses for SDOF system
+    u1,_,_,_ = sdof_elastic_analysis(Ag = Ag1, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    u2,_,_,_ = sdof_elastic_analysis(Ag = Ag2, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    # Calculate spectral values
+    Sd_1 = np.max(np.abs((u1)),axis = 0)
+    Sd_2 = np.max(np.abs((u2)),axis = 0)    
+    Sa_1 = ((2*np.pi/T)**2)*Sd_1
+    Sa_2 = ((2*np.pi/T)**2)*Sd_2
     
-        # Set the Initial Conditions
-        u[0] = 0
-        v[0] = 0
-        ac[0] = (p[0] - c*v[0] - k*u[0])/m
+    # RotD definition is taken from Boore 2010.
+    Rot_Disp = np.zeros((180,n2))
+    for theta in range (0,180,1):
+        Rot_Disp[theta] = np.max(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta)), axis = 0)
 
-        for i in range(n-1):
-            dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
-            du = dpf/kf
-            dv = a1*du - a4*v[i] - a6*ac[i]
-            da = a2*du - a3*v[i] - a5*ac[i]
-        
-            # Update history variables
-            u[i+1] = u[i]+du
-            v[i+1] = v[i]+dv
-            ac[i+1] = ac[i]+da
-   
-        return u
-
-    Sa_1 = []
-    Sa_2 = []
-    Sa_RotD50 = []
-    Sa_RotD100 = []
-
-    for j in range(len(T)):
-        u1 = analysis(Ag1, T[j])
-        u2 = analysis(Ag2, T[j])
-        # Calculate spectral values
-        Sd_1 = np.max(np.abs((u1)))
-        Sd_2 = np.max(np.abs((u2)))
-        Sa_1.append(((2*np.pi/T[j])**2)*Sd_1)
-        Sa_2.append(((2*np.pi/T[j])**2)*Sd_2)
-        
-        # RotD definition is taken from Boore 2010.
-        Rot_Disp = np.zeros((180,1))
-        for theta in range (0,180,1):
-            Rot_Disp[theta,0] = np.max(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta)))
-            
-        Rot_Acc = Rot_Disp*(2*np.pi/T[j])**2
-        Sa_RotD50.append(np.median(Rot_Acc))
-        Sa_RotD100.append(np.max(Rot_Acc))
-      
-    Sa_1, Sa_2, Sa_RotD50, Sa_RotD100 = np.array(Sa_1), np.array(Sa_2), np.array(Sa_RotD50), np.array(Sa_RotD100)
+    Rot_Acc = Rot_Disp*(2*np.pi/T)**2
+    Sa_RotD50 = np.median(Rot_Acc, axis = 0)
+    Sa_RotD100 = np.max(Rot_Acc, axis = 0)
+    
     return Sa_1, Sa_2, Sa_RotD50, Sa_RotD100

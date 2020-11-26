@@ -7,7 +7,7 @@
 |    Version: 0.5                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
-|    Update on 20/11/2020                                               |
+|    Update on 26/11/2020                                               |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -28,7 +28,7 @@ import numpy as np
 import numpy.matlib
 from scipy.stats import skew
 from scipy.signal import butter, filtfilt
-import scipy.integrate as integrate
+from scipy.integrate import cumtrapz
 from scipy.fft import fft, fftfreq, fftshift
 from scipy.io import loadmat
 from scipy import interpolate
@@ -1803,7 +1803,6 @@ def RunTime(startTime):
     print("Run time: %d hours: %d minutes: %.2f seconds"  % (timeHours, timeMinutes, timeSeconds))
     
 def baseline_correction(values,dt,polynomial_type):
-  
     """
     Details
     -------
@@ -1941,7 +1940,7 @@ def butterworth_filter(values,dt, cut_off=(0.1, 25), **kwargs):
 
     return values_filtered
 
-def sdof_elastic_analysis(Ag,dt,T,xi,m):
+def sdof_ltha(Ag,dt,T,xi,m):
     """
     Details
     -------
@@ -2176,7 +2175,7 @@ def gm_parameters(Ag,dt,T,xi):
     # Mass (kg)
     m = 1
     # Carry out linear time history analyses for SDOF system
-    u,v,ac,ac_tot = sdof_elastic_analysis(Ag = Ag, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    u,v,ac,ac_tot = sdof_ltha(Ag = Ag, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs((u)),axis = 0)
     param['Sv'] = np.max(np.abs((v)),axis = 0)
@@ -2293,20 +2292,18 @@ def gm_parameters(Ag,dt,T,xi):
     
     return param
 
-def RotD_spectra(Ag1,Ag2,dt,T,xi):
+def RotDxx_spectrum(Ag1,Ag2,dt,T,xi,xx):
     """
     Details
     -------
-    This script will return the all the spectral values for a given record
+    This script will return RotDxx spectrum
     It currently uses Newmark Beta Method
     
     References
     ---------- 
-        Chopra, A.K. 2012. Dynamics of Structures: Theory and 
-    Applications to Earthquake Engineering, Prentice Hall.
-        Boore, D. M. (2006). Orientation-Independent Measures of Ground Motion. 
+    Boore, D. M. (2006). Orientation-Independent Measures of Ground Motion. 
     Bulletin of the Seismological Society of America, 96(4A), 1502–1511.
-        Boore, D. M. (2010). Orientation-Independent, Nongeometric-Mean Measures 
+    Boore, D. M. (2010). Orientation-Independent, Nongeometric-Mean Measures 
     of Seismic Intensity from Two Horizontal Components of Motion. 
     Bulletin of the Seismological Society of America, 100(4), 1830–1835.
     
@@ -2330,17 +2327,13 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
     xi: float
         Damping ratio, e.g. 0.05 for 5%
+    xx: int
+        Percentile to calculate, e.g. 50 for RotD50
         
     Returns
     -------
-    Sa_1: numpy.ndarray       
-        Elastic pseudo-acceleration response spectrum of 1st ground motion component
-    Sa_1: numpy.ndarray   
-        Elastic pseudo-acceleration response spectrum of 2nd ground motion component
-    Sa_RotD50: numpy.ndarray 
-        Median of RotD spectra
-    Sa_RotD100: numpy.ndarray 
-        Maximum of RotD spectra
+    Sa_RotDxx: numpy.ndarray 
+        RotDxx Spectra
     """
 
     # Verify if the length of arrays are the same
@@ -2358,13 +2351,8 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
     m = 1
 
     # Carry out linear time history analyses for SDOF system
-    u1,_,_,_ = sdof_elastic_analysis(Ag = Ag1, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
-    u2,_,_,_ = sdof_elastic_analysis(Ag = Ag2, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
-    # Calculate spectral values
-    Sd_1 = np.max(np.abs((u1)),axis = 0)
-    Sd_2 = np.max(np.abs((u2)),axis = 0)    
-    Sa_1 = ((2*np.pi/T)**2)*Sd_1
-    Sa_2 = ((2*np.pi/T)**2)*Sd_2
+    u1,_,_,_ = sdof_ltha(Ag = Ag1, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
+    u2,_,_,_ = sdof_ltha(Ag = Ag2, dt = dt, T = T.reshape((1,n2)), xi = xi, m = m)
     
     # RotD definition is taken from Boore 2010.
     Rot_Disp = np.zeros((180,n2))
@@ -2372,7 +2360,6 @@ def RotD_spectra(Ag1,Ag2,dt,T,xi):
         Rot_Disp[theta] = np.max(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta)), axis = 0)
 
     Rot_Acc = Rot_Disp*(2*np.pi/T)**2
-    Sa_RotD50 = np.median(Rot_Acc, axis = 0)
-    Sa_RotD100 = np.max(Rot_Acc, axis = 0)
+    Sa_RotDxx = np.percentile(Rot_Acc, xx, axis = 0)
     
-    return Sa_1, Sa_2, Sa_RotD50, Sa_RotD100
+    return Sa_RotDxx

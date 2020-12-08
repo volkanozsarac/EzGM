@@ -4,7 +4,7 @@
 |    EzGM                                                               |
 |    Toolbox for ground motion record                                   |
 |    selection and processing                                           |
-|    Version: 0.5                                                       |
+|    Version: 1.0                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
 |    Update on 08/12/2020                                               |

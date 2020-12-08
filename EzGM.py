@@ -7,7 +7,7 @@
 |    Version: 0.5                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
-|    Update on 26/11/2020                                               |
+|    Update on 08/12/2020                                               |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -141,9 +141,144 @@ class cs_master:
             print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
+    def get_correlation(self, T1,T2):
+        """
+        Details
+        -------
+        Compute the inter-period correlation for any two Sa(T) values.
+        
+        Parameters
+        ----------
+            T1: int
+                First period
+            T2: int
+                Second period
+                
+        Returns
+        -------
+        rho: int
+             Predicted correlation coefficient
+    
+        """
+    
+        def BakerJayaramCorrelationModel(T1, T2):
+            """
+            Details
+            -------
+            Valid for T = 0.01-10sec
+        
+            References
+            ----------
+            Baker JW, Jayaram N. Correlation of Spectral Acceleration Values from NGA Ground Motion Models.
+            Earthquake Spectra 2008; 24(1): 299–317. DOI: 10.1193/1.2857544.
+        
+            Parameters
+            ----------
+                T1: int
+                    First period
+                T2: int
+                    Second period
+        
+            Returns
+            -------
+            rho: int
+                 Predicted correlation coefficient
+            """
+        
+            t_min = min(T1, T2)
+            t_max = max(T1, T2)
+        
+            c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
+        
+            if t_max < 0.2:
+                c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
+            else:
+                c2 = 0
+        
+            if t_max < 0.109:
+                c3 = c2
+            else:
+                c3 = c1
+        
+            c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
+        
+            if t_max <= 0.109:
+                rho = c2
+            elif t_min > 0.109:
+                rho = c1
+            elif t_max < 0.2:
+                rho = min(c2, c4)
+            else:
+                rho = c4
+            
+            # for two orthogonal components case
+            # if orth:
+            #     rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
+        
+            return rho
+        
+        def AkkarCorrelationModel(T1, T2):
+            """
+            Details
+            -------
+            Valid for T = 0.01-4sec
+            
+            References
+            ----------
+            Akkar S., Sandikkaya MA., Ay BO., 2014, Compatible ground-motion
+            prediction equations for damping scaling factors and vertical to
+            horizontal spectral amplitude ratios for the broader Europe region,
+            Bull Earthquake Eng, 12, pp. 517-547.
+        
+            Parameters
+            ----------
+                T1: int
+                    First period
+                T2: int
+                    Second period
+        
+            :return float:
+                The predicted correlation coefficient.
+            """
+            periods = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1, 0.11, 0.12, 0.13, 0.14,
+                               0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
+                               0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
+                               0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
+                               1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
+        
+            if np.any([T1,T2] < periods[0]) or\
+                    np.any([T1,T2] > periods[-1]):
+                raise ValueError("contains values outside of the "
+                                 "range supported by the Akkar et al. (2014) "
+                                 "correlation model")
+            
+            if T1 == T2:
+                rho = 1.0
+            else:
+                with open(os.path.join('Meta_Data','akkar_coeff_table.npy'), 'rb') as f:
+                    coeff_table = np.load(f)
+                rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
+        
+            return rho
+    
+        correlation_function_handles = {
+            'baker_jayaram': BakerJayaramCorrelationModel,
+            'akkar': AkkarCorrelationModel,
+        }
+    
+        # Check for existing correlation function
+        if self.corr_func not in correlation_function_handles:
+            raise ValueError('Not a valid correlation function')
+        else:
+            rho = \
+                correlation_function_handles[self.corr_func](T1,T2)
+                
+        return rho
+
     def create(self, site_param = {'vs30': 520}, rup_param = {'rake': 0.0, 'mag': [7.2, 6.5]}, 
                dist_param = {'rjb': [20, 5]}, Hcont=[0.6,0.4], T_Tgt_range  = [0.01,4], 
-               im_Tstar = 1.0, epsilon = None, cond = 1, useVar = 1, outdir = 'Outputs'):
+               im_Tstar = 1.0, epsilon = None, cond = 1, useVar = 1, corr_func= 'baker_jayaram',
+               outdir = 'Outputs'):
         """
         Details
         -------
@@ -158,6 +293,10 @@ class cs_master:
         Baker JW. Conditional Mean Spectrum: Tool for Ground-Motion Selection.
         Journal of Structural Engineering 2011; 137(3): 322–331.
         DOI: 10.1061/(ASCE)ST.1943-541X.0000215.
+        Kohrangi, M., Bazzurro, P., Vamvatsikos, D., and Spillatura, A.
+        Conditional spectrum-based ground motion record selection using average 
+        spectral acceleration. Earthquake Engineering & Structural Dynamics, 
+        2017, 46(10): 1667–1685.
 
         Parameters
         ----------
@@ -182,6 +321,8 @@ class cs_master:
         useVar     : int, optional, the default is 1.
             0 not to use variance in target spectrum
             1 to use variance in target spectrum
+        corr_func: str, optional, the default is baker_jayaram
+            correlation model to use "baker_jayaram","akkar"
         outdir     : str, optional, the default is 'Outputs'.
             output directory to create.
 
@@ -235,7 +376,7 @@ class cs_master:
                 sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0])**2)*(2/(1+ro_xy)))**0.5)
                 
                 for j in range(n):
-                    rho = Baker_Jayaram_2008(T[i], T[j])
+                    rho = self.get_correlation(T[i], T[j])
                     MoC [i,j] = rho
         
             SPa_avg_meanLn = (1/n) *sum(mu_lnSaTstar) # logarithmic mean of Sa,avg
@@ -280,7 +421,7 @@ class cs_master:
             
             rho=0
             for j in range(len(Tstar)):
-                rho_bj = Baker_Jayaram_2008(T, Tstar[j])
+                rho_bj = self.get_correlation(T, Tstar[j])
                 _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),[const.StdDev.TOTAL])
                 rho = rho_bj*sig1[0][0] + rho
         
@@ -297,6 +438,7 @@ class cs_master:
         # add target spectrum settings to self
         self.cond = cond
         self.useVar = useVar
+        self.corr_func = corr_func
         
         if cond == 0: # there is no conditioning period
             del self.Tstar
@@ -393,7 +535,7 @@ class cs_master:
                     var1 = sigma_lnSaT[i] ** 2
                     var2 = sigma_lnSaT[j] ** 2
                     # using Baker & Jayaram 2008 as correlation model
-                    sigma_Corr = Baker_Jayaram_2008(T_Tgt[i], T_Tgt[j]) * np.sqrt(var1 * var2)
+                    sigma_Corr = self.get_correlation(T_Tgt[i], T_Tgt[j]) * np.sqrt(var1 * var2)
                     
                     if self.cond == 1:
                         varTstar = sigma_lnSaTstar ** 2
@@ -636,6 +778,9 @@ class cs_master:
         -------
         Perform the ground motion selection.
         
+        References
+        ----------
+        
         Parameters
         ----------
         nGM : int, optional, the default is 30.
@@ -780,7 +925,7 @@ class cs_master:
         def penalize(devTotal,sampleSmall,mu_ln,sigma_ln,nGM,penalty):
             """
             This function is used to penalize the bad spectra
-            njit speeds up the computaton
+            njit speeds up the computation
             """
             for m in range(nGM):
                 devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(mu_ln + 3*sigma_ln))) * penalty
@@ -1496,58 +1641,6 @@ class cs_master:
                 self.Unscaled_rec_file = Downloaded_File_Rename
         else: 
             print('You have to use NGA_W2 database to use nga_download method.')
-
-def Baker_Jayaram_2008(T1, T2):
-    """
-    Details
-    -------
-    Compute the inter-period correlation for any two Sa(T) values
-
-    References
-    ----------
-    Baker JW, Jayaram N. Correlation of Spectral Acceleration Values from NGA Ground Motion Models.
-    Earthquake Spectra 2008; 24(1): 299–317. DOI: 10.1193/1.2857544.
-
-    Parameters
-    ----------
-        T1: int
-            First period
-        T2: int
-            Second period
-
-    Returns
-    -------
-    rho: int
-         Predicted correlation coefficient
-    """
-
-    t_min = min(T1, T2)
-    t_max = max(T1, T2)
-
-    c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
-
-    if t_max < 0.2:
-        c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
-    else:
-        c2 = 0
-
-    if t_max < 0.109:
-        c3 = c2
-    else:
-        c3 = c1
-
-    c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
-
-    if t_max <= 0.109:
-        rho = c2
-    elif t_min > 0.109:
-        rho = c1
-    elif t_max < 0.2:
-        rho = min(c2, c4)
-    else:
-        rho = c4
-
-    return rho
 
 def ContentFromZip(paths,zipName):
     """

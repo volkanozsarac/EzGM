@@ -1,18 +1,19 @@
 from EzGM import *
 startTime = time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = cs_master(Tstar = np.arange(0.4,2.4,0.2), gmpe = 'Boore_EtAl_2014', database = 'EXSIM_Duzce', pInfo = 1)
+cs = cs_master(Tstar = np.arange(0.1,1.1,0.1), gmpe = 'Akkar_EtAlRjb_2014', database = 'NGA_W2', pInfo = 1)
 
 # 2.) Create target spectrum
-cs.create(site_param = {'vs30': 620}, rup_param = {'rake': 0.0, 'mag': [6.5, 6.0]}, 
-          dist_param = {'rjb': [30, 50]}, Hcont=None, T_Tgt_range  = [0.1,4.5], 
-          im_Tstar = 0.25, epsilon = None, cond = 1, useVar = 1, outdir = 'Outputs')   
+cs.create(site_param = {'vs30': 400}, rup_param = {'rake': 0.0, 'mag': [7.54]}, 
+          dist_param = {'rjb': [10]}, Hcont=None, T_Tgt_range  = [0.05,2.5], 
+          im_Tstar = 2.288, epsilon = None, cond = 1, useVar = 1, corr_func= 'akkar', 
+          outdir = 'Outputs')   
 
 # Target spectrum can be plotted at this stage
 cs.plot(tgt = 1, sim = 0, rec = 0, save = 1, show = 1)
 
 # 3.) Select the ground motions
-cs.select(nGM=10, selection=2, Sa_def='RotD50', isScaled = 1, maxScale = 4,
+cs.select(nGM=25, selection=1, Sa_def='RotD50', isScaled = 1, maxScale = 2.5,
             Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, nTrials = 20,
             weights = [1,2,0.3], seedValue  = 0, nLoop = 2, penalty = 0, tol = 10)   
 

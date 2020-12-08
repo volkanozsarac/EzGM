@@ -161,7 +161,7 @@ class cs_master:
     
         """
     
-        def BakerJayaramCorrelationModel(T1, T2):
+        def BakerJayaramCorrelationModel(T1, T2, orth = 0):
             """
             Details
             -------
@@ -178,6 +178,9 @@ class cs_master:
                     First period
                 T2: int
                     Second period
+                orth: int, default is 0
+                    1 if the correlation coefficient is computed for the two
+                       orthogonal components
         
             Returns
             -------
@@ -211,9 +214,8 @@ class cs_master:
             else:
                 rho = c4
             
-            # for two orthogonal components case
-            # if orth:
-            #     rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
+            if orth:
+                rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
         
             return rho
         

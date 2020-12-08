@@ -109,30 +109,26 @@ class cs_master:
                 self.database['Sa_RotD50'] = Sa[:,np.argsort(Periods)]  
 
             self.database['Periods'] = Periods[np.argsort(Periods)]
-            
-        # Define the GMPE object and print the required input information
-        # More can be added here
-        if gmpe == 'Boore_Atkinson_2008':
-            self.bgmpe = gsim.boore_atkinson_2008.BooreAtkinson2008()
-        if gmpe == 'Boore_EtAl_2014':
-            self.bgmpe = gsim.boore_2014.BooreEtAl2014()
-        if gmpe == 'Akkar_EtAlRjb_2014':
-            self.bgmpe = gsim.akkar_2014.AkkarEtAlRjb2014()
-        if gmpe == 'AkkarCagnan2010':            
-            self.bgmpe = gsim.akkar_cagnan_2010.AkkarCagnan2010()
-        if gmpe == 'ChiouYoungs2008':
-            self.bgmpe = gsim.chiou_youngs_2008.ChiouYoungs2008()
-        if gmpe == 'CampbellBozorgnia2008':            
-            self.bgmpe = gsim.campbell_bozorgnia_2008.CampbellBozorgnia2008()
-        if gmpe == 'ChiouYoungs2014':
-            self.bgmpe = gsim.chiou_youngs_2014.ChiouYoungs2014()
-        if gmpe == 'CampbellBozorgnia2014':            
-            self.bgmpe = gsim.campbell_bozorgnia_2014.CampbellBozorgnia2014()
-        if gmpe == 'Idriss2014':
-            self.bgmpe = gsim.idriss_2014.Idriss2014()
-        if gmpe == 'AbrahamsonEtAl2014':
-            self.bgmpe = gsim.abrahamson_2014.AbrahamsonEtAl2014()
+
+        gmpe_handles = {
+            'Boore_Atkinson_2008': gsim.boore_atkinson_2008.BooreAtkinson2008,
+            'Boore_EtAl_2014': gsim.boore_2014.BooreEtAl2014,
+            'Akkar_EtAlRjb_2014': gsim.akkar_2014.AkkarEtAlRjb2014,
+            'AkkarCagnan2010': gsim.akkar_cagnan_2010.AkkarCagnan2010,
+            'ChiouYoungs2008': gsim.chiou_youngs_2008.ChiouYoungs2008,
+            'CampbellBozorgnia2008':  gsim.campbell_bozorgnia_2008.CampbellBozorgnia2008,
+            'ChiouYoungs2014': gsim.chiou_youngs_2014.ChiouYoungs2014,
+            'CampbellBozorgnia2014':gsim.campbell_bozorgnia_2014.CampbellBozorgnia2014,
+            'Idriss2014': gsim.idriss_2014.Idriss2014,
+            'AbrahamsonEtAl2014': gsim.abrahamson_2014.AbrahamsonEtAl2014
+        }
     
+        # Check for existing correlation function
+        if gmpe not in gmpe_handles:
+            raise ValueError('Not a valid gmpe')
+        else:
+            self.bgmpe = gmpe_handles[gmpe]()
+
         if pInfo == 1:  # print the selected gmpe info
             print('For the selected gmpe;')
             print('The mandatory input distance parameters are %s' % list(self.bgmpe.REQUIRES_DISTANCES))
@@ -140,142 +136,6 @@ class cs_master:
             print('The mandatory input site parameters are %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
             print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
-
-    def get_correlation(self, T1,T2):
-        """
-        Details
-        -------
-        Compute the inter-period correlation for any two Sa(T) values.
-        
-        Parameters
-        ----------
-            T1: int
-                First period
-            T2: int
-                Second period
-                
-        Returns
-        -------
-        rho: int
-             Predicted correlation coefficient
-    
-        """
-    
-        def BakerJayaramCorrelationModel(T1, T2, orth = 0):
-            """
-            Details
-            -------
-            Valid for T = 0.01-10sec
-        
-            References
-            ----------
-            Baker JW, Jayaram N. Correlation of Spectral Acceleration Values from NGA Ground Motion Models.
-            Earthquake Spectra 2008; 24(1): 299–317. DOI: 10.1193/1.2857544.
-        
-            Parameters
-            ----------
-                T1: int
-                    First period
-                T2: int
-                    Second period
-                orth: int, default is 0
-                    1 if the correlation coefficient is computed for the two
-                       orthogonal components
-        
-            Returns
-            -------
-            rho: int
-                 Predicted correlation coefficient
-            """
-        
-            t_min = min(T1, T2)
-            t_max = max(T1, T2)
-        
-            c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
-        
-            if t_max < 0.2:
-                c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
-            else:
-                c2 = 0
-        
-            if t_max < 0.109:
-                c3 = c2
-            else:
-                c3 = c1
-        
-            c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
-        
-            if t_max <= 0.109:
-                rho = c2
-            elif t_min > 0.109:
-                rho = c1
-            elif t_max < 0.2:
-                rho = min(c2, c4)
-            else:
-                rho = c4
-            
-            if orth:
-                rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
-        
-            return rho
-        
-        def AkkarCorrelationModel(T1, T2):
-            """
-            Details
-            -------
-            Valid for T = 0.01-4sec
-            
-            References
-            ----------
-            Akkar S., Sandikkaya MA., Ay BO., 2014, Compatible ground-motion
-            prediction equations for damping scaling factors and vertical to
-            horizontal spectral amplitude ratios for the broader Europe region,
-            Bull Earthquake Eng, 12, pp. 517-547.
-        
-            Parameters
-            ----------
-                T1: int
-                    First period
-                T2: int
-                    Second period
-        
-            :return float:
-                The predicted correlation coefficient.
-            """
-            periods = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1, 0.11, 0.12, 0.13, 0.14,
-                               0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
-                               0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
-                               0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
-                               1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
-        
-            if np.any([T1,T2] < periods[0]) or\
-                    np.any([T1,T2] > periods[-1]):
-                raise ValueError("contains values outside of the "
-                                 "range supported by the Akkar et al. (2014) "
-                                 "correlation model")
-            
-            if T1 == T2:
-                rho = 1.0
-            else:
-                with open(os.path.join('Meta_Data','akkar_coeff_table.npy'), 'rb') as f:
-                    coeff_table = np.load(f)
-                rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
-        
-            return rho
-    
-        correlation_function_handles = {
-            'baker_jayaram': BakerJayaramCorrelationModel,
-            'akkar': AkkarCorrelationModel,
-        }
-    
-        # Check for existing correlation function
-        if self.corr_func not in correlation_function_handles:
-            raise ValueError('Not a valid correlation function')
-        else:
-            rho = \
-                correlation_function_handles[self.corr_func](T1,T2)
-                
-        return rho
 
     def create(self, site_param = {'vs30': 520}, rup_param = {'rake': 0.0, 'mag': [7.2, 6.5]}, 
                dist_param = {'rjb': [20, 5]}, Hcont=[0.6,0.4], T_Tgt_range  = [0.01,4], 
@@ -332,6 +192,40 @@ class cs_master:
         -------
         None.                    
         """
+
+        def get_correlation(T1,T2):
+            """
+            Details
+            -------
+            Compute the inter-period correlation for any two Sa(T) values.
+            
+            Parameters
+            ----------
+                T1: int
+                    First period
+                T2: int
+                    Second period
+                    
+            Returns
+            -------
+            rho: int
+                 Predicted correlation coefficient
+        
+            """
+        
+            correlation_function_handles = {
+                'baker_jayaram': BakerJayaramCorrelationModel,
+                'akkar': AkkarCorrelationModel,
+            }
+        
+            # Check for existing correlation function
+            if self.corr_func not in correlation_function_handles:
+                raise ValueError('Not a valid correlation function')
+            else:
+                rho = \
+                    correlation_function_handles[self.corr_func](T1,T2)
+                    
+            return rho
         
         def Sa_avg(bgmpe,scenario,T):
             """
@@ -378,7 +272,7 @@ class cs_master:
                 sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0])**2)*(2/(1+ro_xy)))**0.5)
                 
                 for j in range(n):
-                    rho = self.get_correlation(T[i], T[j])
+                    rho = get_correlation(T[i], T[j])
                     MoC [i,j] = rho
         
             SPa_avg_meanLn = (1/n) *sum(mu_lnSaTstar) # logarithmic mean of Sa,avg
@@ -423,7 +317,7 @@ class cs_master:
             
             rho=0
             for j in range(len(Tstar)):
-                rho_bj = self.get_correlation(T, Tstar[j])
+                rho_bj = get_correlation(T, Tstar[j])
                 _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),[const.StdDev.TOTAL])
                 rho = rho_bj*sig1[0][0] + rho
         
@@ -537,7 +431,7 @@ class cs_master:
                     var1 = sigma_lnSaT[i] ** 2
                     var2 = sigma_lnSaT[j] ** 2
                     # using Baker & Jayaram 2008 as correlation model
-                    sigma_Corr = self.get_correlation(T_Tgt[i], T_Tgt[j]) * np.sqrt(var1 * var2)
+                    sigma_Corr = get_correlation(T_Tgt[i], T_Tgt[j]) * np.sqrt(var1 * var2)
                     
                     if self.cond == 1:
                         varTstar = sigma_lnSaTstar ** 2
@@ -880,6 +774,7 @@ class cs_master:
         recID = np.ones((self.nGM), dtype = int)*(-1)
         finalScaleFac = np.ones((self.nGM))
         sampleSmall = np.ones((self.nGM,sampleBig.shape[1]))
+        weights = np.array(weights)
         
         if self.cond == 1 and self.isScaled == 1:
             # Calculate IMLs for the sample
@@ -894,24 +789,20 @@ class cs_master:
         for i in range(self.nGM):
             err = np.zeros((nBig))
             scaleFac = np.ones((nBig))
-            
-            # From the sample of ground motions
-            for j in range(nBig):
-                
-                if self.isScaled == 1: # Calculate scaling facator
-                
-                    if self.cond == 1: # Calculate using conditioning IML
-                        scaleFac[j] = self.im_Tstar/sampleBig_imls[j]
-                        
-                    elif self.cond == 0: # Calculate using minimization of mean squared root error
-                        scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
 
-                # check if scaling factor is greater than the limit                
-                # check if this record have already been selected
-                if np.any(recID == j) or scaleFac[j] > self.maxScale:
-                    err[j] = 1000000
-                else: # calculate the error
-                    err[j] = np.sum((np.log(np.exp(sampleBig[j,:])*scaleFac[j]) - self.sim_spec[i,:])**2)
+             # Calculate the scaling factor
+            if self.isScaled == 1: 
+                # using conditioning IML
+                if self.cond == 1: 
+                    scaleFac = self.im_Tstar/sampleBig_imls
+                elif self.cond == 0:
+                    scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
+            else:
+                scaleFac = np.ones((nBig))
+            
+            mask = scaleFac > self.maxScale; idxs = np.where(~mask)[0]     
+            err[mask] = 1000000
+            err[~mask] = np.sum((np.log(np.exp(sampleBig[idxs,:])*scaleFac[~mask].reshape(len(scaleFac[~mask]),1)) - self.sim_spec[i,:])**2, axis = 1)
                     
             recID[i] = int(np.argsort(err)[0])    
             if err.min() >= 1000000:
@@ -925,67 +816,69 @@ class cs_master:
             # Save the selected spectra
             sampleSmall[i,:] = np.log(np.exp(sampleBig[recID[i],:])*finalScaleFac[i])
             
-        # Optimizing the selected subset of ground motions
-        # Currently only option is to use Greedy subset modification procedure
-        # This seems to be sufficient enough
+        # Apply Greedy subset modification procedure
+        # Use njit to speed up the optimization algorithm
         @njit
-        def penalize(devTotal,sampleSmall,mu_ln,sigma_ln,nGM,penalty):
-            """
-            This function is used to penalize the bad spectra
-            njit speeds up the computation
-            """
-            for m in range(nGM):
-                devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(mu_ln + 3*sigma_ln))) * penalty
-            return devTotal
+        def find_rec(sampleSmall,scaleFac,mu_ln,sigma_ln, recIDs):
+            
+            def mean_numba(a):
+        
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].mean())
+            
+                return np.array(res)
+
+            def std_numba(a):
+        
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].std())
+            
+                return np.array(res)     
+            
+            minDev = 100000
+            for j in range(nBig):                  
+                # Add to the sample the scaled spectra
+                temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:]
+                tempSample = np.concatenate((sampleSmall,temp + np.log(scaleFac[j])),axis=0)
+                devMean = mean_numba(tempSample) - mu_ln # Compute deviations from target
+                devSig = std_numba(tempSample) - sigma_ln
+                devTotal = weights[0] * np.sum(devMean*devMean) + weights[1] * np.sum(devSig*devSig)
+                
+                # Check if we exceed the scaling limit
+                if scaleFac[j] > maxScale or np.any(recIDs == j):
+                    devTotal = devTotal + 1000000
+                # Penalize bad spectra
+                elif penalty > 0:
+                    for m in range(nGM):
+                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m,:]) > np.exp(mu_ln + 3*sigma_ln))) * penalty
+            
+                # Should cause improvement and record should not be repeated
+                if devTotal < minDev:
+                    minID = j
+                    minDev = devTotal
+
+            return minID
 
         for k in range(self.nLoop): # Number of passes
             
             for i in range(self.nGM): # Loop for nGM
-                
-                minDev = 100000
-                scaleFac = np.ones((nBig))
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recID = np.delete(recID, i)
-                
-                # Try to add a new spectra to the subset list
-                for j in range(nBig):  
-                    
-                    # Calculate the scaling factor
-                    if self.isScaled == 1: 
-                        
-                        # using conditioning IML
-                        if self.cond == 1: 
-                            scaleFac[j] = self.im_Tstar/sampleBig_imls[j]
-                            
-                        # using minimization of mean squared root error
-                        elif self.cond == 0: 
-                            scaleFac[j] = np.sum(np.exp(sampleBig[j,:])*np.exp(self.sim_spec[i,:]))/np.sum(np.exp(sampleBig[j,:])**2)
-                    
-                    # Add to the sample the scaled spectra
-                    sampleSmall = np.concatenate((sampleSmall,sampleBig[j,:].reshape(1,sampleBig.shape[1]) + np.log(scaleFac[j])),axis=0)
 
-                    # Greedy subset modification procedure
-                    devMean = np.mean(sampleSmall,axis=0) - self.mu_ln # Compute deviations from target
-                    devSig = np.std(sampleSmall, axis=0) - self.sigma_ln
-                    devTotal = weights[0] * np.sum(devMean**2) + weights[1] * np.sum(devSig**2)
+                # Calculate the scaling factor
+                if self.isScaled == 1: 
+                    # using conditioning IML
+                    if self.cond == 1: 
+                        scaleFac = self.im_Tstar/sampleBig_imls
+                    elif self.cond == 0:
+                        scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
+                else:
+                    scaleFac = np.ones((nBig))
                     
-                    # Penalize bad spectra (set penalty to zero if this is not required)
-                    if self.penalty > 0:
-                        # for m in range(sampleSmall.shape[0]):
-                        #     devTotal += np.sum(np.abs(np.exp(sampleSmall[m,:]) > np.exp(self.mu_ln + 3*self.sigma_ln))) * penalty
-                        devTotal = penalize(devTotal,sampleSmall,self.mu_ln,self.sigma_ln,nGM,penalty)
-                    
-                    # Check if we exceed the scaling limit
-                    if scaleFac[j] > self.maxScale or np.any(np.array(recID) == j):
-                        devTotal += 1000000
-                    
-                    # Should cause improvement and record should not be repeated
-                    if devTotal < minDev:
-                        minID = j
-                        minDev = devTotal
-                    
-                    # Empty the slot to try a new candidate
-                    sampleSmall = np.delete(sampleSmall, -1, 0)
+                # Try to add a new spectra to the subset list
+                minID = find_rec(sampleSmall,scaleFac,self.mu_ln,self.sigma_ln,recID)
                 
                 # Add new element in the right slot
                 if self.isScaled == 1:
@@ -1648,6 +1541,108 @@ class cs_master:
                 self.Unscaled_rec_file = Downloaded_File_Rename
         else: 
             print('You have to use NGA_W2 database to use nga_download method.')
+
+def BakerJayaramCorrelationModel(T1, T2, orth = 0):
+    """
+    Details
+    -------
+    Valid for T = 0.01-10sec
+
+    References
+    ----------
+    Baker JW, Jayaram N. Correlation of Spectral Acceleration Values from NGA Ground Motion Models.
+    Earthquake Spectra 2008; 24(1): 299–317. DOI: 10.1193/1.2857544.
+
+    Parameters
+    ----------
+        T1: int
+            First period
+        T2: int
+            Second period
+        orth: int, default is 0
+            1 if the correlation coefficient is computed for the two
+               orthogonal components
+
+    Returns
+    -------
+    rho: int
+         Predicted correlation coefficient
+    """
+
+    t_min = min(T1, T2)
+    t_max = max(T1, T2)
+
+    c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
+
+    if t_max < 0.2:
+        c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
+    else:
+        c2 = 0
+
+    if t_max < 0.109:
+        c3 = c2
+    else:
+        c3 = c1
+
+    c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
+
+    if t_max <= 0.109:
+        rho = c2
+    elif t_min > 0.109:
+        rho = c1
+    elif t_max < 0.2:
+        rho = min(c2, c4)
+    else:
+        rho = c4
+    
+    if orth:
+        rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
+
+    return rho
+
+def AkkarCorrelationModel(T1, T2):
+    """
+    Details
+    -------
+    Valid for T = 0.01-4sec
+    
+    References
+    ----------
+    Akkar S., Sandikkaya MA., Ay BO., 2014, Compatible ground-motion
+    prediction equations for damping scaling factors and vertical to
+    horizontal spectral amplitude ratios for the broader Europe region,
+    Bull Earthquake Eng, 12, pp. 517-547.
+
+    Parameters
+    ----------
+        T1: int
+            First period
+        T2: int
+            Second period
+
+    :return float:
+        The predicted correlation coefficient.
+    """
+    periods = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1, 0.11, 0.12, 0.13, 0.14,
+                       0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
+                       0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
+                       0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
+                       1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
+
+    if np.any([T1,T2] < periods[0]) or\
+            np.any([T1,T2] > periods[-1]):
+        raise ValueError("contains values outside of the "
+                         "range supported by the Akkar et al. (2014) "
+                         "correlation model")
+    
+    if T1 == T2:
+        rho = 1.0
+    else:
+        with open(os.path.join('Meta_Data','akkar_coeff_table.npy'), 'rb') as f:
+            coeff_table = np.load(f)
+        rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
+
+    return rho
 
 def ContentFromZip(paths,zipName):
     """

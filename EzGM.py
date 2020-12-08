@@ -688,7 +688,7 @@ class cs_master:
                 fault      = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
     
-        if self.selection == 2: # SaKnown = Sa_g.m.
+        if self.selection == 2: # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1']*self.database['Sa_2'])
             elif 'RotD50': # SaKnown = Sa_RotD50.
@@ -780,6 +780,11 @@ class cs_master:
         
         References
         ----------
+        Jayaram, N., Lin, T., and Baker, J. W. (2011). 
+        A computationally efficient ground-motion selection algorithm for 
+        matching a target response spectrum mean and variance.
+        Earthquake Spectra, 27(3), 797-815.
+        
         
         Parameters
         ----------

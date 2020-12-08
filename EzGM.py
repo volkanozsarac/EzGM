@@ -795,6 +795,7 @@ class cs_master:
                 # using conditioning IML
                 if self.cond == 1: 
                     scaleFac = self.im_Tstar/sampleBig_imls
+                # using error minimization
                 elif self.cond == 0:
                     scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
             else:
@@ -872,6 +873,7 @@ class cs_master:
                     # using conditioning IML
                     if self.cond == 1: 
                         scaleFac = self.im_Tstar/sampleBig_imls
+                    # using error minimization
                     elif self.cond == 0:
                         scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
                 else:

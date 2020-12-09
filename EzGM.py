@@ -902,7 +902,7 @@ class cs_master:
             if medianErr < self.tol and stdErr < self.tol:
                 break
         print('Ground motion selection is finished.')
-        print('For T ∈ [%.2f - %2.f]'% (self.T[0],self.T[-1]))
+        print('For T ∈ [%.2f - %.2f]'% (self.T[0],self.T[-1]))
         print('Max error in median = %.2f %%' % medianErr)
         print('Max error in standard deviation = %.2f %%' % stdErr)
         if medianErr < self.tol and stdErr < self.tol:

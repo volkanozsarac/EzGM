@@ -1307,7 +1307,7 @@ class cs_master:
             """
             r = requests.get('https://chromedriver.chromium.org/')
             a = r.text
-            start = a.find('Latest stable release:')
+            start = a.find('Latest stable')
             text = a.replace(a[0:start],'')
             start = text.find('path=')      
 

@@ -15,7 +15,7 @@ cs.plot(tgt = 1, sim = 0, rec = 0, save = 1, show = 1)
 # 3.) Select the ground motions
 cs.select(nGM = 25, selection = 1, Sa_def = 'RotD50', isScaled = 1, maxScale = 2.5,
             Mw_lim = None, Vs30_lim = None, Rjb_lim = None, fault_lim = None, nTrials = 20,
-            weights = [1,2,0.3], seedValue  = 0, nLoop = 2, penalty = 1, tol = 10)   
+            weights = [1,2,0.3], seedValue  = 0, nLoop = 2, penalty = 1, tol = 10)
 
 # The simulated spectra and spectra of selected records can be plotted at this stage
 cs.plot(tgt = 0, sim = 1, rec = 1, save = 1, show = 1)
@@ -24,8 +24,8 @@ cs.plot(tgt = 0, sim = 1, rec = 1, save = 1, show = 1)
 # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method
 cs.nga_download(username = 'example_username', pwd = 'example_password123456')
 
-# 5.) If you have records already inside recs_f\database.zip\database or 
-# downloaded records for database = NGA_W2 case, write whatever you want, 
+# 5.) If you have records already inside recs_f\database.zip\database or
+# downloaded records for database = NGA_W2 case, write whatever you want,
 # the object itself, selected and scaled time histories
 cs.write(obj = 1, recs = 1, recs_f = os.path.join(os.path.split(os.getcwd())[0],'Records'))
 

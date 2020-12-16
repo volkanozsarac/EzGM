@@ -10,7 +10,7 @@ The example is provided for CS(AvgSa) based ground motion record selection with 
 Moreover, other methods inside EzGM can be used to process a ground motion record (filter and read NGA records e.g.) and to obtain different intensity measures (see EzGM.gm_parameters). 
 
 # OQproc
-Visualizition toolbox for results of hazard and disaggregation analysis in OpenQuake.
+Toolbox to visualize of outputs of analysis in OpenQuake.
 
 This script can be used to prepare input required for the CS-based record selection
 

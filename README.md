@@ -9,6 +9,11 @@ The main advantage over existing MATLAB codes is that it makes use of Openquake 
 The example is provided for CS(AvgSa) based ground motion record selection with two hazard scenarios.
 Moreover, other methods inside EzGM can be used to process a ground motion record (filter and read NGA records e.g.) and to obtain different intensity measures (see EzGM.gm_parameters). 
 
+# OQproc
+Visualizition toolbox for results of hazard and disaggregation analysis in OpenQuake.
+
+This script can be used to prepare input required for the CS-based record selection
+
 ## Required Packages
 sys,
 os,

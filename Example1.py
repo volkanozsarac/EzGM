@@ -1,7 +1,7 @@
 from EzGM import *
 startTime = time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = cs_master(Tstar = np.arange(0.1,1.1,0.1), gmpe = 'Akkar_EtAlRjb_2014', database = 'NGA_W2', pInfo = 1)
+cs = cs_master(Tstar = 1.0, gmpe = 'Akkar_EtAlRjb_2014', database = 'NGA_W2', pInfo = 1)
 
 # 2.) Create target spectrum
 cs.create(site_param = {'vs30': 400}, rup_param = {'rake': 0.0, 'mag': [7.54]}, 
@@ -27,7 +27,7 @@ cs.nga_download(username = 'example_username', pwd = 'example_password123456')
 # 5.) If you have records already inside recs_f\database.zip\database or
 # downloaded records for database = NGA_W2 case, write whatever you want,
 # the object itself, selected and scaled time histories
-cs.write(obj = 1, recs = 1, recs_f = os.path.join(os.path.split(os.getcwd())[0],'Records'))
+cs.write(obj = 1, recs = 1, recs_f = '')
 
 # Calculate the total time passed
 RunTime(startTime)

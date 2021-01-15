@@ -1,3 +1,7 @@
+####################################################
+# Conditional Spectrum (CS) Based Record Selection #
+####################################################
+
 from EzGM import *
 startTime = time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.

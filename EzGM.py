@@ -16,13 +16,8 @@
 """
 
 # Import python libraries
-import sys
-import os
-import shutil
-import zipfile
+import sys, errno, os, stat, shutil, zipfile, pickle, copy
 from time import gmtime, time, sleep
-import pickle
-import copy
 from numba import njit
 import numpy as np
 import numpy.matlib
@@ -65,8 +60,8 @@ class cs_master:
             GMPE model (see OpenQuake library). 
             The default is 'Boore_EtAl_2014'.
         database : str, optional
-            database to use: NGA_W2, EXSIM_Duzce, etc.
-            The default is NGA_W1.        
+            database to use: NGA_W2 or EXSIM_Duzce
+            The default is NGA_W2.        
         pInfo    : int, optional
             flag to print required input for the gmpe which is going to be used. 
             (0: no, 1:yes)
@@ -565,9 +560,8 @@ class cs_master:
         """
 
         if self.selection == 1: # SaKnown = Sa_arb
-
+        
             if self.database['Name'] == "NGA_W2":
-
                 SaKnown    = np.append(self.database['Sa_1'],self.database['Sa_2'], axis=0)
                 soil_Vs30  = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
                 Mw         = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
@@ -584,7 +578,7 @@ class cs_master:
                 fault      = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
 
-        if self.selection == 2: # SaKnown = Sa_g.m. or RotD50
+        elif self.selection == 2: # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1']*self.database['Sa_2'])
             elif 'RotD50': # SaKnown = Sa_RotD50.
@@ -592,6 +586,10 @@ class cs_master:
             else:
                 print('Unexpected Sa definition, exiting...')
                 sys.exit()
+
+        else:
+            print('Selection can only be performed for one or two components at the moment, exiting...')
+            sys.exit()
 
             soil_Vs30  = self.database['soil_Vs30']
             Mw         = self.database['magnitude']
@@ -1875,7 +1873,15 @@ def create_outdir(outdir_path):
     -------
     None.
     """
-    shutil.rmtree(outdir_path, ignore_errors=True)
+    def handleRemoveReadonly(func, path, exc):
+      excvalue = exc[1]
+      if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+          os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
+          func(path)
+      else:
+          raise
+    if os.path.exists(outdir_path):
+        shutil.rmtree(outdir_path, ignore_errors=False, onerror=handleRemoveReadonly)
     os.makedirs(outdir_path)
 
 def RunTime(startTime):
@@ -2472,19 +2478,20 @@ class tbdy_2018:
     This class is used to
         1) Create target spectrum based on TBDY2018
         2) Selecting and scaling suitable ground motion sets for target spectrum in accordance with TBDY2018
+            - Currently, only supports the record selection from NGA_W2 record database
     """
 
     def __init__(self, database='NGA_W2', outdir='Outputs'):
         """
         Details
         -------
-        Loads the database and create target spectrum
+        Loads the record database to use
 
         Parameters
         ----------
         database : str, optional
-            database to use: NGA_W2, EXSIM_Duzce, etc.
-            The default is NGA_W1.
+            database to use: e.g. NGA_W2.
+            The default is NGA_W2.
 
         Returns
         -------
@@ -2553,7 +2560,7 @@ class tbdy_2018:
         """
         Details
         -------
-        Search the database and does the filtering.
+        Searches the record database and does the filtering.
 
         Parameters
         ----------
@@ -2582,10 +2589,10 @@ class tbdy_2018:
             database will be saved, for other databases this variable is None.
         """
 
-        if self.selection == 1:  # SaKnown = Sa_arb
 
-            if self.database['Name'] == "NGA_W2":
-
+        if self.database['Name'] == "NGA_W2":
+            
+            if self.selection == 1:  # SaKnown = Sa_arb
                 SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
                 soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
                 Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
@@ -2593,27 +2600,25 @@ class tbdy_2018:
                 fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
                 Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
                 NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
+                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
 
-            elif self.database['Name'].startswith("EXSIM"):
-                SaKnown = self.database['Sa_1']
+            elif self.selection == 2:  # SaKnown = (Sa_1**2+Sa_2**2)**0.5
+                SaKnown = np.sqrt(self.database['Sa_1']**2 + self.database['Sa_2']**2)
                 soil_Vs30 = self.database['soil_Vs30']
                 Mw = self.database['magnitude']
                 Rjb = self.database['Rjb']
                 fault = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
+                Filename_2 = self.database['Filename_2']
+                NGA_num = self.database['NGA_num']
+                eq_ID = self.database['EQID']            
 
-        elif self.selection == 2:  # SaKnown = root of sum of the squared spectra
-            SaKnown = np.sqrt(self.database['Sa_1']**2 + self.database['Sa_2']**2)
-            soil_Vs30 = self.database['soil_Vs30']
-            Mw = self.database['magnitude']
-            Rjb = self.database['Rjb']
-            fault = self.database['mechanism']
-            Filename_1 = self.database['Filename_1']
-            Filename_2 = self.database['Filename_2']
-            NGA_num = self.database['NGA_num']
+            else:
+                print('Selection can only be performed for one or two components at the moment, exiting...')
+                sys.exit()
 
         else:
-            print('Selection can be performed for one or two components, exiting...')
+            print('Selection can only be performed using NGA_W2 database at the moment, exiting...')
             sys.exit()
 
         perKnown = self.database['Periods']
@@ -2654,6 +2659,7 @@ class tbdy_2018:
         Mw = Mw[Allowed]
         Rjb = Rjb[Allowed]
         fault = fault[Allowed]
+        eq_ID = eq_ID[Allowed]
         Filename_1 = Filename_1[Allowed]
 
         if self.selection == 1:
@@ -2681,9 +2687,9 @@ class tbdy_2018:
             print('NaNs found in input response spectra')
             sys.exit()
 
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num
+        return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
-    def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=7, selection=1, Tp=1, 
+    def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1, 
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1):
         """
         Details
@@ -2742,27 +2748,32 @@ class tbdy_2018:
         self.fault_lim = fault_lim
         self.Tp = Tp
 
-        # Exsim provides a single gm component
-        if self.database['Name'].startswith("EXSIM"):
-            print('Warning! Selection = 1 for this database')
-            self.selection = 1
-
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num = self.search_database()
+        sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
         target_spec = self.get_Sae(self.T, SD1, SDS, PGA)
         if selection == 2: target_spec *= 1.3
         nBig = sampleBig.shape[0]
         
         # Find best matches to the target spectrum from ground-motion database
         mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig)**2).mean(axis=1)
-        recID = np.argsort(mse)[:self.nGM]
-        sampleSmall = sampleBig[recID.tolist(),:]
+        recID_sorted = np.argsort(mse)
+        recIDs = np.ones((self.nGM), dtype = int)*(-1)
+        eqIDs = np.ones((self.nGM), dtype = int)*(-1)
+        idx1 = 0; idx2 = 0
+        while idx1 < self.nGM: # not more than 3 of the records should be from the same event
+            tmp1 = recID_sorted[idx2]; idx2 += 1
+            tmp2 = eq_ID[tmp1]
+            recIDs[idx1] = tmp1; eqIDs[idx1] = tmp2
+            if np.sum(eqIDs == tmp2) <= 3:
+                idx1 += 1
+            
+        sampleSmall = sampleBig[recIDs.tolist(),:]
         scaleFac = np.max(target_spec/sampleSmall.mean(axis=0))
  
         # Apply Greedy subset modification procedure
         # Use njit to speed up the optimization algorithm
         @njit
-        def find_rec(sampleSmall, scaleFac, target_spec, recIDs):
+        def find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs):
 
             def mean_numba(a):
 
@@ -2773,7 +2784,9 @@ class tbdy_2018:
                 return np.array(res)
 
             for j in range(nBig):
-                if not np.any(recIDs == j):
+                tmp = eq_ID[j]
+                
+                if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
                     temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:]
                     tempSample = np.concatenate((sampleSmall,temp),axis=0)
@@ -2789,31 +2802,34 @@ class tbdy_2018:
         if opt == 1:
             for i in range(self.nGM): # Loop for nGM
                 sampleSmall = np.delete(sampleSmall, i, 0)
-                recID = np.delete(recID, i)
+                recIDs = np.delete(recIDs, i)
+                eqIDs  = np.delete(eqIDs, i)
     
                 # Try to add a new spectra to the subset list
-                minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recID)
+                minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs)
     
                 # Add new element in the right slot
                 sampleSmall = np.concatenate((sampleSmall[:i,:], sampleBig[minID,:].reshape(1,sampleBig.shape[1]), sampleSmall[i:,:]),axis=0)
-                recID = np.concatenate((recID[:i],np.array([minID]),recID[i:]))
+                recIDs = np.concatenate((recIDs[:i],np.array([minID]),recIDs[i:]))
+                eqIDs = np.concatenate((eqIDs[:i],np.array([eq_ID[minID]]),eqIDs[i:]))
 
-        recID = recID.tolist()
+        recIDs = recIDs.tolist()
         # Add selected record information to self
         self.rec_scale = scaleFac
-        self.rec_Vs30 = Vs30[recID]
-        self.rec_Rjb = Rjb[recID]
-        self.rec_Mw = Mw[recID]
-        self.rec_fault = fault[recID]
-        self.rec_h1 = Filename_1[recID]
+        self.rec_Vs30 = Vs30[recIDs]
+        self.rec_Rjb = Rjb[recIDs]
+        self.rec_Mw = Mw[recIDs]
+        self.rec_fault = fault[recIDs]
+        self.rec_eqID = eq_ID[recIDs]
+        self.rec_h1 = Filename_1[recIDs]
 
         if self.selection == 1:
             self.rec_h2 = None
         elif self.selection == 2:
-            self.rec_h2 = Filename_2[recID]
+            self.rec_h2 = Filename_2[recIDs]
 
         if self.database['Name'] == 'NGA_W2':
-            self.rec_rsn = NGA_num[recID]
+            self.rec_rsn = NGA_num[recIDs]
         else:
             self.rec_rsn = None
             
@@ -2911,7 +2927,8 @@ class tbdy_2018:
         obj : int, optional
             flag to write the object into the pickle file. The default is 0.
         recs : int, optional
-            flag to write the selected and scaled time histories. 
+            flag to write the selected records
+            along with scale factor and dt.
             The default is 1.
         recs_f : str, optional
             This is option could be used if the user already has all the 
@@ -2941,9 +2958,8 @@ class tbdy_2018:
 
             n = len(self.rec_h1)
             path_dts = os.path.join(self.outdir,'GMR_dts.txt')
-            path_durs = os.path.join(self.outdir,'GMR_durs.txt')
+            path_SF = os.path.join(self.outdir,'GMR_SF.txt')
             dts = np.zeros((n))
-            durs = np.zeros((n))
 
             if not self.rec_h2 is None:
                 path_H1 = os.path.join(self.outdir,'GMR_H1_names.txt')
@@ -2954,9 +2970,7 @@ class tbdy_2018:
                 path_H1 = os.path.join(self.outdir,'GMR_names.txt')
 
             h1s = open(path_H1, 'w')
-
             if self.database['Name'] == 'NGA_W2':
-
                 if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
                     rec_paths = self.rec_h1
                 else:
@@ -2966,13 +2980,10 @@ class tbdy_2018:
                 # Save the H1 gm components
                 for i in range(n):
                     dts[i], _, _, t, inp_acc = ReadNGA(inFilename = self.rec_h1[i],content = contents[i])
-                    durs[i] = t[-1]
-                    gmr_file = self.rec_h1[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale)+'.txt'
+                    gmr_file = self.rec_h1[i].replace('/','_')[:-4]+'.txt'
                     path = os.path.join(self.outdir,gmr_file)
-                    acc_Sc = self.rec_scale * inp_acc
-                    np.savetxt(path, acc_Sc, fmt='%1.4e')
+                    np.savetxt(path, inp_acc, fmt='%1.4e')
                     h1s.write(gmr_file+'\n')
-
                 # Save the H2 gm components
                 if not self.rec_h2 is None:
 
@@ -2984,32 +2995,16 @@ class tbdy_2018:
                     contents = ContentFromZip(rec_paths,zipName)
                     for i in range(n):
                         _, _, _, _, inp_acc = ReadNGA(inFilename = self.rec_h2[i],content = contents[i])
-                        gmr_file = self.rec_h2[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale)+'.txt'
+                        gmr_file = self.rec_h2[i].replace('/','_')[:-4]+'.txt'
                         path = os.path.join(self.outdir,gmr_file)
-                        acc_Sc = self.rec_scale * inp_acc
-                        np.savetxt(path, acc_Sc, fmt='%1.4e')
+                        np.savetxt(path, inp_acc, fmt='%1.4e')
                         h2s.write(gmr_file+'\n')
-
-                    h2s.close()
-
-            if self.database['Name'].startswith('EXSIM'):
-                sf = 1/981 # cm/s**2 to g
-                rec_paths = [self.database['Name']+'/'+self.rec_h1[i].split('_acc')[0]+'/'
-                             + self.rec_h1[i] for i in range(n)]
-                contents = ContentFromZip(rec_paths,zipName)
-
-                for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadEXSIM(inFilename = self.rec_h1[i],content = contents[i])
-                    durs[i] = t[-1]
-                    gmr_file = self.rec_h1[i][:-4]+'_SF_'+"{:.3f}".format(self.rec_scale)+'.txt'
-                    path = os.path.join(self.outdir,gmr_file)
-                    acc_Sc = self.rec_scale * inp_acc * sf
-                    np.savetxt(path, acc_Sc, fmt='%1.4e')
-                    h1s.write(gmr_file+'\n')
-
-            h1s.close()
+            
+            # Close the files
+            h1s.close()                        
+            if not self.rec_h2 is None: h2s.close()
             np.savetxt(path_dts,dts, fmt='%.5f')
-            np.savetxt(path_durs,durs, fmt='%.5f')
+            np.savetxt(path_SF,np.array([self.rec_scale]), fmt='%.5f')
 
         if obj == 1:
             # save some info as pickle obj

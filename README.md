@@ -1,12 +1,11 @@
 # EzGM
 Toolbox for ground motion record selection and processing
 
-This software performs CS(AvgSa) or CS(Sa) based record selection
+This software performs record selection based on TBDY2018 (Turkish Building Code), CS(AvgSa) and CS(Sa)
 for the given metadata. If user desires to get formatted records,
 s/he should place the available records from metadata file into the Records.zip with the name of database.
 e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the records directly by inserting account username and password into the associated method.
-The main advantage over existing MATLAB codes is that it makes use of Openquake hazardlib, thus any gmpe available there could directly be used.
-The example is provided for CS(AvgSa) based ground motion record selection with two hazard scenarios.
+The main advantage over existing MATLAB codes is that it makes use of Openquake hazardlib, thus any available gmpe available can directly be used.
 Moreover, other methods inside EzGM can be used to process a ground motion record (filter and read NGA records e.g.) and to obtain different intensity measures (see EzGM.gm_parameters). 
 
 # OQproc
@@ -18,6 +17,8 @@ This script can be used to prepare input required for the CS-based record select
 sys,
 os,
 shutil,
+errno,
+stat,
 zipfile,
 time,
 pickle,

@@ -7,7 +7,7 @@
 |    Version: 1.0                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
-|    Update on 14/01/2020                                               |
+|    Updated on 14/01/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -659,6 +659,12 @@ class cs_master:
         sampleBig = SaKnown[:,recPer]
         if np.any(np.isnan(sampleBig)):
             print('NaNs found in input response spectra')
+            sys.exit()
+
+        if self.nGM > len(NGA_num):
+            print('There are not enough records which satisfy',
+            'the given record selection criteria...',
+            'Please use broaden your selection criteria...')
             sys.exit()
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num
@@ -2687,6 +2693,12 @@ class tbdy_2018:
             print('NaNs found in input response spectra')
             sys.exit()
 
+        if self.nGM > len(NGA_num):
+            print('There are not enough records which satisfy',
+            'the given record selection criteria...',
+            'Please use broaden your selection criteria...')
+            sys.exit()
+
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
     def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1, 
@@ -2697,6 +2709,17 @@ class tbdy_2018:
         Select the suitable ground motion set
         in accordance with TBDY 2018.
         
+        Rule 1: Mean of selected records should remain above the lower bound target spectra.
+            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
+            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
+
+        Rule 2: 
+            No more than 3 records can be selected from the same event! In other words,
+            rec_eqID cannot be the same for more than 3 of the selected records.      
+
+        Rule 3: 
+            At least 11 records (or pairs) must be selected.
+
         Parameters
         ----------
         SD1 : float, optional
@@ -2710,7 +2733,7 @@ class tbdy_2018:
             The default is 0.913.
         nGM : int, optional
             Number of records to be selected. 
-            The default is 7.
+            The default is 11.
         selection : int, optional
             Number of ground motion components to select. 
             The default is 1.
@@ -2750,8 +2773,15 @@ class tbdy_2018:
 
         # Search the database and filter
         sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
+        
+        # Determine the lower bound spectra
         target_spec = self.get_Sae(self.T, SD1, SDS, PGA)
-        if selection == 2: target_spec *= 1.3
+        if selection == 1:
+            target_spec = 1.0*target_spec
+        elif selection == 2: 
+            target_spec = 1.3*target_spec
+        
+        # Sample size of the filtered database
         nBig = sampleBig.shape[0]
         
         # Find best matches to the target spectrum from ground-motion database
@@ -2766,14 +2796,15 @@ class tbdy_2018:
             recIDs[idx1] = tmp1; eqIDs[idx1] = tmp2
             if np.sum(eqIDs == tmp2) <= 3:
                 idx1 += 1
-            
+        
+        # Initial selection results - based on MSE
         sampleSmall = sampleBig[recIDs.tolist(),:]
         scaleFac = np.max(target_spec/sampleSmall.mean(axis=0))
  
-        # Apply Greedy subset modification procedure
+        # Apply Greedy subset modification procedure to improve selection
         # Use njit to speed up the optimization algorithm
         @njit
-        def find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs):
+        def find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID):
 
             def mean_numba(a):
 
@@ -2785,34 +2816,34 @@ class tbdy_2018:
 
             for j in range(nBig):
                 tmp = eq_ID[j]
-                
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
                     temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:]
-                    tempSample = np.concatenate((sampleSmall,temp),axis=0)
+                    tempSample = np.concatenate((sampleSmall,temp),axis=0) # add the trial spectra
                     tempScale = np.max(target_spec/mean_numba(tempSample)) # Compute deviations from target
-
+                    
                     # Should cause improvement and record should not be repeated
                     if abs(tempScale-1) <= abs(scaleFac-1):
                         minID = j
                         scaleFac = tempScale
 
             return minID, scaleFac
-        
+
         if opt == 1:
             for i in range(self.nGM): # Loop for nGM
+                minID = recIDs[i]
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recIDs = np.delete(recIDs, i)
                 eqIDs  = np.delete(eqIDs, i)
     
                 # Try to add a new spectra to the subset list
-                minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs)
+                minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID)
     
                 # Add new element in the right slot
                 sampleSmall = np.concatenate((sampleSmall[:i,:], sampleBig[minID,:].reshape(1,sampleBig.shape[1]), sampleSmall[i:,:]),axis=0)
                 recIDs = np.concatenate((recIDs[:i],np.array([minID]),recIDs[i:]))
                 eqIDs = np.concatenate((eqIDs[:i],np.array([eq_ID[minID]]),eqIDs[i:]))
-
+            
         recIDs = recIDs.tolist()
         # Add selected record information to self
         self.rec_scale = scaleFac
@@ -2846,11 +2877,14 @@ class tbdy_2018:
             Sa_1 = self.database['Sa_1'][rec_idxs,:]
             Sa_2 = self.database['Sa_2'][rec_idxs,:]
             rec_spec = (Sa_1**2 + Sa_2**2)**0.5
-            
+        
+        # Save the results for whole spectral range
         self.rec_spec = rec_spec
         self.T = self.database['Periods']
-        if selection == 1:  self.target = self.get_Sae(self.T, SD1, SDS, PGA)
-        elif selection == 2:  self.target = self.get_Sae(self.T, SD1, SDS, PGA)*1.3
+        if selection == 1:  
+            self.target = self.get_Sae(self.T, SD1, SDS, PGA)
+        elif selection == 2:  
+            self.target = self.get_Sae(self.T, SD1, SDS, PGA)*1.3
 
     def plot(self, save = 0, show = 1):
         """

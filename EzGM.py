@@ -2498,6 +2498,9 @@ class tbdy_2018:
         database : str, optional
             database to use: e.g. NGA_W2.
             The default is NGA_W2.
+        outdir : str, optional
+            output directory
+            The default is 'Outputs'
 
         Returns
         -------
@@ -2678,21 +2681,22 @@ class tbdy_2018:
         else:
             NGA_num = None
 
-        self.T = perKnown[(perKnown >= 0.2*self.Tp)*(perKnown <= 1.5*self.Tp)]
-        # Arrange the available spectra in a usable format and check for invalid input
         # Match periods (known periods and periods for error computations)
+        self.T = perKnown[(perKnown >= 0.2*self.Tp)*(perKnown <= 1.5*self.Tp)]
+        
+        # Arrange the available spectra for error computations
         recPer = []
         for i in range(len(self.T)):
-            recPer.append(np.where(perKnown == self.T[i])[0][0])
-
-        # Check for invalid input
+            recPer.append(np.where(perKnown == self.T[i])[0][0])        
         sampleBig = SaKnown[:, recPer]
 
-        # Processing available spectra
+        # Check for invalid input
         if np.any(np.isnan(sampleBig)):
-            print('NaNs found in input response spectra')
+            print('NaNs found in input response spectra.',
+                  'Fix the response spectra of database.')
             sys.exit()
-
+            
+        # Check if enough records are available
         if self.nGM > len(NGA_num):
             print('There are not enough records which satisfy',
             'the given record selection criteria...',
@@ -2711,7 +2715,7 @@ class tbdy_2018:
         
         Rule 1: Mean of selected records should remain above the lower bound target spectra.
             For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
-            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
+            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 1.3 * SaTarget(0.2Tp-1.5Tp) 
 
         Rule 2: 
             No more than 3 records can be selected from the same event! In other words,
@@ -2754,14 +2758,14 @@ class tbdy_2018:
             3 for reverse fault
         opt : int, optional
             Applies greedy optimization if equal to 1. 
-            The record set selected such that scaling factor is very close to 1.
+            The record set selected such that scaling factor is closer to 1.
             The default is 1.
 
         Returns
         -------
 
         """
-
+        
         # Add selection settings to self
         self.nGM = nGM
         self.selection = selection
@@ -2818,8 +2822,8 @@ class tbdy_2018:
                 tmp = eq_ID[j]
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
-                    temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:]
-                    tempSample = np.concatenate((sampleSmall,temp),axis=0) # add the trial spectra
+                    temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:] # get the trial spectra
+                    tempSample = np.concatenate((sampleSmall,temp),axis=0) # add the trial spectra to subset list
                     tempScale = np.max(target_spec/mean_numba(tempSample)) # Compute deviations from target
                     
                     # Should cause improvement and record should not be repeated

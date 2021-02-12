@@ -7,7 +7,7 @@
 |    Version: 1.0                                                       |
 |                                                                       |
 |    Created on 06/11/2020                                              |
-|    Updated on 14/01/2020                                              |
+|    Updated on 12/02/2020                                              |
 |    Author: Volkan Ozsarac                                             |
 |    Affiliation: University School for Advanced Studies IUSS Pavia     |
 |    Earthquake Engineering PhD Candidate                               |
@@ -33,6 +33,7 @@ from openquake.hazardlib import gsim, imt, const
 from selenium import webdriver
 import requests
 
+
 class cs:
     """
     This class is used to
@@ -45,7 +46,7 @@ class cs:
         3) Scaling and processing of selected ground motion records
     """
 
-    def __init__(self, Tstar = 0.5, gmpe = 'Boore_EtAl_2014', database = 'NGA_W2', pInfo = 1):
+    def __init__(self, Tstar=0.5, gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1):
         """
         Details
         -------
@@ -73,35 +74,38 @@ class cs:
         """
 
         # add Tstar to self
-        if isinstance(Tstar,int) or isinstance(Tstar,float):
+        if isinstance(Tstar, int) or isinstance(Tstar, float):
             self.Tstar = np.array([Tstar])
-        elif isinstance(Tstar,numpy.ndarray):
+        elif isinstance(Tstar, numpy.ndarray):
             self.Tstar = Tstar
 
         # Add the input the ground motion database to use
-        matfile = os.path.join('Meta_Data',database)
+        matfile = os.path.join('Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
 
         # check if AvgSa or Sa is used as IM, 
         # then in case of Sa(T*) add T* and Sa(T*) if not present
         if not self.Tstar[0] in self.database['Periods'] and len(self.Tstar) == 1:
-            f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'],axis=1)
-            Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)
+            f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'], axis=1)
+            Sa_int = f(self.Tstar[0])
+            Sa_int.shape = (len(Sa_int), 1)
             Sa = np.append(self.database['Sa_1'], Sa_int, axis=1)
-            Periods = np.append(self.database['Periods'],self.Tstar[0])
-            self.database['Sa_1'] = Sa[:,np.argsort(Periods)]
+            Periods = np.append(self.database['Periods'], self.Tstar[0])
+            self.database['Sa_1'] = Sa[:, np.argsort(Periods)]
 
             if database.startswith("NGA"):
-                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'],axis=1)
-                Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'], axis=1)
+                Sa_int = f(self.Tstar[0])
+                Sa_int.shape = (len(Sa_int), 1)
                 Sa = np.append(self.database['Sa_2'], Sa_int, axis=1)
-                self.database['Sa_2'] = Sa[:,np.argsort(Periods)]
+                self.database['Sa_2'] = Sa[:, np.argsort(Periods)]
 
-                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'],axis=1)
-                Sa_int = f(self.Tstar[0]); Sa_int.shape = (len(Sa_int),1)
+                f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'], axis=1)
+                Sa_int = f(self.Tstar[0])
+                Sa_int.shape = (len(Sa_int), 1)
                 Sa = np.append(self.database['Sa_RotD50'], Sa_int, axis=1)
-                self.database['Sa_RotD50'] = Sa[:,np.argsort(Periods)]
+                self.database['Sa_RotD50'] = Sa[:, np.argsort(Periods)]
 
             self.database['Periods'] = Periods[np.argsort(Periods)]
 
@@ -111,9 +115,9 @@ class cs:
             'Akkar_EtAlRjb_2014': gsim.akkar_2014.AkkarEtAlRjb2014,
             'AkkarCagnan2010': gsim.akkar_cagnan_2010.AkkarCagnan2010,
             'ChiouYoungs2008': gsim.chiou_youngs_2008.ChiouYoungs2008,
-            'CampbellBozorgnia2008':  gsim.campbell_bozorgnia_2008.CampbellBozorgnia2008,
+            'CampbellBozorgnia2008': gsim.campbell_bozorgnia_2008.CampbellBozorgnia2008,
             'ChiouYoungs2014': gsim.chiou_youngs_2014.ChiouYoungs2014,
-            'CampbellBozorgnia2014':gsim.campbell_bozorgnia_2014.CampbellBozorgnia2014,
+            'CampbellBozorgnia2014': gsim.campbell_bozorgnia_2014.CampbellBozorgnia2014,
             'Idriss2014': gsim.idriss_2014.Idriss2014,
             'AbrahamsonEtAl2014': gsim.abrahamson_2014.AbrahamsonEtAl2014
         }
@@ -132,10 +136,10 @@ class cs:
             print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
-    def create(self, site_param = {'vs30': 520}, rup_param = {'rake': 0.0, 'mag': [7.2, 6.5]},
-               dist_param = {'rjb': [20, 5]}, Hcont=[0.6,0.4], T_Tgt_range  = [0.01,4],
-               im_Tstar = 1.0, epsilon = None, cond = 1, useVar = 1, corr_func= 'baker_jayaram',
-               outdir = 'Outputs'):
+    def create(self, site_param={'vs30': 520}, rup_param={'rake': 0.0, 'mag': [7.2, 6.5]},
+               dist_param={'rjb': [20, 5]}, Hcont=[0.6, 0.4], T_Tgt_range=[0.01, 4],
+               im_Tstar=1.0, epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram',
+               outdir='Outputs'):
         """
         Details
         -------
@@ -188,7 +192,7 @@ class cs:
         None.                    
         """
 
-        def get_correlation(T1,T2):
+        def get_correlation(T1, T2):
             """
             Details
             -------
@@ -218,11 +222,11 @@ class cs:
                 raise ValueError('Not a valid correlation function')
             else:
                 rho = \
-                    correlation_function_handles[self.corr_func](T1,T2)
+                    correlation_function_handles[self.corr_func](T1, T2)
 
             return rho
 
-        def Sa_avg(bgmpe,scenario,T):
+        def Sa_avg(bgmpe, scenario, T):
             """
             Details
             -------
@@ -255,37 +259,40 @@ class cs:
             n = len(T);
             mu_lnSaTstar = np.zeros(n)
             sigma_lnSaTstar = np.zeros(n)
-            MoC = np.zeros((n,n))
+            MoC = np.zeros((n, n))
             # Get the GMPE output
             for i in range(n):
-                mu_lnSaTstar[i], stddvs_lnSaTstar = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=T[i]),[const.StdDev.TOTAL])
+                mu_lnSaTstar[i], stddvs_lnSaTstar = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2],
+                                                                               imt.SA(period=T[i]),
+                                                                               [const.StdDev.TOTAL])
                 # convert to sigma_arb
                 # One should uncomment this line if the arbitary component is used for
                 # record selection.
                 # ro_xy = 0.79-0.23*np.log(T[k])
                 ro_xy = 1
-                sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0])**2)*(2/(1+ro_xy)))**0.5)
+                sigma_lnSaTstar[i] = np.log(((np.exp(stddvs_lnSaTstar[0][0]) ** 2) * (2 / (1 + ro_xy))) ** 0.5)
 
                 for j in range(n):
                     rho = get_correlation(T[i], T[j])
-                    MoC [i,j] = rho
+                    MoC[i, j] = rho
 
-            SPa_avg_meanLn = (1/n) *sum(mu_lnSaTstar) # logarithmic mean of Sa,avg
+            SPa_avg_meanLn = (1 / n) * sum(mu_lnSaTstar)  # logarithmic mean of Sa,avg
 
             SPa_avg_std = 0
             for i in range(n):
                 for j in range(n):
-                    SPa_avg_std = SPa_avg_std  + (MoC[i,j] *sigma_lnSaTstar[i]*sigma_lnSaTstar[j]) # logarithmic Var of the Sa,avg
+                    SPa_avg_std = SPa_avg_std + (
+                            MoC[i, j] * sigma_lnSaTstar[i] * sigma_lnSaTstar[j])  # logarithmic Var of the Sa,avg
 
-            SPa_avg_std = SPa_avg_std*(1/n)**2
+            SPa_avg_std = SPa_avg_std * (1 / n) ** 2
             # compute mean of logarithmic average spectral acceleration
             # and logarithmic standard deviation of 
             # spectral acceleration prediction
-            Sa    = SPa_avg_meanLn
+            Sa = SPa_avg_meanLn
             sigma = np.sqrt(SPa_avg_std)
             return Sa, sigma
 
-        def rho_AvgSA_SA(bgmpe,scenario,T,Tstar):
+        def rho_AvgSA_SA(bgmpe, scenario, T, Tstar):
             """
             Details
             -------  
@@ -310,19 +317,20 @@ class cs:
                 Predicted correlation coefficient.
             """
 
-            rho=0
+            rho = 0
             for j in range(len(Tstar)):
                 rho_bj = get_correlation(T, Tstar[j])
-                _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),[const.StdDev.TOTAL])
-                rho = rho_bj*sig1[0][0] + rho
+                _, sig1 = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2], imt.SA(period=Tstar[j]),
+                                                     [const.StdDev.TOTAL])
+                rho = rho_bj * sig1[0][0] + rho
 
-            _, Avg_sig = Sa_avg(bgmpe,scenario,Tstar)
-            rho = rho/(len(Tstar)*Avg_sig)
+            _, Avg_sig = Sa_avg(bgmpe, scenario, Tstar)
+            rho = rho / (len(Tstar) * Avg_sig)
             return rho
 
         # create the output directory and add the path to self
-        cwd = os. getcwd()
-        outdir_path = os.path.join(cwd,outdir)
+        cwd = os.getcwd()
+        outdir_path = os.path.join(cwd, outdir)
         self.outdir = outdir_path
         create_outdir(self.outdir)
 
@@ -331,31 +339,31 @@ class cs:
         self.useVar = useVar
         self.corr_func = corr_func
 
-        if cond == 0: # there is no conditioning period
+        if cond == 0:  # there is no conditioning period
             del self.Tstar
 
         # Get number of scenarios, and their contribution
         nScenarios = len(rup_param['mag'])
         if Hcont is None:
-            self.Hcont = [1/nScenarios for _ in range(nScenarios)]
+            self.Hcont = [1 / nScenarios for _ in range(nScenarios)]
         else:
             self.Hcont = Hcont
 
         # Period range of the target spectrum
         temp = np.abs(self.database['Periods'] - np.min(T_Tgt_range))
-        idx1 = np.where(temp==np.min(temp))[0][0]
+        idx1 = np.where(temp == np.min(temp))[0][0]
         temp = np.abs(self.database['Periods'] - np.max(T_Tgt_range))
-        idx2 = np.where(temp==np.min(temp))[0][0]
-        T_Tgt = self.database['Periods'][idx1:idx2+1]
+        idx2 = np.where(temp == np.min(temp))[0][0]
+        T_Tgt = self.database['Periods'][idx1:idx2 + 1]
 
         # Get number of scenarios, and their contribution
-        Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont),len(T_Tgt),1)
+        Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont), len(T_Tgt), 1)
 
         # Conditional spectrum, log parameters
-        TgtMean = np.zeros((len(T_Tgt),nScenarios))
+        TgtMean = np.zeros((len(T_Tgt), nScenarios))
 
         # Covariance
-        TgtCov = np.zeros((nScenarios,len(T_Tgt),len(T_Tgt)))
+        TgtCov = np.zeros((nScenarios, len(T_Tgt), len(T_Tgt)))
 
         for n in range(nScenarios):
 
@@ -367,7 +375,7 @@ class cs:
             rho_T_Tstar = np.zeros(len(T_Tgt))
 
             # Covariance
-            Cov = np.zeros((len(T_Tgt),len(T_Tgt)))
+            Cov = np.zeros((len(T_Tgt), len(T_Tgt)))
 
             # Set the contexts for the scenario
             sites = gsim.base.SitesContext()
@@ -392,21 +400,22 @@ class cs:
                     temp = np.array([dist_param[key]])
                 setattr(dists, key, temp)
 
-            scenario = [sites,rup,dists]
+            scenario = [sites, rup, dists]
 
             for i in range(len(T_Tgt)):
                 # Get the GMPE ouput for a rupture scenario
-                mu0, sigma0 = self.bgmpe.get_mean_and_stddevs(sites, rup, dists, imt.SA(period=T_Tgt[i]), [const.StdDev.TOTAL])
+                mu0, sigma0 = self.bgmpe.get_mean_and_stddevs(sites, rup, dists, imt.SA(period=T_Tgt[i]),
+                                                              [const.StdDev.TOTAL])
                 mu_lnSaT[i] = mu0[0]
                 sigma_lnSaT[i] = sigma0[0][0]
 
                 if self.cond == 1:
                     # Compute the correlations between each T and Tstar
-                    rho_T_Tstar[i] = rho_AvgSA_SA(self.bgmpe,scenario,T_Tgt[i],self.Tstar)
+                    rho_T_Tstar[i] = rho_AvgSA_SA(self.bgmpe, scenario, T_Tgt[i], self.Tstar)
 
             if self.cond == 1:
                 # Get the GMPE output and calculate Avg_Sa_Tstar
-                mu_lnSaTstar,sigma_lnSaTstar = Sa_avg(self.bgmpe,scenario,self.Tstar)
+                mu_lnSaTstar, sigma_lnSaTstar = Sa_avg(self.bgmpe, scenario, self.Tstar)
 
                 if epsilon is None:
                     # Back calculate epsilon
@@ -415,10 +424,10 @@ class cs:
                     rup_eps = epsilon[n]
 
                 # Get the value of the ln(CMS), conditioned on T_star
-                TgtMean[:,n] = mu_lnSaT + rho_T_Tstar * rup_eps * sigma_lnSaT
+                TgtMean[:, n] = mu_lnSaT + rho_T_Tstar * rup_eps * sigma_lnSaT
 
             elif self.cond == 0:
-                TgtMean[:,n] = mu_lnSaT
+                TgtMean[:, n] = mu_lnSaT
 
             for i in range(len(T_Tgt)):
                 for j in range(len(T_Tgt)):
@@ -432,8 +441,10 @@ class cs:
                         varTstar = sigma_lnSaTstar ** 2
                         sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
                         sigma22 = np.array([varTstar])
-                        sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
-                        sigma12.shape = (2,1); sigma22.shape = (1,1)
+                        sigma12 = np.array(
+                            [rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
+                        sigma12.shape = (2, 1)
+                        sigma22.shape = (1, 1)
                         sigma_cond = sigma11 - sigma12 * 1. / (sigma22) * sigma12.T
                         Cov[i, j] = sigma_cond[0, 1]
 
@@ -441,27 +452,27 @@ class cs:
                         Cov[i, j] = sigma_Corr
 
             # Get the value of standard deviation of target spectrum
-            TgtCov[n,:,:] = Cov
+            TgtCov[n, :, :] = Cov
 
         # over-write coveriance matrix with zeros if no variance is desired in the ground motion selection
         if self.useVar == 0:
             TgtCov = np.zeros(TgtCov.shape)
 
-        TgtMean_fin = np.sum(TgtMean*Hcont_mat,1)
+        TgtMean_fin = np.sum(TgtMean * Hcont_mat, 1)
         # all 2D matrices are the same for each kk scenario, since sigma is only T dependent
-        TgtCov_fin = TgtCov[0,:,:]
-        Cov_elms = np.zeros((len(T_Tgt),nScenarios))
+        TgtCov_fin = TgtCov[0, :, :]
+        Cov_elms = np.zeros((len(T_Tgt), nScenarios))
         for ii in range(len(T_Tgt)):
             for kk in range(nScenarios):
                 # Hcont[kk] = contribution of the k-th scenario
-                Cov_elms[ii,kk] = (TgtCov[kk,ii,ii]+(TgtMean[ii,kk]-TgtMean_fin[ii])**2) * self.Hcont[kk]
+                Cov_elms[ii, kk] = (TgtCov[kk, ii, ii] + (TgtMean[ii, kk] - TgtMean_fin[ii]) ** 2) * self.Hcont[kk]
 
-        cov_diag=np.sum(Cov_elms,1)
-        TgtCov_fin[np.eye(len(T_Tgt))==1] = cov_diag
+        cov_diag = np.sum(Cov_elms, 1)
+        TgtCov_fin[np.eye(len(T_Tgt)) == 1] = cov_diag
 
         # Find covariance values of zero and set them to a small number so that
         # random number generation can be performed
-        TgtCov_fin[np.abs(TgtCov_fin)<1e-10] = 1e-10
+        TgtCov_fin[np.abs(TgtCov_fin) < 1e-10] = 1e-10
 
         TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
         TgtSigma_fin[np.isnan(TgtSigma_fin)] = 0
@@ -477,9 +488,9 @@ class cs:
             if epsilon is None:
                 self.im_Tstar = im_Tstar
             else:
-                f = interpolate.interp1d(self.T,np.exp(self.mu_ln))
+                f = interpolate.interp1d(self.T, np.exp(self.mu_ln))
                 Sa_int = f(self.Tstar)
-                self.im_Tstar = np.exp(np.sum(np.log(Sa_int))/len(self.Tstar))
+                self.im_Tstar = np.exp(np.sum(np.log(Sa_int)) / len(self.Tstar))
                 self.epsilon = epsilon
 
         print('Target spectrum is created.')
@@ -505,25 +516,29 @@ class cs:
         else:
             np.random.seed(sum(gmtime()[:6]))
 
-        devTotalSim = np.zeros((self.nTrials,1))
+        devTotalSim = np.zeros((self.nTrials, 1))
         specDict = {}
         nT = len(self.T)
         # Generate simulated response spectra with best matches to the target values
         for j in range(self.nTrials):
-            specDict[j] = np.zeros((self.nGM,nT))
+            specDict[j] = np.zeros((self.nGM, nT))
             for i in range(self.nGM):
                 # Note: we may use latin hypercube sampling here instead. I leave it as Monte Carlo for now
-                specDict[j][i,:] = np.exp(np.random.multivariate_normal(self.mu_ln,self.cov))
+                specDict[j][i, :] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov))
 
-            devMeanSim = np.mean(np.log(specDict[j]), axis = 0) - self.mu_ln # how close is the mean of the spectra to the target
-            devSigSim = np.std(np.log(specDict[j]), axis=0) -  self.sigma_ln # how close is the mean of the spectra to the target
-            devSkewSim = skew(np.log(specDict[j]), axis=0)                   # how close is the skewness of the spectra to zero (i.e., the target)
+            devMeanSim = np.mean(np.log(specDict[j]),
+                                 axis=0) - self.mu_ln  # how close is the mean of the spectra to the target
+            devSigSim = np.std(np.log(specDict[j]),
+                               axis=0) - self.sigma_ln  # how close is the mean of the spectra to the target
+            devSkewSim = skew(np.log(specDict[j]),
+                              axis=0)  # how close is the skewness of the spectra to zero (i.e., the target)
 
-            devTotalSim[j] = self.weights[0] * np.sum(devMeanSim**2)  + \
-                             self.weights[1] * np.sum(devSigSim**2)   + \
-                             0.1 * (self.weights[2]) * np.sum(devSkewSim**2) # combine the three error metrics to compute a total error
+            devTotalSim[j] = self.weights[0] * np.sum(devMeanSim ** 2) + \
+                             self.weights[1] * np.sum(devSigSim ** 2) + \
+                             0.1 * (self.weights[2]) * np.sum(
+                devSkewSim ** 2)  # combine the three error metrics to compute a total error
 
-        recUse = np.argmin(np.abs(devTotalSim))   # find the simulated spectra that best match the targets
+        recUse = np.argmin(np.abs(devTotalSim))  # find the simulated spectra that best match the targets
         self.sim_spec = np.log(specDict[recUse])  # return the best set of simulations
 
     def search_database(self):
@@ -559,29 +574,29 @@ class cs:
             database will be saved, for other databases this variable is None.
         """
 
-        if self.selection == 1: # SaKnown = Sa_arb
-        
+        if self.selection == 1:  # SaKnown = Sa_arb
+
             if self.database['Name'] == "NGA_W2":
-                SaKnown    = np.append(self.database['Sa_1'],self.database['Sa_2'], axis=0)
-                soil_Vs30  = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-                Mw         = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
-                Rjb        = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
-                fault      = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
+                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+                soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
+                Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
+                Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
+                fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
                 Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-                NGA_num = np.append(self.database['NGA_num'],self.database['NGA_num'], axis=0)
+                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
 
             elif self.database['Name'].startswith("EXSIM"):
-                SaKnown    = self.database['Sa_1']
-                soil_Vs30  = self.database['soil_Vs30']
-                Mw         = self.database['magnitude']
-                Rjb        = self.database['Rjb']
-                fault      = self.database['mechanism']
+                SaKnown = self.database['Sa_1']
+                soil_Vs30 = self.database['soil_Vs30']
+                Mw = self.database['magnitude']
+                Rjb = self.database['Rjb']
+                fault = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
 
-        elif self.selection == 2: # SaKnown = Sa_g.m. or RotD50
+        elif self.selection == 2:  # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
-                SaKnown = np.sqrt(self.database['Sa_1']*self.database['Sa_2'])
-            elif 'RotD50': # SaKnown = Sa_RotD50.
+                SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
+            elif 'RotD50':  # SaKnown = Sa_RotD50.
                 SaKnown = self.database['Sa_RotD50']
             else:
                 print('Unexpected Sa definition, exiting...')
@@ -591,10 +606,10 @@ class cs:
             print('Selection can only be performed for one or two components at the moment, exiting...')
             sys.exit()
 
-            soil_Vs30  = self.database['soil_Vs30']
-            Mw         = self.database['magnitude']
-            Rjb        = self.database['Rjb']
-            fault      = self.database['mechanism']
+            soil_Vs30 = self.database['soil_Vs30']
+            Mw = self.database['magnitude']
+            Rjb = self.database['Rjb']
+            fault = self.database['mechanism']
             Filename_1 = self.database['Filename_1']
             Filename_2 = self.database['Filename_2']
             NGA_num = self.database['NGA_num']
@@ -605,22 +620,22 @@ class cs:
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
 
-        if not self.Vs30_lim is None: # limiting values on soil exist
+        if not self.Vs30_lim is None:  # limiting values on soil exist
             mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Mw_lim is None: # limiting values on magnitude exist
+        if not self.Mw_lim is None:  # limiting values on magnitude exist
             mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Rjb_lim is None: # limiting values on Rjb exist
+        if not self.Rjb_lim is None:  # limiting values on Rjb exist
             mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.fault_lim is None: # limiting values on mechanism exist
+        if not self.fault_lim is None:  # limiting values on mechanism exist
             mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
@@ -632,11 +647,11 @@ class cs:
             Allowed.remove(i)
 
         # Use only allowed records
-        SaKnown    = SaKnown[Allowed,:]
-        soil_Vs30  = soil_Vs30[Allowed]
-        Mw         = Mw[Allowed]
-        Rjb        = Rjb[Allowed]
-        fault      = fault[Allowed]
+        SaKnown = SaKnown[Allowed, :]
+        soil_Vs30 = soil_Vs30[Allowed]
+        Mw = Mw[Allowed]
+        Rjb = Rjb[Allowed]
+        fault = fault[Allowed]
         Filename_1 = Filename_1[Allowed]
 
         if self.selection == 1:
@@ -645,7 +660,7 @@ class cs:
             Filename_2 = Filename_2[Allowed]
 
         if self.database['Name'] == "NGA_W2":
-            NGA_num    = NGA_num[Allowed]
+            NGA_num = NGA_num[Allowed]
         else:
             NGA_num = None
 
@@ -656,23 +671,23 @@ class cs:
             recPer.append(np.where(perKnown == self.T[i])[0][0])
 
         # Check for invalid input
-        sampleBig = SaKnown[:,recPer]
+        sampleBig = SaKnown[:, recPer]
         if np.any(np.isnan(sampleBig)):
             print('NaNs found in input response spectra')
             sys.exit()
 
         if self.nGM > len(NGA_num):
             print('There are not enough records which satisfy',
-            'the given record selection criteria...',
-            'Please use broaden your selection criteria...')
+                  'the given record selection criteria...',
+                  'Please use broaden your selection criteria...')
             sys.exit()
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num
 
-    def select(self, nGM=30, selection=1, Sa_def='RotD50', isScaled = 1, maxScale = 4,
+    def select(self, nGM=30, selection=1, Sa_def='RotD50', isScaled=1, maxScale=4,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
-               nTrials = 20,  weights = [1,2,0.3], seedValue  = 0,
-               nLoop = 2, penalty = 0, tol = 10):
+               nTrials=20, weights=[1, 2, 0.3], seedValue=0,
+               nLoop=2, penalty=0, tol=10):
         """
         Details
         -------
@@ -775,15 +790,15 @@ class cs:
         nBig = sampleBig.shape[0]
 
         # Find best matches to the simulated spectra from ground-motion database
-        recID = np.ones((self.nGM), dtype = int)*(-1)
+        recID = np.ones((self.nGM), dtype=int) * (-1)
         finalScaleFac = np.ones((self.nGM))
-        sampleSmall = np.ones((self.nGM,sampleBig.shape[1]))
+        sampleSmall = np.ones((self.nGM, sampleBig.shape[1]))
         weights = np.array(weights)
 
         if self.cond == 1 and self.isScaled == 1:
             # Calculate IMLs for the sample
-            f = interpolate.interp1d(self.T,np.exp(sampleBig),axis=1)
-            sampleBig_imls = np.exp(np.sum(np.log(f(self.Tstar)),axis=1)/len(self.Tstar))
+            f = interpolate.interp1d(self.T, np.exp(sampleBig), axis=1)
+            sampleBig_imls = np.exp(np.sum(np.log(f(self.Tstar)), axis=1) / len(self.Tstar))
 
         if self.cond == 1 and len(self.Tstar) == 1:
             # These indices are required in case IM = Sa(T) to break the loop
@@ -794,20 +809,24 @@ class cs:
             err = np.zeros((nBig))
             scaleFac = np.ones((nBig))
 
-             # Calculate the scaling factor
+            # Calculate the scaling factor
             if self.isScaled == 1:
                 # using conditioning IML
                 if self.cond == 1:
-                    scaleFac = self.im_Tstar/sampleBig_imls
+                    scaleFac = self.im_Tstar / sampleBig_imls
                 # using error minimization
                 elif self.cond == 0:
-                    scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
+                    scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
+                        np.exp(sampleBig) ** 2, axis=1)
             else:
                 scaleFac = np.ones((nBig))
 
-            mask = scaleFac > self.maxScale; idxs = np.where(~mask)[0]
+            mask = scaleFac > self.maxScale
+            idxs = np.where(~mask)[0]
             err[mask] = 1000000
-            err[~mask] = np.sum((np.log(np.exp(sampleBig[idxs,:])*scaleFac[~mask].reshape(len(scaleFac[~mask]),1)) - self.sim_spec[i,:])**2, axis = 1)
+            err[~mask] = np.sum((np.log(
+                np.exp(sampleBig[idxs, :]) * scaleFac[~mask].reshape(len(scaleFac[~mask]), 1)) - self.sim_spec[i,
+                                                                                                 :]) ** 2, axis=1)
 
             recID[i] = int(np.argsort(err)[0])
             if err.min() >= 1000000:
@@ -819,12 +838,12 @@ class cs:
                 finalScaleFac[i] = scaleFac[recID[i]]
 
             # Save the selected spectra
-            sampleSmall[i,:] = np.log(np.exp(sampleBig[recID[i],:])*finalScaleFac[i])
+            sampleSmall[i, :] = np.log(np.exp(sampleBig[recID[i], :]) * finalScaleFac[i])
 
         # Apply Greedy subset modification procedure
         # Use njit to speed up the optimization algorithm
         @njit
-        def find_rec(sampleSmall,scaleFac,mu_ln,sigma_ln, recIDs):
+        def find_rec(sampleSmall, scaleFac, mu_ln, sigma_ln, recIDs):
 
             def mean_numba(a):
 
@@ -845,11 +864,12 @@ class cs:
             minDev = 100000
             for j in range(nBig):
                 # Add to the sample the scaled spectra
-                temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:]
-                tempSample = np.concatenate((sampleSmall,temp + np.log(scaleFac[j])),axis=0)
-                devMean = mean_numba(tempSample) - mu_ln # Compute deviations from target
+                temp = np.zeros((1, len(sampleBig[j, :])));
+                temp[:, :] = sampleBig[j, :]
+                tempSample = np.concatenate((sampleSmall, temp + np.log(scaleFac[j])), axis=0)
+                devMean = mean_numba(tempSample) - mu_ln  # Compute deviations from target
                 devSig = std_numba(tempSample) - sigma_ln
-                devTotal = weights[0] * np.sum(devMean*devMean) + weights[1] * np.sum(devSig*devSig)
+                devTotal = weights[0] * np.sum(devMean * devMean) + weights[1] * np.sum(devSig * devSig)
 
                 # Check if we exceed the scaling limit
                 if scaleFac[j] > maxScale or np.any(recIDs == j):
@@ -857,7 +877,8 @@ class cs:
                 # Penalize bad spectra
                 elif penalty > 0:
                     for m in range(nGM):
-                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m,:]) > np.exp(mu_ln + 3*sigma_ln))) * penalty
+                        devTotal = devTotal + np.sum(
+                            np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3 * sigma_ln))) * penalty
 
                 # Should cause improvement and record should not be repeated
                 if devTotal < minDev:
@@ -866,9 +887,9 @@ class cs:
 
             return minID
 
-        for k in range(self.nLoop): # Number of passes
+        for k in range(self.nLoop):  # Number of passes
 
-            for i in range(self.nGM): # Loop for nGM
+            for i in range(self.nGM):  # Loop for nGM
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recID = np.delete(recID, i)
 
@@ -876,37 +897,43 @@ class cs:
                 if self.isScaled == 1:
                     # using conditioning IML
                     if self.cond == 1:
-                        scaleFac = self.im_Tstar/sampleBig_imls
+                        scaleFac = self.im_Tstar / sampleBig_imls
                     # using error minimization
                     elif self.cond == 0:
-                        scaleFac = np.sum(np.exp(sampleBig)*np.exp(self.sim_spec[i,:]),axis=1)/np.sum(np.exp(sampleBig)**2,axis=1)
+                        scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
+                            np.exp(sampleBig) ** 2, axis=1)
                 else:
                     scaleFac = np.ones((nBig))
 
                 # Try to add a new spectra to the subset list
-                minID = find_rec(sampleSmall,scaleFac,self.mu_ln,self.sigma_ln,recID)
+                minID = find_rec(sampleSmall, scaleFac, self.mu_ln, self.sigma_ln, recID)
 
                 # Add new element in the right slot
                 if self.isScaled == 1:
                     finalScaleFac[i] = scaleFac[minID]
                 else:
                     finalScaleFac[i] = 1
-                sampleSmall = np.concatenate((sampleSmall[:i,:], sampleBig[minID,:].reshape(1,sampleBig.shape[1]) + np.log(scaleFac[minID]),
-                                sampleSmall[i:,:]),axis=0)
-                recID = np.concatenate((recID[:i],np.array([minID]),recID[i:]))
+                sampleSmall = np.concatenate(
+                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]) + np.log(scaleFac[minID]),
+                     sampleSmall[i:, :]), axis=0)
+                recID = np.concatenate((recID[:i], np.array([minID]), recID[i:]))
 
             # Lets check if the selected ground motions are good enough, if the errors are sufficiently small stop!
-            if self.cond == 1 and len(self.Tstar) == 1: # if conditioned on SaT, ignore error at T*
-                medianErr = np.max(np.abs(np.exp(np.mean(sampleSmall[:,ind2],axis=0)) - np.exp(self.mu_ln[ind2]))/np.exp(self.mu_ln[ind2]))*100
-                stdErr = np.max(np.abs(np.std(sampleSmall[:,ind2], axis=0) - self.sigma_ln[ind2])/self.sigma_ln[ind2])*100
+            if self.cond == 1 and len(self.Tstar) == 1:  # if conditioned on SaT, ignore error at T*
+                medianErr = np.max(
+                    np.abs(np.exp(np.mean(sampleSmall[:, ind2], axis=0)) - np.exp(self.mu_ln[ind2])) / np.exp(
+                        self.mu_ln[ind2])) * 100
+                stdErr = np.max(
+                    np.abs(np.std(sampleSmall[:, ind2], axis=0) - self.sigma_ln[ind2]) / self.sigma_ln[ind2]) * 100
             else:
-                medianErr = np.max(np.abs(np.exp(np.mean(sampleSmall,axis=0)) - np.exp(self.mu_ln))/np.exp(self.mu_ln))*100
-                stdErr = np.max(np.abs(np.std(sampleSmall, axis=0) - self.sigma_ln)/self.sigma_ln)*100
+                medianErr = np.max(
+                    np.abs(np.exp(np.mean(sampleSmall, axis=0)) - np.exp(self.mu_ln)) / np.exp(self.mu_ln)) * 100
+                stdErr = np.max(np.abs(np.std(sampleSmall, axis=0) - self.sigma_ln) / self.sigma_ln) * 100
 
             if medianErr < self.tol and stdErr < self.tol:
                 break
         print('Ground motion selection is finished.')
-        print('For T ∈ [%.2f - %.2f]'% (self.T[0],self.T[-1]))
+        print('For T ∈ [%.2f - %.2f]' % (self.T[0], self.T[-1]))
         print('Max error in median = %.2f %%' % medianErr)
         print('Max error in standard deviation = %.2f %%' % stdErr)
         if medianErr < self.tol and stdErr < self.tol:
@@ -932,7 +959,7 @@ class cs:
         else:
             self.rec_rsn = None
 
-    def write(self, obj = 0, recs = 1, recs_f = ''):
+    def write(self, obj=0, recs=1, recs_f=''):
         """
         
         Details
@@ -965,7 +992,7 @@ class cs:
 
         if recs == 1:
             # set the directories and file names
-            zipName = os.path.join(recs_f,self.database['Name'] + '.zip')
+            zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
             if self.database['Name'] == 'NGA_W2':
                 try:
                     zipName = self.Unscaled_rec_file
@@ -973,83 +1000,85 @@ class cs:
                     pass
 
             n = len(self.rec_h1)
-            path_dts = os.path.join(self.outdir,'GMR_dts.txt')
-            path_durs = os.path.join(self.outdir,'GMR_durs.txt')
+            path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
+            path_durs = os.path.join(self.outdir, 'GMR_durs.txt')
             dts = np.zeros((n))
             durs = np.zeros((n))
 
             if not self.rec_h2 is None:
-                path_H1 = os.path.join(self.outdir,'GMR_H1_names.txt')
-                path_H2 = os.path.join(self.outdir,'GMR_H2_names.txt')
+                path_H1 = os.path.join(self.outdir, 'GMR_H1_names.txt')
+                path_H2 = os.path.join(self.outdir, 'GMR_H2_names.txt')
                 h2s = open(path_H2, 'w')
 
             else:
-                path_H1 = os.path.join(self.outdir,'GMR_names.txt')
+                path_H1 = os.path.join(self.outdir, 'GMR_names.txt')
 
             h1s = open(path_H1, 'w')
 
             if self.database['Name'] == 'NGA_W2':
 
-                if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
+                if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
                     rec_paths = self.rec_h1
                 else:
-                    rec_paths = [self.database['Name']+'/'+self.rec_h1[i] for i in range(n)]
-                contents = ContentFromZip(rec_paths,zipName)
+                    rec_paths = [self.database['Name'] + '/' + self.rec_h1[i] for i in range(n)]
+                contents = ContentFromZip(rec_paths, zipName)
 
                 # Save the H1 gm components
                 for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadNGA(inFilename = self.rec_h1[i],content = contents[i])
+                    dts[i], _, _, t, inp_acc = ReadNGA(inFilename=self.rec_h1[i], content=contents[i])
                     durs[i] = t[-1]
-                    gmr_file = self.rec_h1[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
-                    path = os.path.join(self.outdir,gmr_file)
+                    gmr_file = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
+                        self.rec_scale[i]) + '.txt'
+                    path = os.path.join(self.outdir, gmr_file)
                     acc_Sc = self.rec_scale[i] * inp_acc
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
-                    h1s.write(gmr_file+'\n')
+                    h1s.write(gmr_file + '\n')
 
                 # Save the H2 gm components
                 if not self.rec_h2 is None:
 
-                    if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
+                    if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
                         rec_paths = self.rec_h2
                     else:
-                        rec_paths = [self.database['Name']+'/'+self.rec_h2[i] for i in range(n)]
+                        rec_paths = [self.database['Name'] + '/' + self.rec_h2[i] for i in range(n)]
 
-                    contents = ContentFromZip(rec_paths,zipName)
+                    contents = ContentFromZip(rec_paths, zipName)
                     for i in range(n):
-                        _, _, _, _, inp_acc = ReadNGA(inFilename = self.rec_h2[i],content = contents[i])
-                        gmr_file = self.rec_h2[i].replace('/','_')[:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
-                        path = os.path.join(self.outdir,gmr_file)
+                        _, _, _, _, inp_acc = ReadNGA(inFilename=self.rec_h2[i], content=contents[i])
+                        gmr_file = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
+                            self.rec_scale[i]) + '.txt'
+                        path = os.path.join(self.outdir, gmr_file)
                         acc_Sc = self.rec_scale[i] * inp_acc
                         np.savetxt(path, acc_Sc, fmt='%1.4e')
-                        h2s.write(gmr_file+'\n')
+                        h2s.write(gmr_file + '\n')
 
                     h2s.close()
 
             if self.database['Name'].startswith('EXSIM'):
-                sf = 1/981 # cm/s**2 to g
-                rec_paths = [self.database['Name']+'/'+self.rec_h1[i].split('_acc')[0]+'/'
+                sf = 1 / 981  # cm/s**2 to g
+                rec_paths = [self.database['Name'] + '/' + self.rec_h1[i].split('_acc')[0] + '/'
                              + self.rec_h1[i] for i in range(n)]
-                contents = ContentFromZip(rec_paths,zipName)
+                contents = ContentFromZip(rec_paths, zipName)
 
                 for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadEXSIM(inFilename = self.rec_h1[i],content = contents[i])
+                    dts[i], _, _, t, inp_acc = ReadEXSIM(inFilename=self.rec_h1[i], content=contents[i])
                     durs[i] = t[-1]
-                    gmr_file = self.rec_h1[i][:-4]+'_SF_'+"{:.3f}".format(self.rec_scale[i])+'.txt'
-                    path = os.path.join(self.outdir,gmr_file)
+                    gmr_file = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
+                    path = os.path.join(self.outdir, gmr_file)
                     acc_Sc = self.rec_scale[i] * inp_acc * sf
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
-                    h1s.write(gmr_file+'\n')
+                    h1s.write(gmr_file + '\n')
 
             h1s.close()
-            np.savetxt(path_dts,dts, fmt='%.5f')
-            np.savetxt(path_durs,durs, fmt='%.5f')
+            np.savetxt(path_dts, dts, fmt='%.5f')
+            np.savetxt(path_durs, durs, fmt='%.5f')
 
         if obj == 1:
             # save some info as pickle obj
-            path_cs = os.path.join(self.outdir,'CS.pkl')
-            cs_obj = vars(copy.deepcopy(self)) # use copy.deepcopy to create independent obj
+            path_cs = os.path.join(self.outdir, 'CS.pkl')
+            cs_obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             cs_obj['database'] = self.database['Name']
-            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[','',).replace(']','')
+            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[', '', ).replace(']', '')
             del cs_obj['bgmpe']
             del cs_obj['outdir']
             with open(path_cs, 'wb') as file:
@@ -1057,7 +1086,7 @@ class cs:
 
         print('Finished writing process, the files are located in\n%s' % self.outdir)
 
-    def plot(self, tgt = 0, sim = 0, rec = 1, save = 0, show = 1):
+    def plot(self, tgt=0, sim=0, rec=1, save=0, show=1):
         """
         Details
         -------
@@ -1097,29 +1126,31 @@ class cs:
         BIG_SIZE = 14
         BIGGER_SIZE = 18
 
-        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-        plt.rc('axes', labelsize=BIG_SIZE)       # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('legend', fontsize=MEDIUM_SIZE)   # legend fontsize
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
         plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
         plt.ioff()
 
         if self.cond == 1:
             if len(self.Tstar) == 1:
-                hatch = [self.Tstar*0.98, self.Tstar*1.02]
+                hatch = [self.Tstar * 0.98, self.Tstar * 1.02]
             else:
                 hatch = [self.Tstar.min(), self.Tstar.max()]
 
         if tgt == 1:
             # Plot Target spectrum vs. Simulated response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum', y = 0.95)
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum', y=0.95)
+            ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
             if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
             ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
@@ -1130,46 +1161,51 @@ class cs:
             ax[0].grid(True)
             handles, labels = ax[0].get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
+            ax[0].set_xlim([self.T[0], self.T[-1]])
             if self.cond == 1:
                 ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             # Sample and target standard deviations
             if self.useVar == 1:
-                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
                 ax[1].set_xlabel('Period [sec]')
                 ax[1].set_ylabel('Dispersion')
                 ax[1].grid(True)
-                ax[1].legend(frameon = False)
+                ax[1].legend(frameon=False)
                 ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
                 ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
                 ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[0].set_xlim([self.T[0],self.T[-1]])
+                ax[0].set_xlim([self.T[0], self.T[-1]])
                 ax[1].set_ylim(bottom=0)
                 if self.cond == 1:
                     ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Targeted.pdf'))
+                plt.savefig(os.path.join(self.outdir, 'Targeted.pdf'))
 
         if sim == 1:
             # Plot Target spectrum vs. Simulated response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum vs. Simulated Spectra', y = 0.95)
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum vs. Simulated Spectra', y=0.95)
 
             for i in range(self.nGM):
-                ax[0].loglog(self.T,np.exp(self.sim_spec[i,:]),color = 'gray', lw=1,label='Selected');
+                ax[0].loglog(self.T, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected');
 
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
             if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-            ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0)), color='blue', lw=2,
+                         label='Selected - $e^{\mu_{ln}}$')
             if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)+2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(np.mean(self.sim_spec,axis=0)-2*np.std(self.sim_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0) + 2 * np.std(self.sim_spec, axis=0)),
+                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
+                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
             ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
@@ -1180,46 +1216,52 @@ class cs:
             ax[0].grid(True)
             handles, labels = ax[0].get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
+            ax[0].set_xlim([self.T[0], self.T[-1]])
             if self.cond == 1:
                 ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             if self.useVar == 1:
                 # Sample and target standard deviations
-                ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-                ax[1].semilogx(self.T,np.std(self.sim_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
+                ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.T, np.std(self.sim_spec, axis=0), color='black', linestyle='--', lw=2,
+                               label='Selected - $\sigma_{ln}$')
                 ax[1].set_xlabel('Period [sec]')
                 ax[1].set_ylabel('Dispersion')
                 ax[1].grid(True)
-                ax[1].legend(frameon = False)
+                ax[1].legend(frameon=False)
                 ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
                 ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
                 ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[1].set_xlim([self.T[0],self.T[-1]])
+                ax[1].set_xlim([self.T[0], self.T[-1]])
                 ax[1].set_ylim(bottom=0)
                 if self.cond == 1:
                     ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Simulated.pdf'))
+                plt.savefig(os.path.join(self.outdir, 'Simulated.pdf'))
 
         if rec == 1:
             # Plot Target spectrum vs. Selected response spectra
-            fig,ax = plt.subplots(1,2, figsize = (16,8))
-            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y = 0.95)
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
 
             for i in range(self.nGM):
-                ax[0].loglog(self.T,np.exp(self.rec_spec[i,:]),color = 'gray', lw=1,label='Selected');
+                ax[0].loglog(self.T, np.exp(self.rec_spec[i, :]), color='gray', lw=1, label='Selected');
 
-            ax[0].loglog(self.T,np.exp(self.mu_ln),color = 'red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
             if self.useVar == 1:
-                ax[0].loglog(self.T,np.exp(self.mu_ln+2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T,np.exp(self.mu_ln-2*self.sigma_ln),color = 'red', linestyle='--', lw=2, label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)),color = 'blue', lw=2, label='Selected - $e^{\mu_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)+2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-            ax[0].loglog(self.T,np.exp(np.mean(self.rec_spec,axis=0)-2*np.std(self.rec_spec,axis=0)),color = 'blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0)), color='blue', lw=2,
+                         label='Selected - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0) + 2 * np.std(self.rec_spec, axis=0)),
+                         color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0) - 2 * np.std(self.rec_spec, axis=0)),
+                         color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
             ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
@@ -1230,34 +1272,35 @@ class cs:
             ax[0].grid(True)
             handles, labels = ax[0].get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
-            ax[0].legend(by_label.values(), by_label.keys(), frameon = False)
-            ax[0].set_xlim([self.T[0],self.T[-1]])
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
+            ax[0].set_xlim([self.T[0], self.T[-1]])
             if self.cond == 1:
                 ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             # Sample and target standard deviations
-            ax[1].semilogx(self.T,self.sigma_ln,color = 'red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-            ax[1].semilogx(self.T,np.std(self.rec_spec,axis=0),color = 'black', linestyle='--', lw=2, label='Selected - $\sigma_{ln}$')
+            ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+            ax[1].semilogx(self.T, np.std(self.rec_spec, axis=0), color='black', linestyle='--', lw=2,
+                           label='Selected - $\sigma_{ln}$')
             ax[1].set_xlabel('Period [sec]')
             ax[1].set_ylabel('Dispersion')
             ax[1].grid(True)
-            ax[1].legend(frameon = False)
+            ax[1].legend(frameon=False)
             ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-            ax[0].set_xlim([self.T[0],self.T[-1]])
+            ax[0].set_xlim([self.T[0], self.T[-1]])
             ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
             ax[1].set_ylim(bottom=0)
             if self.cond == 1:
                 ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             if save == 1:
-                plt.savefig(os.path.join(self.outdir,'Selected.pdf'))
+                plt.savefig(os.path.join(self.outdir, 'Selected.pdf'))
 
         # Show the figure
         if show == 1:
             plt.show()
 
-    def nga_download(self, username , pwd):
+    def nga_download(self, username, pwd):
         """
         
         Details
@@ -1312,12 +1355,12 @@ class cs:
             r = requests.get('https://chromedriver.chromium.org/')
             a = r.text
             start = a.find('Latest stable')
-            text = a.replace(a[0:start],'')
+            text = a.replace(a[0:start], '')
             start = text.find('path=')
 
-            text = text.replace(text[0:start+5],'')
+            text = text.replace(text[0:start + 5], '')
             end = text.find("/")
-            latest_ver = text.replace(text[end::],'')
+            latest_ver = text.replace(text[end::], '')
             return latest_ver
 
         def add_driver_to_the_PATH(save_path):
@@ -1343,11 +1386,11 @@ class cs:
                 size_0 = dir_size(Down_Dir)
                 sleep(6)
                 size_1 = dir_size(Down_Dir)
-                if size_1-size_0 > 0:
-                    delta_size = size_1-size_0
+                if size_1 - size_0 > 0:
+                    delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print(flag_lim-flag)
+                    print(flag_lim - flag)
             print(f'Downloaded files are located in\n{Down_Dir}')
 
         def seek_and_download():
@@ -1374,11 +1417,11 @@ class cs:
                 aim_driver = 'chromedriver'
             if aim_driver not in os.listdir(package):
                 latest_ver = find_latest_ver()
-                save_path = os.path.join(os.getcwd(),'chromedriver.zip')
+                save_path = os.path.join(os.getcwd(), 'chromedriver.zip')
                 url = f"https://chromedriver.storage.googleapis.com/{latest_ver}/chromedriver_{current_platform}.zip"
                 download_url(url, save_path, chunk_size=128)
                 add_driver_to_the_PATH(save_path)
-                print ('chromedriver downloaded successfully!!')
+                print('chromedriver downloaded successfully!!')
                 os.remove(save_path)
             else:
                 print("chromedriver allready exists!!")
@@ -1400,8 +1443,8 @@ class cs:
             """
 
             ChromeOptions = webdriver.ChromeOptions()
-            prefs = {"download.default_directory" : Download_Dir}
-            ChromeOptions.add_experimental_option("prefs",prefs)
+            prefs = {"download.default_directory": Download_Dir}
+            ChromeOptions.add_experimental_option("prefs", prefs)
             ChromeOptions.headless = True
             if sys.platform.startswith('win'):
                 aim_driver = 'chromedriver.exe'
@@ -1409,18 +1452,18 @@ class cs:
                 aim_driver = 'chromedriver'
             elif sys.platform.startswith('darwin'):
                 aim_driver = 'chromedriver'
-            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0] , aim_driver)
+            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
             if not os.path.exists(path_of_driver):
                 print('Downloading the chromedriver!!')
                 seek_and_download()
                 if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
                     os.chmod(path_of_driver, 0o777)
-            driver = webdriver.Chrome(executable_path = path_of_driver ,options=ChromeOptions)
+            driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
             driver.get(url_sign_in)
             return driver
 
-        def sign_in_with_given_creds(driver,USERNAME,PASSWORD):
+        def sign_in_with_given_creds(driver, USERNAME, PASSWORD):
             """
             
             Details
@@ -1454,7 +1497,7 @@ class cs:
                 pass
             return driver, warn
 
-        def Download_Given(RSNs,Download_Dir,driver):
+        def Download_Given(RSNs, Download_Dir, driver):
             """
             
             Details
@@ -1484,7 +1527,8 @@ class cs:
             sleep(2)
             driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
             sleep(3)
-            driver.find_element_by_xpath("//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
+            driver.find_element_by_xpath(
+                "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
             try:
                 note = driver.find_element_by_id('notice').text
                 print(note)
@@ -1502,13 +1546,13 @@ class cs:
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
                 print("Downloading the Records!...")
                 obj = driver.switch_to.alert
-                msg=obj.text
-                print ("Alert shows following message: "+ msg )
+                msg = obj.text
+                print("Alert shows following message: " + msg)
                 sleep(5)
                 obj.accept()
                 obj = driver.switch_to.alert
-                msg=obj.text
-                print ("Alert shows following message: "+ msg )
+                msg = obj.text
+                print("Alert shows following message: " + msg)
                 sleep(3)
                 obj.accept()
                 print("Downloading the Records!...")
@@ -1520,7 +1564,7 @@ class cs:
             self.username = username
             self.pwd = pwd
             driver = go_to_sign_in_page(self.outdir)
-            driver,warn = sign_in_with_given_creds(driver,self.username,self.pwd)
+            driver, warn = sign_in_with_given_creds(driver, self.username, self.pwd)
             if str(warn) == 'Invalid email or password.':
                 print(warn)
                 driver.quit()
@@ -1532,26 +1576,27 @@ class cs:
 
                 RSNs = RSNs[:-1:]
                 files_before_download = set(os.listdir(self.outdir))
-                Download_Given(RSNs,self.outdir,driver)
+                Download_Given(RSNs, self.outdir, driver)
                 files_after_download = set(os.listdir(self.outdir))
                 Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
                 file_extension = Downloaded_File[Downloaded_File.find('.')::]
                 time_tag = gmtime()
                 time_tag_str = f'{time_tag[0]}'
-                for i in range(1,len(time_tag)):
+                for i in range(1, len(time_tag)):
                     time_tag_str += f'_{time_tag[i]}'
                 new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
-                Downloaded_File = os.path.join(self.outdir,Downloaded_File)
-                Downloaded_File_Rename = os.path.join(self.outdir,new_file_name)
-                os.rename(Downloaded_File,Downloaded_File_Rename)
+                Downloaded_File = os.path.join(self.outdir, Downloaded_File)
+                Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
+                os.rename(Downloaded_File, Downloaded_File_Rename)
                 self.Unscaled_rec_file = Downloaded_File_Rename
         else:
             print('You have to use NGA_W2 database to use nga_download method.')
 
+
 #############################################################################################
 #############################################################################################
 
-def BakerJayaramCorrelationModel(T1, T2, orth = 0):
+def BakerJayaramCorrelationModel(T1, T2, orth=0):
     """
     Details
     -------
@@ -1609,6 +1654,7 @@ def BakerJayaramCorrelationModel(T1, T2, orth = 0):
 
     return rho
 
+
 def AkkarCorrelationModel(T1, T2):
     """
     Details
@@ -1633,13 +1679,13 @@ def AkkarCorrelationModel(T1, T2):
         The predicted correlation coefficient.
     """
     periods = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1, 0.11, 0.12, 0.13, 0.14,
-                       0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
-                       0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
-                       0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
-                       1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
+                        0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
+                        0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
+                        0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
+                        1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
 
-    if np.any([T1,T2] < periods[0]) or\
-            np.any([T1,T2] > periods[-1]):
+    if np.any([T1, T2] < periods[0]) or \
+            np.any([T1, T2] > periods[-1]):
         raise ValueError("contains values outside of the "
                          "range supported by the Akkar et al. (2014) "
                          "correlation model")
@@ -1647,13 +1693,14 @@ def AkkarCorrelationModel(T1, T2):
     if T1 == T2:
         rho = 1.0
     else:
-        with open(os.path.join('Meta_Data','akkar_coeff_table.npy'), 'rb') as f:
+        with open(os.path.join('Meta_Data', 'akkar_coeff_table.npy'), 'rb') as f:
             coeff_table = np.load(f)
         rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
 
     return rho
 
-def ContentFromZip(paths,zipName):
+
+def ContentFromZip(paths, zipName):
     """
     Details
     -------
@@ -1680,6 +1727,7 @@ def ContentFromZip(paths,zipName):
                 contents[i] = [x.decode('utf-8') for x in myfile.readlines()]
 
     return contents
+
 
 def ReadNGA(inFilename=None, content=None, outFilename=None):
     """
@@ -1721,7 +1769,7 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
     try:
         # Read the file content from inFilename
         if content is None:
-            with open(inFilename,'r') as inFileID:
+            with open(inFilename, 'r') as inFileID:
                 content = inFileID.readlines()
 
         # check the first line
@@ -1735,27 +1783,27 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
             flag = 0
 
         counter = 0
-        desc, row4Val, acc_data = "","",[]
+        desc, row4Val, acc_data = "", "", []
 
         if flag == 1:
             for x in content:
-                if counter == len(content)-3:
+                if counter == len(content) - 3:
                     desc = x
-                elif counter == len(content)-1:
+                elif counter == len(content) - 1:
                     row4Val = x
                     if row4Val[0][0] == 'N':
                         val = row4Val.split()
-                        npts = float(val[(val.index('NPTS='))+1].rstrip(','))
+                        npts = float(val[(val.index('NPTS=')) + 1].rstrip(','))
                         try:
-                            dt = float(val[(val.index('DT='))+1])
+                            dt = float(val[(val.index('DT=')) + 1])
                         except:
-                            dt = float(val[(val.index('DT='))+1].replace('SEC,',''))
+                            dt = float(val[(val.index('DT=')) + 1].replace('SEC,', ''))
                     else:
                         val = row4Val.split()
                         npts = float(val[0])
                         dt = float(val[1])
 
-                elif counter < len(content)-4:
+                elif counter < len(content) - 4:
                     data = str(x).split()
                     for value in data:
                         a = float(value)
@@ -1771,11 +1819,11 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                     row4Val = x
                     if row4Val[0][0] == 'N':
                         val = row4Val.split()
-                        npts = float(val[(val.index('NPTS='))+1].rstrip(','))
+                        npts = float(val[(val.index('NPTS=')) + 1].rstrip(','))
                         try:
-                            dt = float(val[(val.index('DT='))+1])
+                            dt = float(val[(val.index('DT=')) + 1])
                         except:
-                            dt = float(val[(val.index('DT='))+1].replace('SEC,',''))
+                            dt = float(val[(val.index('DT=')) + 1].replace('SEC,', ''))
                     else:
                         val = row4Val.split()
                         npts = float(val[0])
@@ -1789,8 +1837,8 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
                     acc = np.asarray(acc_data)
                 counter = counter + 1
 
-        t = [] # save time history
-        for i in range (0,len(acc_data)):
+        t = []  # save time history
+        for i in range(0, len(acc_data)):
             ti = i * dt
             t.append(ti)
 
@@ -1803,6 +1851,7 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
     except:
         print("processMotion FAILED!: The record file is not in the directory")
         print(inFilename)
+
 
 def ReadEXSIM(inFilename=None, content=None, outFilename=None):
     """
@@ -1840,7 +1889,7 @@ def ReadEXSIM(inFilename=None, content=None, outFilename=None):
     try:
         # Read the file content from inFilename
         if content is None:
-            with open(inFilename,'r') as inFileID:
+            with open(inFilename, 'r') as inFileID:
                 content = inFileID.readlines()
 
         desc = content[:12]
@@ -1849,15 +1898,15 @@ def ReadEXSIM(inFilename=None, content=None, outFilename=None):
         acc = []
         t = []
 
-        for i in range(12,len(content)):
+        for i in range(12, len(content)):
             temp = content[i].split()
             acc.append(float(temp[1]))
 
         acc = np.asarray(acc)
         if len(acc) < 20000:
-            acc = acc[2500:10800] # get rid of zeros
-        dur = len(acc)*dt
-        t = np.arange(0,dur,dt)
+            acc = acc[2500:10800]  # get rid of zeros
+        dur = len(acc) * dt
+        t = np.arange(0, dur, dt)
 
         if outFilename is not None:
             np.savetxt(outFilename, acc, fmt='%1.4e')
@@ -1867,6 +1916,7 @@ def ReadEXSIM(inFilename=None, content=None, outFilename=None):
     except:
         print("processMotion FAILED!: The record file is not in the directory")
         print(inFilename)
+
 
 def create_outdir(outdir_path):
     """  
@@ -1879,16 +1929,19 @@ def create_outdir(outdir_path):
     -------
     None.
     """
+
     def handleRemoveReadonly(func, path, exc):
-      excvalue = exc[1]
-      if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
-          os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
-          func(path)
-      else:
-          raise
+        excvalue = exc[1]
+        if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+            os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+            func(path)
+        else:
+            raise
+
     if os.path.exists(outdir_path):
         shutil.rmtree(outdir_path, ignore_errors=False, onerror=handleRemoveReadonly)
     os.makedirs(outdir_path)
+
 
 def RunTime(startTime):
     """
@@ -1907,14 +1960,15 @@ def RunTime(startTime):
     """
     finishTime = time()
     # Procedure to obtained elapsed time in Hr, Min, and Sec
-    timeSeconds = finishTime-startTime
-    timeMinutes = int(timeSeconds/60);
-    timeHours = int(timeSeconds/3600);
-    timeMinutes = int(timeMinutes - timeHours*60)
-    timeSeconds = timeSeconds - timeMinutes*60 - timeHours*3600
-    print("Run time: %d hours: %d minutes: %.2f seconds"  % (timeHours, timeMinutes, timeSeconds))
+    timeSeconds = finishTime - startTime
+    timeMinutes = int(timeSeconds / 60)
+    timeHours = int(timeSeconds / 3600)
+    timeMinutes = int(timeMinutes - timeHours * 60)
+    timeSeconds = timeSeconds - timeMinutes * 60 - timeHours * 3600
+    print("Run time: %d hours: %d minutes: %.2f seconds" % (timeHours, timeMinutes, timeSeconds))
 
-def baseline_correction(values,dt,polynomial_type):
+
+def baseline_correction(values, dt, polynomial_type):
     """
     Details
     -------
@@ -1944,19 +1998,24 @@ def baseline_correction(values,dt,polynomial_type):
         
     """
 
-    if polynomial_type == 'Constant':       n = 0
-    elif polynomial_type == 'Linear':       n = 1
-    elif polynomial_type == 'Quadratic':    n = 2
-    elif polynomial_type == 'Cubic':        n = 3
+    if polynomial_type == 'Constant':
+        n = 0
+    elif polynomial_type == 'Linear':
+        n = 1
+    elif polynomial_type == 'Quadratic':
+        n = 2
+    elif polynomial_type == 'Cubic':
+        n = 3
 
-    t = np.linspace(0,(len(values)-1)*dt,len(values))    # Time array
-    P = np.polyfit(t,values,n);                          # Best fit line of values
-    po_va = np.polyval(P,t);                             # Matrix of best fit line
-    values_corrected = values - po_va;                   # Baseline corrected values
+    t = np.linspace(0, (len(values) - 1) * dt, len(values))  # Time array
+    P = np.polyfit(t, values, n)  # Best fit line of values
+    po_va = np.polyval(P, t)  # Matrix of best fit line
+    values_corrected = values - po_va  # Baseline corrected values
 
     return values_corrected
 
-def butterworth_filter(values,dt, cut_off=(0.1, 25), **kwargs):
+
+def butterworth_filter(values, dt, cut_off=(0.1, 25), **kwargs):
     """
     Details
     -------
@@ -2052,7 +2111,8 @@ def butterworth_filter(values,dt, cut_off=(0.1, 25), **kwargs):
 
     return values_filtered
 
-def sdof_ltha(Ag,dt,T,xi,m):
+
+def sdof_ltha(Ag, dt, T, xi, m):
     """
     Details
     -------
@@ -2102,62 +2162,68 @@ def sdof_ltha(Ag,dt,T,xi,m):
     # Get the length of acceleration history array
     n1 = max(Ag.shape)
     # Get the length of period array
-    n2 = max(T.shape); T = T.reshape((1,n2))
+    n2 = max(T.shape)
+    T = T.reshape((1, n2))
 
     # Assign the external force
-    p = -m*Ag
+    p = -m * Ag
 
     # Calculate system properties which depend on period
-    fn = np.ones(T.shape); fn = 1/T             # frequency
-    wn = np.ones(T.shape); wn = 2*np.pi*fn      # circular natural frequency
-    k  = np.ones(T.shape); k = m*wn**2          # actual stiffness
-    c  = np.ones(T.shape); c = 2*m*wn*xi        # actual damping coefficient
+    fn = np.ones(T.shape)
+    fn = 1 / T  # frequency
+    wn = np.ones(T.shape)
+    wn = 2 * np.pi * fn  # circular natural frequency
+    k = np.ones(T.shape)
+    k = m * wn ** 2  # actual stiffness
+    c = np.ones(T.shape)
+    c = 2 * m * wn * xi  # actual damping coefficient
 
     # Newmark Beta Method coefficients
-    Gamma = np.ones((1,n2))*(1/2)
+    Gamma = np.ones((1, n2)) * (1 / 2)
     # Use linear acceleration method for dt/T<=0.55
-    Beta = np.ones((1,n2))*1/6
+    Beta = np.ones((1, n2)) * 1 / 6
     # Use average acceleration method for dt/T>0.55
-    Beta[np.where(dt/T > 0.55)] = 1/4
+    Beta[np.where(dt / T > 0.55)] = 1 / 4
 
     # Compute the constants used in Newmark's integration
-    a1 = Gamma/(Beta*dt)
-    a2 = 1/(Beta*dt**2)
-    a3 = 1/(Beta*dt)
-    a4 = Gamma/Beta
-    a5 = 1/(2*Beta)
-    a6 = (Gamma/(2*Beta)-1)*dt
-    kf = k + a1*c + a2*m
-    a = a3*m + a4*c
-    b = a5*m + a6*c
+    a1 = Gamma / (Beta * dt)
+    a2 = 1 / (Beta * dt ** 2)
+    a3 = 1 / (Beta * dt)
+    a4 = Gamma / Beta
+    a5 = 1 / (2 * Beta)
+    a6 = (Gamma / (2 * Beta) - 1) * dt
+    kf = k + a1 * c + a2 * m
+    a = a3 * m + a4 * c
+    b = a5 * m + a6 * c
 
     # Initialize the history arrays
-    u = np.zeros((n1,n2))        # relative displacement history
-    v = np.zeros((n1,n2))        # relative velocity history
-    ac = np.zeros((n1,n2))       # relative acceleration history
-    ac_tot = np.zeros((n1,n2)) # total acceleration history
+    u = np.zeros((n1, n2))  # relative displacement history
+    v = np.zeros((n1, n2))  # relative velocity history
+    ac = np.zeros((n1, n2))  # relative acceleration history
+    ac_tot = np.zeros((n1, n2))  # total acceleration history
 
     # Set the Initial Conditions
     u[0] = 0
     v[0] = 0
-    ac[0] = (p[0] - c*v[0] - k*u[0])/m
+    ac[0] = (p[0] - c * v[0] - k * u[0]) / m
     ac_tot[0] = ac[0] + Ag[0]
 
-    for i in range(n1-1):
-        dpf = (p[i+1] - p[i]) + a*v[i] + b*ac[i]
-        du = dpf/kf
-        dv = a1*du - a4*v[i] - a6*ac[i]
-        da = a2*du - a3*v[i] - a5*ac[i]
+    for i in range(n1 - 1):
+        dpf = (p[i + 1] - p[i]) + a * v[i] + b * ac[i]
+        du = dpf / kf
+        dv = a1 * du - a4 * v[i] - a6 * ac[i]
+        da = a2 * du - a3 * v[i] - a5 * ac[i]
 
         # Update history variables
-        u[i+1] = u[i]+du
-        v[i+1] = v[i]+dv
-        ac[i+1] = ac[i]+da
-        ac_tot[i+1] = ac[i+1] + Ag[i+1]
+        u[i + 1] = u[i] + du
+        v[i + 1] = v[i] + dv
+        ac[i + 1] = ac[i] + da
+        ac_tot[i + 1] = ac[i + 1] + Ag[i + 1]
 
-    return u,v,ac,ac_tot
+    return u, v, ac, ac_tot
 
-def gm_parameters(Ag,dt,T,xi):
+
+def gm_parameters(Ag, dt, T, xi):
     """
     Details
     -------
@@ -2271,8 +2337,8 @@ def gm_parameters(Ag,dt,T,xi):
     """
 
     # INITIALIZATION
-    T = T[T!=0] # do not use T = zero for response spectrum calculations
-    param = {'Periods':T}
+    T = T[T != 0]  # do not use T = zero for response spectrum calculations
+    param = {'Periods': T}
 
     # GET SPECTRAL VALUES
     # Get the length of acceleration history array
@@ -2280,22 +2346,22 @@ def gm_parameters(Ag,dt,T,xi):
     # Get the length of period array
     n2 = max(T.shape)
     # Create the time array
-    t = np.linspace(0,(n1-1)*dt,n1)
+    t = np.linspace(0, (n1 - 1) * dt, n1)
     # Get ground velocity and displacement through integration
     Vg = cumtrapz(Ag, t, initial=0)
     Dg = cumtrapz(Vg, t, initial=0)
     # Mass (kg)
     m = 1
     # Carry out linear time history analyses for SDOF system
-    u,v,ac,ac_tot = sdof_ltha(Ag, dt, T, xi, m)
+    u, v, ac, ac_tot = sdof_ltha(Ag, dt, T, xi, m)
     # Calculate the spectral values
-    param['Sd'] = np.max(np.abs((u)),axis = 0)
-    param['Sv'] = np.max(np.abs((v)),axis = 0)
-    param['Sa'] = np.max(np.abs((ac_tot)),axis = 0)
-    param['PSv'] = (2*np.pi/T)*param['Sd']
-    param['PSa'] = ((2*np.pi/T)**2)*param['Sd']
-    ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0)*m
-    ei_a = cumtrapz(-numpy.matlib.repmat(Dg, n2, 1).T, ac_tot, axis=0, initial=0)*m
+    param['Sd'] = np.max(np.abs((u)), axis=0)
+    param['Sv'] = np.max(np.abs((v)), axis=0)
+    param['Sa'] = np.max(np.abs((ac_tot)), axis=0)
+    param['PSv'] = (2 * np.pi / T) * param['Sd']
+    param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
+    ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m
+    ei_a = cumtrapz(-numpy.matlib.repmat(Dg, n2, 1).T, ac_tot, axis=0, initial=0) * m
     param['Ei_r'] = ei_r[-1]
     param['Ei_a'] = ei_a[-1]
 
@@ -2305,74 +2371,81 @@ def gm_parameters(Ag,dt,T,xi):
     param['PGD'] = np.max(np.abs(Dg))
 
     # GET ARIAS INTENSITY
-    Aint = np.cumsum(Ag**2)*np.pi*dt/(2*9.81)
+    Aint = np.cumsum(Ag ** 2) * np.pi * dt / (2 * 9.81)
     param['Arias'] = Aint[-1]
-    temp = np.zeros((len(Aint),2)); temp[:,0] = t; temp[:,1] = Aint;
+    temp = np.zeros((len(Aint), 2))
+    temp[:, 0] = t
+    temp[:, 1] = Aint
     param['Aint'] = temp
 
     # GET HOUSNER INTENSITY
     try:
-        index1 = np.where(T==0.1)[0][0]
-        index2 = np.where(T==2.5)[0][0]
-        param['HI'] = np.trapz(param['PSv'][index1:index2],T[index1:index2])
+        index1 = np.where(T == 0.1)[0][0]
+        index2 = np.where(T == 2.5)[0][0]
+        param['HI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
     except:
         param['HI'] = 'N.A.'
 
     # SIGNIFICANT DURATION (5%-75% Ia)
-    mask = (Aint>=0.05*Aint[-1])*(Aint<=0.75*Aint[-1])
+    mask = (Aint >= 0.05 * Aint[-1]) * (Aint <= 0.75 * Aint[-1])
     timed = t[mask]
-    t1 = round(timed[0],3); t2 = round(timed[-1],3)
-    param['t_5_75'] = [t1,t2]
-    param['D_5_75'] = round(t2-t1,3)
+    t1 = round(timed[0], 3)
+    t2 = round(timed[-1], 3)
+    param['t_5_75'] = [t1, t2]
+    param['D_5_75'] = round(t2 - t1, 3)
 
     # SIGNIFICANT DURATION (5%-95% Ia)
-    mask = (Aint>=0.05*Aint[-1])*(Aint<=0.95*Aint[-1])
+    mask = (Aint >= 0.05 * Aint[-1]) * (Aint <= 0.95 * Aint[-1])
     timed = t[mask]
-    t1 = round(timed[0],3); t2 = round(timed[-1],3)
-    param['t_5_95'] = [t1,t2]
-    param['D_5_95'] = round(t2-t1,3)
+    t1 = round(timed[0], 3)
+    t2 = round(timed[-1], 3)
+    param['t_5_95'] = [t1, t2]
+    param['D_5_95'] = round(t2 - t1, 3)
 
     # BRACKETED DURATION (0.05g)
     try:
-        mask = np.abs(Ag)>=0.05*9.81; indices = np.where(mask)[0]
+        mask = np.abs(Ag) >= 0.05 * 9.81
+        indices = np.where(mask)[0]
         # mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag)); indices = np.where(mask)[0]
-        t1 = round(t[indices[0]],3); t2 = round(t[indices[-1]],3);
-        param['t_bracketed'] = [t1,t2]
-        param['D_bracketed'] = round(t2-t1,3)
-    except: # in case of ground motions with low intensities
+        t1 = round(t[indices[0]], 3)
+        t2 = round(t[indices[-1]], 3)
+        param['t_bracketed'] = [t1, t2]
+        param['D_bracketed'] = round(t2 - t1, 3)
+    except:  # in case of ground motions with low intensities
         param['t_bracketed'] = 'N.A.'
         param['D_bracketed'] = 'N.A.'
 
     # UNIFORM DURATION (0.05g)
     try:
-        mask = np.abs(Ag)>=0.05*9.81; indices = np.where(mask)[0]
+        mask = np.abs(Ag) >= 0.05 * 9.81
+        indices = np.where(mask)[0]
         # mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag)); indices = np.where(mask)[0]
         t_treshold = t[indices]
         param['t_uniform'] = [t_treshold]
-        param['D_uniform'] = round((len(t_treshold)-1)*dt)
-    except: # in case of ground motions with low intensities
+        param['D_uniform'] = round((len(t_treshold) - 1) * dt)
+    except:  # in case of ground motions with low intensities
         param['t_uniform'] = 'N.A.'
         param['D_uniform'] = 'N.A.'
 
     # CUMULATVE ABSOLUTE VELOCITY
-    param['CAV'] = np.trapz(np.abs(Ag),t)
+    param['CAV'] = np.trapz(np.abs(Ag), t)
 
     # CHARACTERISTIC INTENSITY, ROOT MEAN SQUARE OF ACC, VEL, DISP
-    Td = t[-1] # note this might not be the best indicative, different Td might be chosen
-    param['aRMS'] = np.sqrt(np.trapz(Ag**2,t)/Td)
-    param['vRMS'] = np.sqrt(np.trapz(Vg**2,t)/Td)
-    param['dRMS'] = np.sqrt(np.trapz(Dg**2,t)/Td)
-    param['Ic'] = param['aRMS']**(1.5)*np.sqrt(Td)
+    Td = t[-1]  # note this might not be the best indicative, different Td might be chosen
+    param['aRMS'] = np.sqrt(np.trapz(Ag ** 2, t) / Td)
+    param['vRMS'] = np.sqrt(np.trapz(Vg ** 2, t) / Td)
+    param['dRMS'] = np.sqrt(np.trapz(Dg ** 2, t) / Td)
+    param['Ic'] = param['aRMS'] ** (1.5) * np.sqrt(Td)
 
     # ACCELERATION AND VELOCITY SPECTRUM INTENSITY
     try:
-        index3 = np.where(T==0.5)[0][0]
-        param['ASI'] = np.trapz(param['Sa'][index1:index3],T[index1:index3])
+        index3 = np.where(T == 0.5)[0][0]
+        param['ASI'] = np.trapz(param['Sa'][index1:index3], T[index1:index3])
     except:
         param['ASI'] = 'N.A.'
     try:
-        param['MASI'] = np.trapz(param['Sa'][index1:index2],T[index1:index2])
-        param['VSI'] = np.trapz(param['Sv'][index1:index2],T[index1:index2])
+        param['MASI'] = np.trapz(param['Sa'][index1:index2], T[index1:index2])
+        param['VSI'] = np.trapz(param['Sv'][index1:index2], T[index1:index2])
     except:
         param['MASI'] = 'N.A.'
         param['VSI'] = 'N.A.'
@@ -2380,31 +2453,38 @@ def gm_parameters(Ag,dt,T,xi):
     # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
     # Number of sample points, add zeropads
     N = 2 ** int(np.ceil(np.log2(len(Ag))))
-    Famp = fft(Ag,N)
-    Famp = np.abs(fftshift(Famp))*dt
+    Famp = fft(Ag, N)
+    Famp = np.abs(fftshift(Famp)) * dt
     freq = fftfreq(N, dt)
     freq = fftshift(freq)
-    Famp = Famp[freq>0]
-    freq = freq[freq>0]
-    Pamp = Famp**2/(np.pi*t[-1]*param['aRMS']**2);
-    FAS = np.zeros((len(Famp),2)); FAS[:,0] = freq; FAS[:,1] = Famp;
-    PAS = np.zeros((len(Famp),2)); PAS[:,0] = freq; PAS[:,1] = Pamp;
+    Famp = Famp[freq > 0]
+    freq = freq[freq > 0]
+    Pamp = Famp ** 2 / (np.pi * t[-1] * param['aRMS'] ** 2)
+    FAS = np.zeros((len(Famp), 2))
+    FAS[:, 0] = freq
+    FAS[:, 1] = Famp
+    PAS = np.zeros((len(Famp), 2))
+    PAS[:, 0] = freq
+    PAS[:, 1] = Pamp
     param['FAS'] = FAS
     param['PAS'] = FAS
 
     # MEAN PERIOD
-    mask = (freq>0.25)*(freq<20) ; indices = np.where(mask)[0]
+    mask = (freq > 0.25) * (freq < 20)
+    indices = np.where(mask)[0]
     fi = freq[indices]
     Ci = Famp[indices]
-    param['Tm'] = np.sum(Ci**2/fi)/np.sum(Ci**2)
+    param['Tm'] = np.sum(Ci ** 2 / fi) / np.sum(Ci ** 2)
 
     # PREDOMINANT PERIOD
-    mask = param['Sa'] == max(param['Sa']); indices = np.where(mask)[0]
+    mask = param['Sa'] == max(param['Sa'])
+    indices = np.where(mask)[0]
     param['Tp'] = T[indices]
 
     return param
 
-def RotDxx_spectrum(Ag1,Ag2,dt,T,xi,xx):
+
+def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     """
     Details
     -------
@@ -2452,9 +2532,9 @@ def RotDxx_spectrum(Ag1,Ag2,dt,T,xi,xx):
     if len(Ag1) == len(Ag2):
         pass
     elif len(Ag1) > len(Ag2):
-        Ag2 = np.append(Ag2,np.zeros(len(Ag1)-len(Ag2)))
+        Ag2 = np.append(Ag2, np.zeros(len(Ag1) - len(Ag2)))
     elif len(Ag2) > len(Ag1):
-        Ag1 = np.append(Ag1,np.zeros(len(Ag2)-len(Ag1)))
+        Ag1 = np.append(Ag1, np.zeros(len(Ag2) - len(Ag1)))
 
     # Get the length of period array 
     n2 = max(T.shape)
@@ -2463,18 +2543,19 @@ def RotDxx_spectrum(Ag1,Ag2,dt,T,xi,xx):
     m = 1
 
     # Carry out linear time history analyses for SDOF system
-    u1,_,_,_ = sdof_ltha(Ag1, dt, T, xi, m)
-    u2,_,_,_ = sdof_ltha(Ag2, dt, T, xi, m)
+    u1, _, _, _ = sdof_ltha(Ag1, dt, T, xi, m)
+    u2, _, _, _ = sdof_ltha(Ag2, dt, T, xi, m)
 
     # RotD definition is taken from Boore 2010.
-    Rot_Disp = np.zeros((180,n2))
-    for theta in range (0,180,1):
-        Rot_Disp[theta] = np.max(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta)), axis = 0)
+    Rot_Disp = np.zeros((180, n2))
+    for theta in range(0, 180, 1):
+        Rot_Disp[theta] = np.max(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta)), axis=0)
 
-    Rot_Acc = Rot_Disp*(2*np.pi/T)**2
-    Sa_RotDxx = np.percentile(Rot_Acc, xx, axis = 0)
+    Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
+    Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
 
     return Sa_RotDxx
+
 
 #############################################################################################
 #############################################################################################
@@ -2512,8 +2593,8 @@ class tbdy_2018:
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
         # create the output directory and add the path to self
-        cwd = os. getcwd()
-        outdir_path = os.path.join(cwd,outdir)
+        cwd = os.getcwd()
+        outdir_path = os.path.join(cwd, outdir)
         self.outdir = outdir_path
         create_outdir(self.outdir)
 
@@ -2598,9 +2679,8 @@ class tbdy_2018:
             database will be saved, for other databases this variable is None.
         """
 
-
         if self.database['Name'] == "NGA_W2":
-            
+
             if self.selection == 1:  # SaKnown = Sa_arb
                 SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
                 soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
@@ -2612,7 +2692,7 @@ class tbdy_2018:
                 eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
 
             elif self.selection == 2:  # SaKnown = (Sa_1**2+Sa_2**2)**0.5
-                SaKnown = np.sqrt(self.database['Sa_1']**2 + self.database['Sa_2']**2)
+                SaKnown = np.sqrt(self.database['Sa_1'] ** 2 + self.database['Sa_2'] ** 2)
                 soil_Vs30 = self.database['soil_Vs30']
                 Mw = self.database['magnitude']
                 Rjb = self.database['Rjb']
@@ -2620,7 +2700,7 @@ class tbdy_2018:
                 Filename_1 = self.database['Filename_1']
                 Filename_2 = self.database['Filename_2']
                 NGA_num = self.database['NGA_num']
-                eq_ID = self.database['EQID']            
+                eq_ID = self.database['EQID']
 
             else:
                 print('Selection can only be performed for one or two components at the moment, exiting...')
@@ -2682,12 +2762,12 @@ class tbdy_2018:
             NGA_num = None
 
         # Match periods (known periods and periods for error computations)
-        self.T = perKnown[(perKnown >= 0.2*self.Tp)*(perKnown <= 1.5*self.Tp)]
-        
+        self.T = perKnown[(perKnown >= 0.2 * self.Tp) * (perKnown <= 1.5 * self.Tp)]
+
         # Arrange the available spectra for error computations
         recPer = []
         for i in range(len(self.T)):
-            recPer.append(np.where(perKnown == self.T[i])[0][0])        
+            recPer.append(np.where(perKnown == self.T[i])[0][0])
         sampleBig = SaKnown[:, recPer]
 
         # Check for invalid input
@@ -2695,17 +2775,17 @@ class tbdy_2018:
             print('NaNs found in input response spectra.',
                   'Fix the response spectra of database.')
             sys.exit()
-            
+
         # Check if enough records are available
         if self.nGM > len(NGA_num):
             print('There are not enough records which satisfy',
-            'the given record selection criteria...',
-            'Please use broaden your selection criteria...')
+                  'the given record selection criteria...',
+                  'Please use broaden your selection criteria...')
             sys.exit()
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
-    def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1, 
+    def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1):
         """
         Details
@@ -2765,7 +2845,7 @@ class tbdy_2018:
         -------
 
         """
-        
+
         # Add selection settings to self
         self.nGM = nGM
         self.selection = selection
@@ -2777,34 +2857,37 @@ class tbdy_2018:
 
         # Search the database and filter
         sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
-        
+
         # Determine the lower bound spectra
         target_spec = self.get_Sae(self.T, SD1, SDS, PGA)
         if selection == 1:
-            target_spec = 1.0*target_spec
-        elif selection == 2: 
-            target_spec = 1.3*target_spec
-        
+            target_spec = 1.0 * target_spec
+        elif selection == 2:
+            target_spec = 1.3 * target_spec
+
         # Sample size of the filtered database
         nBig = sampleBig.shape[0]
-        
+
         # Find best matches to the target spectrum from ground-motion database
-        mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig)**2).mean(axis=1)
+        mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2).mean(axis=1)
         recID_sorted = np.argsort(mse)
-        recIDs = np.ones((self.nGM), dtype = int)*(-1)
-        eqIDs = np.ones((self.nGM), dtype = int)*(-1)
-        idx1 = 0; idx2 = 0
-        while idx1 < self.nGM: # not more than 3 of the records should be from the same event
-            tmp1 = recID_sorted[idx2]; idx2 += 1
+        recIDs = np.ones((self.nGM), dtype=int) * (-1)
+        eqIDs = np.ones((self.nGM), dtype=int) * (-1)
+        idx1 = 0
+        idx2 = 0
+        while idx1 < self.nGM:  # not more than 3 of the records should be from the same event
+            tmp1 = recID_sorted[idx2]
+            idx2 += 1
             tmp2 = eq_ID[tmp1]
-            recIDs[idx1] = tmp1; eqIDs[idx1] = tmp2
+            recIDs[idx1] = tmp1
+            eqIDs[idx1] = tmp2
             if np.sum(eqIDs == tmp2) <= 3:
                 idx1 += 1
-        
+
         # Initial selection results - based on MSE
-        sampleSmall = sampleBig[recIDs.tolist(),:]
-        scaleFac = np.max(target_spec/sampleSmall.mean(axis=0))
- 
+        sampleSmall = sampleBig[recIDs.tolist(), :]
+        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0))
+
         # Apply Greedy subset modification procedure to improve selection
         # Use njit to speed up the optimization algorithm
         @njit
@@ -2822,32 +2905,35 @@ class tbdy_2018:
                 tmp = eq_ID[j]
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
-                    temp = np.zeros((1,len(sampleBig[j,:]))); temp[:,:] = sampleBig[j,:] # get the trial spectra
-                    tempSample = np.concatenate((sampleSmall,temp),axis=0) # add the trial spectra to subset list
-                    tempScale = np.max(target_spec/mean_numba(tempSample)) # Compute deviations from target
-                    
+                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp[:, :] = sampleBig[j, :]  # get the trial spectra
+                    tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
+                    tempScale = np.max(target_spec / mean_numba(tempSample))  # Compute deviations from target
+
                     # Should cause improvement and record should not be repeated
-                    if abs(tempScale-1) <= abs(scaleFac-1):
+                    if abs(tempScale - 1) <= abs(scaleFac - 1):
                         minID = j
                         scaleFac = tempScale
 
             return minID, scaleFac
 
         if opt == 1:
-            for i in range(self.nGM): # Loop for nGM
+            for i in range(self.nGM):  # Loop for nGM
                 minID = recIDs[i]
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recIDs = np.delete(recIDs, i)
-                eqIDs  = np.delete(eqIDs, i)
-    
+                eqIDs = np.delete(eqIDs, i)
+
                 # Try to add a new spectra to the subset list
                 minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID)
-    
+
                 # Add new element in the right slot
-                sampleSmall = np.concatenate((sampleSmall[:i,:], sampleBig[minID,:].reshape(1,sampleBig.shape[1]), sampleSmall[i:,:]),axis=0)
-                recIDs = np.concatenate((recIDs[:i],np.array([minID]),recIDs[i:]))
-                eqIDs = np.concatenate((eqIDs[:i],np.array([eq_ID[minID]]),eqIDs[i:]))
-            
+                sampleSmall = np.concatenate(
+                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]), sampleSmall[i:, :]),
+                    axis=0)
+                recIDs = np.concatenate((recIDs[:i], np.array([minID]), recIDs[i:]))
+                eqIDs = np.concatenate((eqIDs[:i], np.array([eq_ID[minID]]), eqIDs[i:]))
+
         recIDs = recIDs.tolist()
         # Add selected record information to self
         self.rec_scale = scaleFac
@@ -2867,30 +2953,30 @@ class tbdy_2018:
             self.rec_rsn = NGA_num[recIDs]
         else:
             self.rec_rsn = None
-            
+
         rec_idxs = []
         if self.selection == 1:
             SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
             Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-            for rec in self.rec_h1:           
+            for rec in self.rec_h1:
                 rec_idxs.append(np.where(Filename_1 == rec)[0][0])
-            rec_spec = SaKnown[rec_idxs,:]
+            rec_spec = SaKnown[rec_idxs, :]
         elif self.selection == 2:
             for rec in self.rec_h1:
                 rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
-            Sa_1 = self.database['Sa_1'][rec_idxs,:]
-            Sa_2 = self.database['Sa_2'][rec_idxs,:]
-            rec_spec = (Sa_1**2 + Sa_2**2)**0.5
-        
+            Sa_1 = self.database['Sa_1'][rec_idxs, :]
+            Sa_2 = self.database['Sa_2'][rec_idxs, :]
+            rec_spec = (Sa_1 ** 2 + Sa_2 ** 2) ** 0.5
+
         # Save the results for whole spectral range
         self.rec_spec = rec_spec
         self.T = self.database['Periods']
-        if selection == 1:  
+        if selection == 1:
             self.target = self.get_Sae(self.T, SD1, SDS, PGA)
-        elif selection == 2:  
-            self.target = self.get_Sae(self.T, SD1, SDS, PGA)*1.3
+        elif selection == 2:
+            self.target = self.get_Sae(self.T, SD1, SDS, PGA) * 1.3
 
-    def plot(self, save = 0, show = 1):
+    def plot(self, save=0, show=1):
         """
         Details
         -------
@@ -2920,40 +3006,40 @@ class tbdy_2018:
         BIG_SIZE = 16
         BIGGER_SIZE = 18
 
-        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-        plt.rc('axes', labelsize=BIG_SIZE)       # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('legend', fontsize=MEDIUM_SIZE)   # legend fontsize
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
         plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
         plt.ioff()
 
-        hatch = [self.Tp*0.2, self.Tp*1.5]
+        hatch = [self.Tp * 0.2, self.Tp * 1.5]
         # Plot Target spectrum vs. Selected response spectra
-        fig,ax = plt.subplots(1,1, figsize = (8,8))
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         for i in range(self.rec_spec.shape[0]):
-            ax.plot(self.T, self.rec_spec[i,:]*self.rec_scale, color = 'gray', lw=1, label='Selected')
-        ax.plot(self.T, np.mean(self.rec_spec,axis=0)*self.rec_scale, color = 'black', lw=2, label='Selected Mean')       
-        ax.plot(self.T, self.target, color = 'red', lw=2, label='Target')   
+            ax.plot(self.T, self.rec_spec[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
+        ax.plot(self.T, np.mean(self.rec_spec, axis=0) * self.rec_scale, color='black', lw=2, label='Selected Mean')
+        ax.plot(self.T, self.target, color='red', lw=2, label='Target')
         ax.axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
         ax.set_xlabel('Period [sec]')
         ax.set_ylabel('Spectral Acceleration [g]')
         ax.grid(True)
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys(), frameon = False)
-        ax.set_xlim([self.T[0],self.Tp*3])
+        ax.legend(by_label.values(), by_label.keys(), frameon=False)
+        ax.set_xlim([self.T[0], self.Tp * 3])
         plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
 
         if save == 1:
-            plt.savefig(os.path.join(self.outdir,'Selected.pdf'))
+            plt.savefig(os.path.join(self.outdir, 'Selected.pdf'))
 
         # Show the figure
         if show == 1:
             plt.show()
 
-    def write(self, obj = 0, recs = 1, recs_f = ''):
+    def write(self, obj=0, recs=1, recs_f=''):
         """
         
         Details
@@ -2987,7 +3073,7 @@ class tbdy_2018:
 
         if recs == 1:
             # set the directories and file names
-            zipName = os.path.join(recs_f,self.database['Name'] + '.zip')
+            zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
             if self.database['Name'] == 'NGA_W2':
                 try:
                     zipName = self.Unscaled_rec_file
@@ -2995,61 +3081,61 @@ class tbdy_2018:
                     pass
 
             n = len(self.rec_h1)
-            path_dts = os.path.join(self.outdir,'GMR_dts.txt')
-            path_SF = os.path.join(self.outdir,'GMR_SF.txt')
+            path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
+            path_SF = os.path.join(self.outdir, 'GMR_SF.txt')
             dts = np.zeros((n))
 
             if not self.rec_h2 is None:
-                path_H1 = os.path.join(self.outdir,'GMR_H1_names.txt')
-                path_H2 = os.path.join(self.outdir,'GMR_H2_names.txt')
+                path_H1 = os.path.join(self.outdir, 'GMR_H1_names.txt')
+                path_H2 = os.path.join(self.outdir, 'GMR_H2_names.txt')
                 h2s = open(path_H2, 'w')
 
             else:
-                path_H1 = os.path.join(self.outdir,'GMR_names.txt')
+                path_H1 = os.path.join(self.outdir, 'GMR_names.txt')
 
             h1s = open(path_H1, 'w')
             if self.database['Name'] == 'NGA_W2':
-                if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
+                if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
                     rec_paths = self.rec_h1
                 else:
-                    rec_paths = [self.database['Name']+'/'+self.rec_h1[i] for i in range(n)]
-                contents = ContentFromZip(rec_paths,zipName)
+                    rec_paths = [self.database['Name'] + '/' + self.rec_h1[i] for i in range(n)]
+                contents = ContentFromZip(rec_paths, zipName)
 
                 # Save the H1 gm components
                 for i in range(n):
-                    dts[i], _, _, t, inp_acc = ReadNGA(inFilename = self.rec_h1[i],content = contents[i])
-                    gmr_file = self.rec_h1[i].replace('/','_')[:-4]+'.txt'
-                    path = os.path.join(self.outdir,gmr_file)
+                    dts[i], _, _, t, inp_acc = ReadNGA(inFilename=self.rec_h1[i], content=contents[i])
+                    gmr_file = self.rec_h1[i].replace('/', '_')[:-4] + '.txt'
+                    path = os.path.join(self.outdir, gmr_file)
                     np.savetxt(path, inp_acc, fmt='%1.4e')
-                    h1s.write(gmr_file+'\n')
+                    h1s.write(gmr_file + '\n')
                 # Save the H2 gm components
                 if not self.rec_h2 is None:
 
-                    if zipName != os.path.join(recs_f,self.database['Name'] + '.zip'):
+                    if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
                         rec_paths = self.rec_h2
                     else:
-                        rec_paths = [self.database['Name']+'/'+self.rec_h2[i] for i in range(n)]
+                        rec_paths = [self.database['Name'] + '/' + self.rec_h2[i] for i in range(n)]
 
-                    contents = ContentFromZip(rec_paths,zipName)
+                    contents = ContentFromZip(rec_paths, zipName)
                     for i in range(n):
-                        _, _, _, _, inp_acc = ReadNGA(inFilename = self.rec_h2[i],content = contents[i])
-                        gmr_file = self.rec_h2[i].replace('/','_')[:-4]+'.txt'
-                        path = os.path.join(self.outdir,gmr_file)
+                        _, _, _, _, inp_acc = ReadNGA(inFilename=self.rec_h2[i], content=contents[i])
+                        gmr_file = self.rec_h2[i].replace('/', '_')[:-4] + '.txt'
+                        path = os.path.join(self.outdir, gmr_file)
                         np.savetxt(path, inp_acc, fmt='%1.4e')
-                        h2s.write(gmr_file+'\n')
-            
+                        h2s.write(gmr_file + '\n')
+
             # Close the files
-            h1s.close()                        
+            h1s.close()
             if not self.rec_h2 is None: h2s.close()
-            np.savetxt(path_dts,dts, fmt='%.5f')
-            np.savetxt(path_SF,np.array([self.rec_scale]), fmt='%.5f')
+            np.savetxt(path_dts, dts, fmt='%.5f')
+            np.savetxt(path_SF, np.array([self.rec_scale]), fmt='%.5f')
 
         if obj == 1:
             # save some info as pickle obj
-            path_cs = os.path.join(self.outdir,'tbdy_2018.pkl')
-            cs_obj = vars(copy.deepcopy(self)) # use copy.deepcopy to create independent obj
+            path_cs = os.path.join(self.outdir, 'tbdy_2018.pkl')
+            cs_obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             cs_obj['database'] = self.database['Name']
-            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[','',).replace(']','')
+            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[', '', ).replace(']', '')
             del cs_obj['bgmpe']
             del cs_obj['outdir']
             with open(path_cs, 'wb') as file:
@@ -3057,7 +3143,7 @@ class tbdy_2018:
 
         print('Finished writing process, the files are located in\n%s' % self.outdir)
 
-    def nga_download(self, username , pwd):
+    def nga_download(self, username, pwd):
         """
         
         Details
@@ -3112,12 +3198,12 @@ class tbdy_2018:
             r = requests.get('https://chromedriver.chromium.org/')
             a = r.text
             start = a.find('Latest stable')
-            text = a.replace(a[0:start],'')
+            text = a.replace(a[0:start], '')
             start = text.find('path=')
 
-            text = text.replace(text[0:start+5],'')
+            text = text.replace(text[0:start + 5], '')
             end = text.find("/")
-            latest_ver = text.replace(text[end::],'')
+            latest_ver = text.replace(text[end::], '')
             return latest_ver
 
         def add_driver_to_the_PATH(save_path):
@@ -3139,15 +3225,14 @@ class tbdy_2018:
             flag = 0
             flag_lim = 5
             while delta_size > 0 and flag < flag_lim:
-                print
                 size_0 = dir_size(Down_Dir)
                 sleep(6)
                 size_1 = dir_size(Down_Dir)
-                if size_1-size_0 > 0:
-                    delta_size = size_1-size_0
+                if size_1 - size_0 > 0:
+                    delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print(flag_lim-flag)
+                    print(flag_lim - flag)
             print(f'Downloaded files are located in\n{Down_Dir}')
 
         def seek_and_download():
@@ -3174,11 +3259,11 @@ class tbdy_2018:
                 aim_driver = 'chromedriver'
             if aim_driver not in os.listdir(package):
                 latest_ver = find_latest_ver()
-                save_path = os.path.join(os.getcwd(),'chromedriver.zip')
+                save_path = os.path.join(os.getcwd(), 'chromedriver.zip')
                 url = f"https://chromedriver.storage.googleapis.com/{latest_ver}/chromedriver_{current_platform}.zip"
                 download_url(url, save_path, chunk_size=128)
                 add_driver_to_the_PATH(save_path)
-                print ('chromedriver downloaded successfully!!')
+                print('chromedriver downloaded successfully!!')
                 os.remove(save_path)
             else:
                 print("chromedriver allready exists!!")
@@ -3200,8 +3285,8 @@ class tbdy_2018:
             """
 
             ChromeOptions = webdriver.ChromeOptions()
-            prefs = {"download.default_directory" : Download_Dir}
-            ChromeOptions.add_experimental_option("prefs",prefs)
+            prefs = {"download.default_directory": Download_Dir}
+            ChromeOptions.add_experimental_option("prefs", prefs)
             ChromeOptions.headless = True
             if sys.platform.startswith('win'):
                 aim_driver = 'chromedriver.exe'
@@ -3209,18 +3294,18 @@ class tbdy_2018:
                 aim_driver = 'chromedriver'
             elif sys.platform.startswith('darwin'):
                 aim_driver = 'chromedriver'
-            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0] , aim_driver)
+            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
             if not os.path.exists(path_of_driver):
                 print('Downloading the chromedriver!!')
                 seek_and_download()
                 if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
                     os.chmod(path_of_driver, 0o777)
-            driver = webdriver.Chrome(executable_path = path_of_driver ,options=ChromeOptions)
+            driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
             driver.get(url_sign_in)
             return driver
 
-        def sign_in_with_given_creds(driver,USERNAME,PASSWORD):
+        def sign_in_with_given_creds(driver, USERNAME, PASSWORD):
             """
             
             Details
@@ -3254,7 +3339,7 @@ class tbdy_2018:
                 pass
             return driver, warn
 
-        def Download_Given(RSNs,Download_Dir,driver):
+        def Download_Given(RSNs, Download_Dir, driver):
             """
             
             Details
@@ -3284,7 +3369,8 @@ class tbdy_2018:
             sleep(2)
             driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
             sleep(3)
-            driver.find_element_by_xpath("//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
+            driver.find_element_by_xpath(
+                "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
             try:
                 note = driver.find_element_by_id('notice').text
                 print(note)
@@ -3302,13 +3388,13 @@ class tbdy_2018:
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
                 print("Downloading the Records!...")
                 obj = driver.switch_to.alert
-                msg=obj.text
-                print ("Alert shows following message: "+ msg )
+                msg = obj.text
+                print("Alert shows following message: " + msg)
                 sleep(5)
                 obj.accept()
                 obj = driver.switch_to.alert
-                msg=obj.text
-                print ("Alert shows following message: "+ msg )
+                msg = obj.text
+                print("Alert shows following message: " + msg)
                 sleep(3)
                 obj.accept()
                 print("Downloading the Records!...")
@@ -3320,7 +3406,7 @@ class tbdy_2018:
             self.username = username
             self.pwd = pwd
             driver = go_to_sign_in_page(self.outdir)
-            driver,warn = sign_in_with_given_creds(driver,self.username,self.pwd)
+            driver, warn = sign_in_with_given_creds(driver, self.username, self.pwd)
             if str(warn) == 'Invalid email or password.':
                 print(warn)
                 driver.quit()
@@ -3332,18 +3418,18 @@ class tbdy_2018:
 
                 RSNs = RSNs[:-1:]
                 files_before_download = set(os.listdir(self.outdir))
-                Download_Given(RSNs,self.outdir,driver)
+                Download_Given(RSNs, self.outdir, driver)
                 files_after_download = set(os.listdir(self.outdir))
                 Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
                 file_extension = Downloaded_File[Downloaded_File.find('.')::]
                 time_tag = gmtime()
                 time_tag_str = f'{time_tag[0]}'
-                for i in range(1,len(time_tag)):
+                for i in range(1, len(time_tag)):
                     time_tag_str += f'_{time_tag[i]}'
                 new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
-                Downloaded_File = os.path.join(self.outdir,Downloaded_File)
-                Downloaded_File_Rename = os.path.join(self.outdir,new_file_name)
-                os.rename(Downloaded_File,Downloaded_File_Rename)
+                Downloaded_File = os.path.join(self.outdir, Downloaded_File)
+                Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
+                os.rename(Downloaded_File, Downloaded_File_Rename)
                 self.Unscaled_rec_file = Downloaded_File_Rename
         else:
             print('You have to use NGA_W2 database to use nga_download method.')

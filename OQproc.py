@@ -15,7 +15,8 @@
 |-----------------------------------------------------------------------|
 """
 
-def proc_hazard(poes, path_hazard_results, output_dir = 'Post_Outputs', rlz='hazard_curve-mean'):
+
+def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazard_curve-mean'):
     """
     Details
     -------
@@ -119,7 +120,7 @@ def proc_hazard(poes, path_hazard_results, output_dir = 'Post_Outputs', rlz='haz
     plt.grid(True)
     plt.title('Mean Hazard Curves for Lat:%s Lon:%s' % (str(lat[0]), str(lon[0])))
     fname = os.path.join(output_dir, 'Hazard_Curves.png')
-    plt.savefig(fname, format = 'png', dpi = 220)
+    plt.savefig(fname, format='png', dpi=220)
 
     for i in range(len(apoe)):
         poe = 1 - (1 - np.asarray(apoe[i])) ** inv_t
@@ -129,6 +130,7 @@ def proc_hazard(poes, path_hazard_results, output_dir = 'Post_Outputs', rlz='haz
         haz_cur = np.concatenate([imls, poe], axis=1)
         fname = os.path.join(output_dir, 'HazardCurve_' + im[i] + '.out')
         np.savetxt(fname, haz_cur)
+
 
 def get_iml(poes, apoe_data, iml_data, inv_t):
     """
@@ -173,14 +175,14 @@ def get_iml(poes, apoe_data, iml_data, inv_t):
     idxs = []
     for i in range(len(poes)):
         temp = abs(poe - poes[i]).tolist()
-        idxs.append(temp.index(
-            min(temp)))  # These are actual points where the analysis are carried out and losses are calculated for
+        idxs.append(temp.index(min(temp)))
+        # These are actual points where the analysis are carried out and losses are calculated for
     iml = iml_range[idxs]
 
     return iml
 
 
-def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir = 'Post_Outputs', n_rows = 1):
+def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
     """
     Details
     -------
@@ -239,10 +241,10 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir = 'Po
             # Get some salient values
             f = open(''.join([path_disagg_results, '/', file]), "r")
             ff = f.readline().split(',')
-            try: #for OQ version <3.11
+            try:  # for OQ version <3.11
                 inv_t = float(ff[8].replace(" investigation_time=", ""))
                 poe.append(float(ff[11].replace(" poe=", "").replace("'", "")))
-            except: #for OQ version 3.11
+            except:  # for OQ version 3.11
                 inv_t = float(ff[5].replace(" investigation_time=", ""))
                 poe.append(float(ff[-1].replace(" poe=", "").replace("\"", "").replace("\n", "")))
             lon.append(float(ff[9].replace(" lon=", "")))
@@ -322,8 +324,8 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir = 'Po
             ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
             plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km' \
-                      % ("{:.0f}".format(Tr[idx2]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]), \
-                         "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])), \
+                      % ("{:.0f}".format(Tr[idx2]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
+                         "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
                       fontsize=11, loc='right', verticalalignment='top')
 
             mags.append(meanLst[i][0])
@@ -331,17 +333,19 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir = 'Po
 
         plt.subplots_adjust(hspace=0.1, wspace=0.05)  # adjust the subplot to the right for the legend
         fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
-        ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12, y=0.97)
+            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12,
+                     y=0.97)
 
-        fname = os.path.join(output_dir, 'Disaggregation_MR_'+ims[idx1] + '.png')
-        plt.savefig(fname, format = 'png', dpi = 220)
+        fname = os.path.join(output_dir, 'Disaggregation_MR_' + ims[idx1] + '.png')
+        plt.savefig(fname, format='png', dpi=220)
 
-        fname = os.path.join(output_dir, 'mean_mags_'+ims[idx1]+'.out')
+        fname = os.path.join(output_dir, 'mean_mags_' + ims[idx1] + '.out')
         np.savetxt(fname, np.asarray(mags), fmt='%.2f')
-        fname = os.path.join(output_dir, 'mean_dists_'+ims[idx1]+'.out')
+        fname = os.path.join(output_dir, 'mean_dists_' + ims[idx1] + '.out')
         np.savetxt(fname, np.asarray(dists), fmt='%.1f')
 
-def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, output_dir = 'Post_Outputs', n_rows = 1):
+
+def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
     """
     Details
     -------
@@ -395,39 +399,40 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
     dists = []
 
     for file in os.listdir(path_disagg_results):
-        if file.startswith('rlz') and file.find('Mag_Dist_Eps')>0:
+        if file.startswith('rlz') and file.find('Mag_Dist_Eps') > 0:
             # Load the dataframe
-            df=pd.read_csv(''.join([path_disagg_results,'/',file]),skiprows=1)
+            df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
 
             # Strip the IM out of the file name
             im.append(file.rsplit('-')[2])
 
             # Get some salient values
-            f = open(''.join([path_disagg_results,'/',file]), "r")
-            ff=f.readline().split(',')
-            try: #for OQ version <3.11
+            f = open(''.join([path_disagg_results, '/', file]), "r")
+            ff = f.readline().split(',')
+            try:  # for OQ version <3.11
                 inv_t = float(ff[9].replace(" investigation_time=", ""))
                 poe.append(float(ff[12].replace(" poe=", "").replace("'", "")))
-            except: #TODO-1: verify this for OQ version 3.11
+            except:  # TODO-1: verify this for OQ version 3.11
                 inv_t = float(ff[6].replace(" investigation_time=", ""))
                 poe.append(float(ff[-1].replace(" poe=", "").replace("\"", "").replace("\n", "")))
             lon.append(float(ff[10].replace(" lon=", "")))
             lat.append(float(ff[11].replace(" lat=", "")))
-            Tr.append(-inv_t/np.log(1-poe[-1]))
+            Tr.append(-inv_t / np.log(1 - poe[-1]))
 
             # Extract the poe and annualise
-            df['apoe'] = -np.log(1-df['poe'])/inv_t
+            df['apoe'] = -np.log(1 - df['poe']) / inv_t
 
             # Normalise the apoe for disaggregation plotting
-            df['apoe_norm'] = df['apoe']/ df['apoe'].sum()
+            df['apoe_norm'] = df['apoe'] / df['apoe'].sum()
             apoe_norm.append(df['apoe_norm'])
 
             # Compute the modal value (highest apoe)
-            mode=df.sort_values(by='apoe_norm',ascending=False)[0:1]
-            modeLst.append([mode['mag'].values[0],mode['dist'].values[0],mode['eps'].values[0]])
+            mode = df.sort_values(by='apoe_norm', ascending=False)[0:1]
+            modeLst.append([mode['mag'].values[0], mode['dist'].values[0], mode['eps'].values[0]])
 
             # Compute the mean value
-            meanLst.append([np.sum(df['mag']*df['apoe_norm']), np.sum(df['dist']*df['apoe_norm']), np.sum(df['eps']*df['apoe_norm'])])
+            meanLst.append([np.sum(df['mag'] * df['apoe_norm']), np.sum(df['dist'] * df['apoe_norm']),
+                            np.sum(df['eps'] * df['apoe_norm'])])
 
             M.append(df['mag'])
             R.append(df['dist'])
@@ -438,7 +443,7 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
     im = [x for _, x in sorted(zip(Tr, im))]
     M = [x for _, x in sorted(zip(Tr, M))]
     R = [x for _, x in sorted(zip(Tr, R))]
-    eps = [x for _,x in sorted(zip(Tr,eps))]
+    eps = [x for _, x in sorted(zip(Tr, eps))]
     apoe_norm = [x for _, x in sorted(zip(Tr, apoe_norm))]
     modeLst = [x for _, x in sorted(zip(Tr, modeLst))]
     meanLst = [x for _, x in sorted(zip(Tr, meanLst))]
@@ -448,9 +453,9 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
     Tr = sorted(Tr)
     ims = np.unique(im)
     n_im = len(ims)
-    n_eps=len(np.unique(np.asarray(eps)))
-    min_eps=np.min(np.unique(np.asarray(eps))) # get range of colorbars so we can normalize
-    max_eps=np.max(np.unique(np.asarray(eps)))
+    n_eps = len(np.unique(np.asarray(eps)))
+    min_eps = np.min(np.unique(np.asarray(eps)))  # get range of colorbars so we can normalize
+    max_eps = np.max(np.unique(np.asarray(eps)))
 
     lon = lon[0]
     lat = lat[0]
@@ -462,54 +467,58 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
     for idx1 in range(n_im):
         fig = plt.figure(figsize=(19.2, 10.8))
         for idx2 in range(n_Tr):
-            i = idx1*n_Tr+idx2
-            ax1 = fig.add_subplot(n_rows,n_cols,idx2+1, projection='3d')
-            
+            i = idx1 * n_Tr + idx2
+            ax1 = fig.add_subplot(n_rows, n_cols, idx2 + 1, projection='3d')
+
             # scale each eps to [0,1], and get their rgb values
-            rgba = [cmap((k-min_eps)/max_eps/2) for k in (np.unique(np.asarray(eps)))]
-            num_triads_M_R_eps=len(R[i])
-            Z = np.zeros(int(num_triads_M_R_eps/n_eps))
-            
+            rgba = [cmap((k - min_eps) / max_eps / 2) for k in (np.unique(np.asarray(eps)))]
+            num_triads_M_R_eps = len(R[i])
+            Z = np.zeros(int(num_triads_M_R_eps / n_eps))
+
             for l in range(n_eps):
-                
                 X = np.array(R[i][np.arange(l, num_triads_M_R_eps, n_eps)])
                 Y = np.array(M[i][np.arange(l, num_triads_M_R_eps, n_eps)])
-                
-                dx = np.ones(int(num_triads_M_R_eps/n_eps))*dbin/2
-                dy = np.ones(int(num_triads_M_R_eps/n_eps))*Mbin/2
+
+                dx = np.ones(int(num_triads_M_R_eps / n_eps)) * dbin / 2
+                dy = np.ones(int(num_triads_M_R_eps / n_eps)) * Mbin / 2
                 dz = np.array(apoe_norm[i][np.arange(l, num_triads_M_R_eps, n_eps)]) * 100
-                
-                ax1.bar3d(X, Y, Z, dx, dy, dz, color=rgba[l], zsort='average',alpha=0.7, shade=True)
-                Z += dz    # add the height of each bar to know where to start the next
-            
+
+                ax1.bar3d(X, Y, Z, dx, dy, dz, color=rgba[l], zsort='average', alpha=0.7, shade=True)
+                Z += dz  # add the height of each bar to know where to start the next
+
             ax1.set_xlabel('R [km]')
             ax1.set_ylabel('$M_{w}$')
-            if np.mod(idx2+1,n_cols)==1:
+            if np.mod(idx2 + 1, n_cols) == 1:
                 ax1.set_zlabel('Hazard Contribution [%]')
                 ax1.zaxis.set_rotate_label(False)  # disable automatic rotation
-                ax1.set_zlabel('Hazard Contribution [%]',rotation=90)
-            ax1.zaxis._axinfo['juggled'] = (1,2,0)
-            
-            plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km, $\epsilon_{mod}$=%s\n$M_{mean}$=%s, $R_{mean}$=%s km, $\epsilon_{mean}$=%s' \
-                      % ("{:.0f}".format(Tr[i]),"{:.2f}".format(modeLst[i][0]),"{:.0f}".format(modeLst[i][1]),"{:.1f}".format(modeLst[i][2]), \
-                         "{:.2f}".format(meanLst[i][0]),"{:.0f}".format(meanLst[i][1]),"{:.1f}".format(meanLst[i][2])), \
-                          fontsize=11, loc='right',va='top')
-                
+                ax1.set_zlabel('Hazard Contribution [%]', rotation=90)
+            ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
+
+            plt.title(
+                '$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km, $\epsilon_{mod}$=%s\n$M_{mean}$=%s, $R_{mean}$=%s km, $\epsilon_{mean}$=%s' \
+                % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
+                   "{:.1f}".format(modeLst[i][2]),
+                   "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1]), "{:.1f}".format(meanLst[i][2])),
+                fontsize=11, loc='right', va='top')
+
             mags.append(meanLst[i][0])
             dists.append(meanLst[i][1])
-        
-        legend_elements=[]
-        for j in range(n_eps):
-            legend_elements.append(Patch(facecolor=rgba[n_eps-j-1], label='\u03B5 = %.2f'% (np.unique(np.asarray(eps))[n_eps-j-1])))
-        
-        fig.legend(handles=legend_elements, loc="lower center",bbox_to_anchor=(0.5, 0.05), borderaxespad=0.,ncol=n_eps)
-        plt.subplots_adjust(hspace = 0.05, wspace = 0.05) #adjust the subplot to the right for the legend
-        fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (ims[idx1],"{:.4f}".format(lat),"{:.4f}".format(lon)), fontsize=14, weight='bold',ha='left',x=0.12,y=0.97)
-        
-        fname = os.path.join(output_dir, 'Disaggregation_MReps_'+ims[idx1] + '.png')
-        plt.savefig(fname, format = 'png', dpi = 220)
 
-        fname = os.path.join(output_dir, 'mean_mags_'+ims[idx1]+'.out')
+        legend_elements = []
+        for j in range(n_eps):
+            legend_elements.append(Patch(facecolor=rgba[n_eps - j - 1],
+                                         label='\u03B5 = %.2f' % (np.unique(np.asarray(eps))[n_eps - j - 1])))
+
+        fig.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(0.5, 0.05), borderaxespad=0.,
+                   ncol=n_eps)
+        plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
+        fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
+        ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12, y=0.97)
+
+        fname = os.path.join(output_dir, 'Disaggregation_MReps_' + ims[idx1] + '.png')
+        plt.savefig(fname, format='png', dpi=220)
+
+        fname = os.path.join(output_dir, 'mean_mags_' + ims[idx1] + '.out')
         np.savetxt(fname, np.asarray(mags), fmt='%.2f')
-        fname = os.path.join(output_dir, 'mean_dists_'+ims[idx1]+'.out')
+        fname = os.path.join(output_dir, 'mean_dists_' + ims[idx1] + '.out')
         np.savetxt(fname, np.asarray(dists), fmt='%.1f')

@@ -33,7 +33,7 @@ from openquake.hazardlib import gsim, imt, const
 from selenium import webdriver
 import requests
 
-class cs_master:
+class cs:
     """
     This class is used to
         1) Create target spectrum
@@ -1949,10 +1949,10 @@ def baseline_correction(values,dt,polynomial_type):
     elif polynomial_type == 'Quadratic':    n = 2
     elif polynomial_type == 'Cubic':        n = 3
 
-    time = np.linspace(0,(len(values)-1)*dt,len(values))    # Time array
-    P = np.polyfit(time,values,n);                          # Best fit line of values
-    po_va = np.polyval(P,time);                             # Matrix of best fit line
-    values_corrected = values - po_va;                      # Baseline corrected values
+    t = np.linspace(0,(len(values)-1)*dt,len(values))    # Time array
+    P = np.polyfit(t,values,n);                          # Best fit line of values
+    po_va = np.polyval(P,t);                             # Matrix of best fit line
+    values_corrected = values - po_va;                   # Baseline corrected values
 
     return values_corrected
 

@@ -2,13 +2,13 @@
 # Conditional Spectrum (CS) Based Record Selection #
 ####################################################
 
-from EzGM import *
-startTime = time()
+import EzGM
+startTime = EzGM.time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = cs_master(Tstar = 1.0, gmpe = 'Akkar_EtAlRjb_2014', database = 'NGA_W2', pInfo = 1)
+cs = EzGM.cs(Tstar = 1.0, gmpe = 'Akkar_EtAlRjb_2014', database = 'NGA_W2', pInfo = 1)
 
 # 2.) Create target spectrum
-cs.create(site_param = {'vs30': 400}, rup_param = {'rake': 0.0, 'mag': [7.54]}, 
+cs.create(site_param = {'vs30': 400}, rup_param = {'rake': 0.0, 'mag': [7.54]},
           dist_param = {'rjb': [10]}, Hcont=None, T_Tgt_range  = [0.05,2.5], 
           im_Tstar = 2.288, epsilon = None, cond = 1, useVar = 1, corr_func = 'akkar', 
           outdir = 'Outputs')
@@ -34,4 +34,4 @@ cs.nga_download(username = 'example_username', pwd = 'example_password123456')
 cs.write(obj = 1, recs = 1, recs_f = '')
 
 # Calculate the total time passed
-RunTime(startTime)
+EzGM.RunTime(startTime)

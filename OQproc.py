@@ -15,38 +15,6 @@
 |-----------------------------------------------------------------------|
 """
 
-def ensure_dir(file_path):
-    """
-    Details
-    -------
-    This script ensures that the desired
-    directory is created as an empty folder
-
-    Parameters
-    ----------
-    file_path : str
-        file path to create
-
-    Returns
-    -------
-    None.
-
-    """
-    import errno, os, stat, shutil
-
-    def handleRemoveReadonly(func, path, exc):
-
-        excvalue = exc[1]
-        if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
-            os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
-            func(path)
-        else:
-            raise
-
-    if os.path.exists(file_path):     # To remove files
-        shutil.rmtree(file_path, ignore_errors=False, onerror=handleRemoveReadonly)
-    os.mkdir(file_path)
-
 def proc_hazard(poes, path_hazard_results, output_dir = 'Post_Outputs', rlz='hazard_curve-mean'):
     """
     Details

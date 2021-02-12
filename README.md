@@ -35,4 +35,4 @@ requests
 Installation of Openquake package in Linux and MACOS is straightforward. In case of windows package may not be installed correctly, in other words, geos_c.dll or similar .dll files could be missing). To fix this simply write, pip install shapely or conda install shapely (in case of anaconda). EzGM.cs_master.nga_download method can be used if google-chrome is readily available.
 
 ### Acknowledgements
-Special thanks to Besim Yukselen for his help in the development of nga_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.cs_master method is greatly inspired by the works of Prof. Jack W. Baker.
+Special thanks to Besim Yukselen for his help in the development of nga_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.cs_master method is greatly inspired by the works of Prof. Jack W. Baker whom I thank for making his works open to public.

@@ -2549,7 +2549,11 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     # RotD definition is taken from Boore 2010.
     Rot_Disp = np.zeros((180, n2))
     for theta in range(0, 180, 1):
-        Rot_Disp[theta] = np.max(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta)), axis=0)
+        Osc1 = u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta))
+        Osc2 = -u1*np.sin(np.deg2rad(theta))+u2*np.cos(np.deg2rad(theta))
+        RSH1 = np.max(np.abs(Osc1), axis = 0)
+        RSH2 = np.max(np.abs(Osc2), axis = 0)
+        Rot_Disp[theta] = (RSH1*RSH2)**0.5
 
     Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
     Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)

@@ -602,10 +602,6 @@ class cs:
                 print('Unexpected Sa definition, exiting...')
                 sys.exit()
 
-        else:
-            print('Selection can only be performed for one or two components at the moment, exiting...')
-            sys.exit()
-
             soil_Vs30 = self.database['soil_Vs30']
             Mw = self.database['magnitude']
             Rjb = self.database['Rjb']
@@ -613,6 +609,10 @@ class cs:
             Filename_1 = self.database['Filename_1']
             Filename_2 = self.database['Filename_2']
             NGA_num = self.database['NGA_num']
+
+        else:
+            print('Selection can only be performed for one or two components at the moment, exiting...')
+            sys.exit()
 
         perKnown = self.database['Periods']
 
@@ -3135,8 +3135,6 @@ class tbdy_2018:
             path_cs = os.path.join(self.outdir, 'tbdy_2018.pkl')
             cs_obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             cs_obj['database'] = self.database['Name']
-            cs_obj['gmpe'] = str(cs_obj['bgmpe']).replace('[', '', ).replace(']', '')
-            del cs_obj['bgmpe']
             del cs_obj['outdir']
             with open(path_cs, 'wb') as file:
                 pickle.dump(cs_obj, file)

@@ -9,13 +9,13 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 EzGM.tbdy_2018 is used to perform record selection in accordance with TBDY2018 (Turkish Building Code). 
 
 EzGM.gm_processor is used to process a ground motion records.
+***
 
 # OQproc
 Toolbox to visualize of outputs of analysis in OpenQuake.
 
 The script can be used to prepare input required for the CS-based record selection
 ***
-
 
 ## Required Packages
 sys,
@@ -41,4 +41,4 @@ Installation of Openquake package in Linux and MACOS is straightforward. In case
 ***
 
 ### Acknowledgements
-Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.cs method is greatly inspired by the CS_Selection code of Prof. Jack W. Baker whom I thank for sharing his work with the research community.
+Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.conditional_spectrum method is greatly inspired by the CS_Selection code of Prof. Jack W. Baker whom I thank for sharing his work with the research community.

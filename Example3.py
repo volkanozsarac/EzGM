@@ -65,7 +65,7 @@ for im in ims:  # for each im in the im list
     mean_dists = EzGM.np.loadtxt(EzGM.os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
     # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-    cs = EzGM.cs(Tstar=EzGM.np.arange(0.1, 1.1, 0.1), gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1)
+    cs = EzGM.conditonal_spectrum(Tstar=EzGM.np.arange(0.1, 1.1, 0.1), gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):
         # 2.) Create target spectrum
@@ -85,7 +85,7 @@ for im in ims:  # for each im in the im list
 
         # 4.) If database == 'NGA_W2' you can first download the records via nga_download method
         # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method
-        cs.nga_download(username = 'example_username@email.com', pwd = 'example_password123456')
+        cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456')
 
         # 5.) If you have records already inside recs_f\database.zip\database or
         # downloaded records for database = NGA_W2 case, write whatever you want,

@@ -2244,7 +2244,8 @@ class tbdy_2018(downloader, file_manager):
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
     def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1,
-               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1):
+               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, 
+               maxScale=2, weights = [1,1]):
         """
         Details
         -------
@@ -2264,24 +2265,18 @@ class tbdy_2018(downloader, file_manager):
 
         Parameters
         ----------
-        SD1 : float, optional
+        SD1 : float, optional, the default is 1.073.
             Short period design spectral acceleration coefficient. 
-            The default is 1.073.
-        SDS : float, optional
+        SDS : float, optional, the default is 2.333.
             Design spectral acceleration coefficient for a period of 1.0 seconds. 
-            The default is 2.333.
-        PGA : float, optional
+        PGA : float, optional, the default is 0.913.
             Peak ground acceleration. 
-            The default is 0.913.
-        nGM : int, optional
+        nGM : int, optional, the default is 11.
             Number of records to be selected. 
-            The default is 11.
-        selection : int, optional
+        selection : int, optional, the default is 1.
             Number of ground motion components to select. 
-            The default is 1.
-        Tp : float, optional
+        Tp : float, optional, the default is 1.
             Predominant period of the structure. 
-            The default is 1.
         Mw_lim : list, optional, the default is None.
             The limiting values on magnitude. 
         Vs30_lim : list, optional, the default is None.
@@ -2294,11 +2289,18 @@ class tbdy_2018(downloader, file_manager):
             1 for strike-slip fault
             2 for normal fault
             3 for reverse fault
-        opt : int, optional
-            Applies greedy optimization if equal to 1. 
-            The record set selected such that scaling factor is closer to 1.
-            The default is 1.
-
+        opt : int, optional, the default is 1.
+            If equal to 0, the record set is selected using
+            method of “least squares”.
+            If equal to 1, the record set selected such that 
+            scaling factor is closer to 1.
+            If equal to 2, the record set selected such that 
+            both scaling factor and standard deviation is lowered.
+        maxScale : float, optional, the default is 2.
+            Maximum allowed scaling factor, used with opt=2 case.
+        weights = list, optional, the default is [1,1].
+            Error weights (mean,std), used with opt=2 case.
+        
         Returns
         -------
 
@@ -2312,6 +2314,8 @@ class tbdy_2018(downloader, file_manager):
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
         self.Tp = Tp
+        
+        weights = np.array(weights, dtype=float)
 
         # Search the database and filter
         sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
@@ -2328,6 +2332,7 @@ class tbdy_2018(downloader, file_manager):
 
         # Find best matches to the target spectrum from ground-motion database
         mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2).mean(axis=1)
+
         recID_sorted = np.argsort(mse)
         recIDs = np.ones((self.nGM), dtype=int) * (-1)
         eqIDs = np.ones((self.nGM), dtype=int) * (-1)
@@ -2344,13 +2349,11 @@ class tbdy_2018(downloader, file_manager):
 
         # Initial selection results - based on MSE
         sampleSmall = sampleBig[recIDs.tolist(), :]
-        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0))
-
-        # Apply Greedy subset modification procedure to improve selection
-        # Use njit to speed up the optimization algorithm
+        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0)) 
+        
         @njit
-        def find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID):
-
+        def opt_method1(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID):
+            # Optimize based on scaling factor
             def mean_numba(a):
 
                 res = []
@@ -2359,31 +2362,89 @@ class tbdy_2018(downloader, file_manager):
 
                 return np.array(res)
 
+            def std_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].std())
+
+                return np.array(res)
+
             for j in range(nBig):
                 tmp = eq_ID[j]
+                # record should not be repeated and number of eqs from the same event should not exceed 3
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
                     temp = np.zeros((1, len(sampleBig[j, :])));
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
-                    tempScale = np.max(target_spec / mean_numba(tempSample))  # Compute deviations from target
-
-                    # Should cause improvement and record should not be repeated
+                    tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
+                    
+                    # Should cause improvement
                     if abs(tempScale - 1) <= abs(scaleFac - 1):
                         minID = j
                         scaleFac = tempScale
 
             return minID, scaleFac
 
-        if opt == 1:
+        @njit
+        def opt_method2(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID, DevTot):
+            # Optimize based on dispersion
+            def mean_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].mean())
+
+                return np.array(res)
+            
+            def std_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].std())
+
+                return np.array(res)
+
+            for j in range(nBig):
+                tmp = eq_ID[j]
+                
+                # record should not be repeated and number of eqs from the same event should not exceed 3
+                if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
+                    # Add to the sample the scaled spectra
+                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp[:, :] = sampleBig[j, :]  # get the trial spectra
+                    tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
+                    tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
+                    devSig = np.max(std_numba(tempSample*tempScale)) # Compute standard deviation
+                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample))*tempScale)
+                    tempDevTot = devMean*weights[0] + devSig*weights[1]
+                    
+                    # Should cause improvement
+                    if tempScale<maxScale and tempScale>1/maxScale and tempDevTot <= DevTot:
+                        minID = j
+                        scaleFac = tempScale
+                        DevTot = tempDevTot
+
+            return minID, scaleFac
+        
+        # Apply Greedy subset modification procedure to improve selection
+        # Use njit to speed up the optimization algorithm
+        if opt != 0:
             for i in range(self.nGM):  # Loop for nGM
                 minID = recIDs[i]
+                devSig = np.max(np.std(sampleSmall*scaleFac,axis=0)) # Compute standard deviation
+                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall,axis=0))*scaleFac)
+                DevTot = devMean*weights[0] + devSig*weights[1]
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recIDs = np.delete(recIDs, i)
                 eqIDs = np.delete(eqIDs, i)
-
+                
                 # Try to add a new spectra to the subset list
-                minID, scaleFac = find_rec(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID)
+                if opt == 1: # try to optimize scaling factor only (closest to 1)
+                    minID, scaleFac = opt_method1(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID)
+                if opt == 2: # try to optimize the error (max(mean-target) + max(std))
+                    minID, scaleFac = opt_method2(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID, DevTot)
 
                 # Add new element in the right slot
                 sampleSmall = np.concatenate(

@@ -1308,7 +1308,10 @@ class conditonal_spectrum(downloader, file_manager):
 
         # Find covariance values of zero and set them to a small number so that
         # random number generation can be performed
-        TgtCov_fin[np.abs(TgtCov_fin) < 1e-10] = 1e-10
+        # TgtCov_fin[np.abs(TgtCov_fin) < 1e-10] = 1e-10
+        min_eig = np.min(np.real(np.linalg.eigvals(TgtCov_fin)))
+        if min_eig < 0:
+            TgtCov_fin -= 10*min_eig * np.eye(*TgtCov_fin.shape)
 
         TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
         TgtSigma_fin[np.isnan(TgtSigma_fin)] = 0
@@ -1713,8 +1716,8 @@ class conditonal_spectrum(downloader, file_manager):
                 # Penalize bad spectra
                 elif penalty > 0:
                     for m in range(nGM):
-                        devTotal = devTotal + np.sum(
-                            np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3 * sigma_ln))) * penalty
+                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3.0 * sigma_ln))) * penalty
+                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m, :]) < np.exp(mu_ln - 3.0 * sigma_ln))) * penalty
 
                 # Should cause improvement and record should not be repeated
                 if devTotal < minDev:

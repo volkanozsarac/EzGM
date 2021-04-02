@@ -1423,7 +1423,8 @@ class conditonal_spectrum(downloader, file_manager):
                 fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
                 Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
                 NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
-
+                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
+                
             elif self.database['Name'].startswith("EXSIM"):
                 SaKnown = self.database['Sa_1']
                 soil_Vs30 = self.database['soil_Vs30']
@@ -1431,7 +1432,8 @@ class conditonal_spectrum(downloader, file_manager):
                 Rjb = self.database['Rjb']
                 fault = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
-
+                eq_ID = self.database['EQID']
+                
         elif self.selection == 2:  # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
@@ -1448,7 +1450,8 @@ class conditonal_spectrum(downloader, file_manager):
             Filename_1 = self.database['Filename_1']
             Filename_2 = self.database['Filename_2']
             NGA_num = self.database['NGA_num']
-
+            eq_ID = self.database['EQID']
+            
         else:
             print('Selection can only be performed for one or two components at the moment, exiting...')
             sys.exit()
@@ -1491,6 +1494,7 @@ class conditonal_spectrum(downloader, file_manager):
         Mw = Mw[Allowed]
         Rjb = Rjb[Allowed]
         fault = fault[Allowed]
+        eq_ID = eq_ID[Allowed]
         Filename_1 = Filename_1[Allowed]
 
         if self.selection == 1:
@@ -1521,7 +1525,7 @@ class conditonal_spectrum(downloader, file_manager):
                   'Please use broaden your selection criteria...')
             sys.exit()
 
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num
+        return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID
 
     def select(self, nGM=30, selection=1, Sa_def='RotD50', isScaled=1, maxScale=4,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
@@ -1622,7 +1626,7 @@ class conditonal_spectrum(downloader, file_manager):
         self.simulate_spectra()
 
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num = self.search_database()
+        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID = self.search_database()
 
         # Processing available spectra
         sampleBig = np.log(sampleBig)
@@ -1786,6 +1790,7 @@ class conditonal_spectrum(downloader, file_manager):
         self.rec_Rjb = Rjb[recID]
         self.rec_Mw = Mw[recID]
         self.rec_fault = fault[recID]
+        self.eq_ID = eq_ID[recID]
         self.rec_h1 = Filename_1[recID]
 
         if self.selection == 1:
@@ -1797,8 +1802,6 @@ class conditonal_spectrum(downloader, file_manager):
             self.rec_rsn = NGA_num[recID]
         else:
             self.rec_rsn = None
-
-
 
     def plot(self, tgt=0, sim=0, rec=1, save=0, show=1):
         """

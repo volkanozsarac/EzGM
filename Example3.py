@@ -39,7 +39,7 @@ with open(EzGM.os.path.join(oq_ini)) as f:
 manager.create_dir(results_dir)
 
 # Create the directory for processed results
-manager.create_dir(results_dir)
+manager.create_dir(post_dir)
 
 # Run the analysis via system command
 EzGM.os.system(oq + ' engine --run ' + oq_ini + ' --exports csv')
@@ -86,12 +86,12 @@ for im in ims:  # for each im in the im list
 
         # 4.) If database == 'NGA_W2' you can first download the records via nga_download method
         # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method
-        cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456')
+        # cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456')
 
         # 5.) If you have records already inside recs_f\database.zip\database or
         # downloaded records for database = NGA_W2 case, write whatever you want,
         # the object itself, selected and scaled time histories
-        cs.write(obj=1, recs=1, recs_f='')
+        cs.write(obj=1, recs=1, recs_f='D:\\Academic\\Tools_Data\\Hazard - GMR Selection\\Ground Motion Records')
 
 # Calculate the total time passed
 EzGM.RunTime(startTime)

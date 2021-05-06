@@ -1437,7 +1437,7 @@ class conditonal_spectrum(downloader, file_manager):
         elif self.selection == 2:  # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
-            elif 'RotD50':  # SaKnown = Sa_RotD50.
+            elif self.Sa_def =='RotD50':  # SaKnown = Sa_RotD50.
                 SaKnown = self.database['Sa_RotD50']
             else:
                 print('Unexpected Sa definition, exiting...')

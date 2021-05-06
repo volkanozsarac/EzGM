@@ -85,7 +85,7 @@ class file_manager:
             name of directory to create.
     
         Returns
-        -------
+        -------boore_atkinson_2008
         None.
         """
     

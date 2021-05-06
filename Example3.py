@@ -7,6 +7,7 @@ import EzGM
 import OQproc
 
 startTime = EzGM.time()
+manager = EzGM.file_manager()
 
 # %% Hazard Analysis via OpenQuake
 # Set path to OpenQuake model .ini file path
@@ -35,10 +36,10 @@ with open(EzGM.os.path.join(oq_ini)) as f:
             exec(line.strip())
 
 # Create the export directory for analysis results
-EzGM.create_outdir(results_dir)
+manager.create_dir(results_dir)
 
 # Create the directory for processed results
-EzGM.create_outdir(post_dir)
+manager.create_dir(results_dir)
 
 # Run the analysis via system command
 EzGM.os.system(oq + ' engine --run ' + oq_ini + ' --exports csv')

@@ -27,6 +27,8 @@ def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazar
     ----------
     poes : list
         Probabilities of exceedance in tw years for which im levels will be obtained.
+    path_hazard_results: str
+        Path to the hazard results
     output_dir: str, optional
         Save outputs to a pickle file
     rlz : str, optional
@@ -44,7 +46,6 @@ def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazar
     import pandas as pd
     import numpy as np
 
-    style.use('ggplot')
     # Initialise some lists
     lat = []
     lon = []
@@ -197,8 +198,8 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
         distance bin used in disaggregation.
     poe_disagg : list
         disaggregation probability of exceedances
-    path_hazard_results: str
-        Path to the hazard results
+    path_disagg_results: str
+        Path to the disaggregation results
     output_dir: str, optional
         Save outputs to a pickle file
     n_rows : int, optional
@@ -219,7 +220,6 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
     import math
     import pandas as pd
 
-    style.use('ggplot')
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
     lon = []
@@ -231,7 +231,7 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
     M, R = [], []
 
     for file in os.listdir(path_disagg_results):
-        if file.startswith('rlz') and file.find('Mag_Dist') > 0 and file.find('Mag_Dist_Eps') < 0:
+        if file.startswith('rlz') and file.find('Mag_Dist') > 0 > file.find('Mag_Dist_Eps'):
             # Load the dataframe
             df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
 
@@ -323,7 +323,7 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
                 ax1.set_zlabel('Hazard Contribution [%]', rotation=90)
             ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
-            plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km' \
+            plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km'
                       % ("{:.0f}".format(Tr[idx2]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
                          "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
                       fontsize=11, loc='right', verticalalignment='top')
@@ -345,7 +345,7 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
         np.savetxt(fname, np.asarray(dists), fmt='%.1f')
 
 
-def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
+def proc_disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
     """
     Details
     -------
@@ -358,11 +358,9 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
         magnitude bin used in disaggregation.
     dbin : int, float
         distance bin used in disaggregation.
-    epsbin : int, float
-        epsilon bin used in disaggregation.
     poe_disagg : list
         disaggregation probability of exceedances
-    path_hazard_results: str
+    path_disagg_results: str
         Path to the hazard results
     output_dir: str, optional
         Save outputs to a pickle file
@@ -495,7 +493,8 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
             ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
             plt.title(
-                '$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km, $\epsilon_{mod}$=%s\n$M_{mean}$=%s, $R_{mean}$=%s km, $\epsilon_{mean}$=%s' \
+                '$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km, $\epsilon_{mod}$=%s\n$M_{mean}$=%s, $R_{mean}$=%s '
+                'km, $\epsilon_{mean}$=%s'
                 % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
                    "{:.1f}".format(modeLst[i][2]),
                    "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1]), "{:.1f}".format(meanLst[i][2])),
@@ -513,7 +512,8 @@ def proc_disagg_MReps(Mbin, dbin, epsbin, poe_disagg, path_disagg_results, outpu
                    ncol=n_eps)
         plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
         fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
-        ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12, y=0.97)
+            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12,
+                     y=0.97)
 
         fname = os.path.join(output_dir, 'Disaggregation_MReps_' + ims[idx1] + '.png')
         plt.savefig(fname, format='png', dpi=220)

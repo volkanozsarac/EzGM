@@ -31,8 +31,6 @@ with open(EzGM.os.path.join(oq_ini)) as f:
             exec(line.strip())
         if line.startswith('distance_bin_width'):
             exec(line.strip())
-        if line.startswith('num_epsilon_bins'):
-            exec(line.strip())
 
 # Create the export directory for analysis results
 EzGM.file_manager.create_dir(results_dir)
@@ -50,7 +48,7 @@ OQproc.proc_hazard(poes, results_dir, post_dir)
 OQproc.proc_disagg_MR(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
 
 # Extract and plot disaggregation results by M, R and epsilon
-OQproc.proc_disagg_MReps(mag_bin_width, distance_bin_width, num_epsilon_bins, poes, results_dir, post_dir, n_rows=3)
+OQproc.proc_disagg_MReps(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
 
 # %% Record Selection
 ims = []
@@ -90,7 +88,7 @@ for im in ims:  # for each im in the im list
         # 5.) If you have records already inside recs_f\database.zip\database or
         # downloaded records for database = NGA_W2 case, write whatever you want,
         # the object itself, selected and scaled time histories
-        cs.write(obj=1, recs=1, recs_f='D:\\Academic\\Tools_Data\\Hazard - GMR Selection\\Ground Motion Records')
+        # cs.write(obj=1, recs=1, recs_f='')
 
 # Calculate the total time passed
 EzGM.RunTime(startTime)

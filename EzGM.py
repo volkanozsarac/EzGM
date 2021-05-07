@@ -16,22 +16,31 @@
 """
 
 # Import python libraries
-import sys, errno, os, stat, shutil, zipfile, pickle, copy
+import copy
+import errno
+import os
+import pickle
+import shutil
+import stat
+import sys
+import zipfile
 from time import gmtime, time, sleep
-from numba import njit
+
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.matlib
-from scipy.stats import skew
-from scipy.signal import butter, filtfilt
-from scipy.integrate import cumtrapz
-from scipy.fft import fft, fftfreq, fftshift
-from scipy.io import loadmat
-from scipy import interpolate
-import matplotlib.pyplot as plt
-import matplotlib
-from openquake.hazardlib import gsim, imt, const
-from selenium import webdriver
 import requests
+from numba import njit
+from openquake.hazardlib import gsim, imt, const
+from scipy import interpolate
+from scipy.fft import fft, fftfreq, fftshift
+from scipy.integrate import cumtrapz
+from scipy.io import loadmat
+from scipy.signal import butter, filtfilt
+from scipy.stats import skew
+from selenium import webdriver
+
 
 #############################################################################################
 #############################################################################################
@@ -60,21 +69,20 @@ def RunTime(startTime):
     timeSeconds = timeSeconds - timeMinutes * 60 - timeHours * 3600
     print("Run time: %d hours: %d minutes: %.2f seconds" % (timeHours, timeMinutes, timeSeconds))
 
+
 #############################################################################################
 #############################################################################################
 
 class file_manager:
-    
+
     def __init__(self):
-        
+
         """
         Details
         -------
         This class object contains methods being used to read and write 
         ground motion record files, and create folders etc.
         """
-
-        pass
 
     @staticmethod
     def create_dir(dir_path):
@@ -83,24 +91,23 @@ class file_manager:
         ----------
         dir_path : str
             name of directory to create.
-    
-        Returns
-        -------boore_atkinson_2008
+
         None.
         """
-    
+
         def handleRemoveReadonly(func, path, exc):
             excvalue = exc[1]
             if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
                 os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
                 func(path)
             else:
-                raise
-    
+                raise Warning("Path is being used by at the moment.",
+                              "It cannot be recreated.")
+
         if os.path.exists(dir_path):
             shutil.rmtree(dir_path, ignore_errors=False, onerror=handleRemoveReadonly)
         os.makedirs(dir_path)
-    
+
     @staticmethod
     def ContentFromZip(paths, zipName):
         """
@@ -118,7 +125,7 @@ class file_manager:
     
         Returns
         -------
-        contents   : dictonary
+        contents   : dictionary
             Containing raw contents of the files which are read from the zipfile.
     
         """
@@ -127,9 +134,9 @@ class file_manager:
             for i in range(len(paths)):
                 with myzip.open(paths[i]) as myfile:
                     contents[i] = [x.decode('utf-8') for x in myfile.readlines()]
-    
+
         return contents
-    
+
     @staticmethod
     def ReadNGA(inFilename=None, content=None, outFilename=None):
         """
@@ -167,26 +174,24 @@ class file_manager:
             acceleration array, same length with time unit 
             usually in (g) unless stated as other.
         """
-    
+
         try:
             # Read the file content from inFilename
             if content is None:
                 with open(inFilename, 'r') as inFileID:
                     content = inFileID.readlines()
-    
+
             # check the first line
             temp = str(content[0]).split()
-            try:
-                # description is in the end
+            try:  # description is in the end
                 float(temp[0])
                 flag = 1
-            except:
-                # description is in the begining
+            except:  # description is in the beginning
                 flag = 0
-    
+
             counter = 0
             desc, row4Val, acc_data = "", "", []
-    
+
             if flag == 1:
                 for x in content:
                     if counter == len(content) - 3:
@@ -204,7 +209,7 @@ class file_manager:
                             val = row4Val.split()
                             npts = float(val[0])
                             dt = float(val[1])
-    
+
                     elif counter < len(content) - 4:
                         data = str(x).split()
                         for value in data:
@@ -212,7 +217,7 @@ class file_manager:
                             acc_data.append(a)
                         acc = np.asarray(acc_data)
                     counter = counter + 1
-    
+
             if flag == 0:
                 for x in content:
                     if counter == 1:
@@ -230,7 +235,7 @@ class file_manager:
                             val = row4Val.split()
                             npts = float(val[0])
                             dt = float(val[1])
-    
+
                     elif counter > 3:
                         data = str(x).split()
                         for value in data:
@@ -238,22 +243,22 @@ class file_manager:
                             acc_data.append(a)
                         acc = np.asarray(acc_data)
                     counter = counter + 1
-    
+
             t = []  # save time history
             for i in range(0, len(acc_data)):
                 ti = i * dt
                 t.append(ti)
-    
+
             if outFilename is not None:
                 np.savetxt(outFilename, acc, fmt='%1.4e')
-    
+
             npts = int(npts)
             return dt, npts, desc, t, acc
-    
+
         except:
             print("processMotion FAILED!: The record file is not in the directory")
             print(inFilename)
-    
+
     @staticmethod
     def ReadEXSIM(inFilename=None, content=None, outFilename=None):
         """
@@ -287,34 +292,33 @@ class file_manager:
             acceleration array, same length with time unit 
             usually in (g) unless stated as other.
         """
-    
+
         try:
             # Read the file content from inFilename
             if content is None:
                 with open(inFilename, 'r') as inFileID:
                     content = inFileID.readlines()
-    
+
             desc = content[:12]
             dt = float(content[6].split()[1])
             npts = int(content[5].split()[0])
             acc = []
-            t = []
-    
+
             for i in range(12, len(content)):
                 temp = content[i].split()
                 acc.append(float(temp[1]))
-    
+
             acc = np.asarray(acc)
             if len(acc) < 20000:
                 acc = acc[2500:10800]  # get rid of zeros
             dur = len(acc) * dt
             t = np.arange(0, dur, dt)
-    
+
             if outFilename is not None:
                 np.savetxt(outFilename, acc, fmt='%1.4e')
-    
+
             return dt, npts, desc, t, acc
-    
+
         except:
             print("processMotion FAILED!: The record file is not in the directory")
             print(inFilename)
@@ -364,9 +368,9 @@ class file_manager:
 
             n = len(self.rec_h1)
             path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
-            dts = np.zeros((n))
+            dts = np.zeros(n)
 
-            if not self.rec_h2 is None:
+            if self.rec_h2 is not None:
                 path_H1 = os.path.join(self.outdir, 'GMR_H1_names.txt')
                 path_H2 = os.path.join(self.outdir, 'GMR_H2_names.txt')
                 h2s = open(path_H2, 'w')
@@ -396,7 +400,7 @@ class file_manager:
                     h1s.write(gmr_file + '\n')
 
                 # Save the H2 gm components
-                if not self.rec_h2 is None:
+                if self.rec_h2 is not None:
 
                     if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
                         rec_paths = self.rec_h2
@@ -439,21 +443,22 @@ class file_manager:
             obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             obj['database'] = self.database['Name']
             del obj['outdir']
-            
+
             if 'bgmpe' in obj:
                 obj['gmpe'] = str(obj['bgmpe']).replace('[', '', ).replace(']', '')
                 del obj['bgmpe']
-            
+
             with open(path_obj, 'wb') as file:
                 pickle.dump(obj, file)
 
         print('Finished writing process, the files are located in\n%s' % self.outdir)
 
+
 #############################################################################################
 #############################################################################################
 
 class downloader:
-    
+
     def __init__(self):
         """
 
@@ -466,7 +471,7 @@ class downloader:
 
         """
         pass
-    
+
     def ngaw2_download(self, username, pwd):
         """
         
@@ -590,7 +595,7 @@ class downloader:
                 print('chromedriver downloaded successfully!!')
                 os.remove(save_path)
             else:
-                print("chromedriver allready exists!!")
+                print("chromedriver already exists!!")
 
         def go_to_sign_in_page(Download_Dir):
             """
@@ -675,7 +680,7 @@ class downloader:
             Parameters
             ----------
             RSNs     : str
-                    A string variable contains RSNs to be downloaded which uses ',' as delimeter
+                    A string variable contains RSNs to be downloaded which uses ',' as delimiter
                     between RNSs
                                 e.g.: '1,5,91,35,468'
             Download_Dir     : str
@@ -702,10 +707,10 @@ class downloader:
                 note = 'NO'
 
             if 'NO' in note:
-                print("\033[1;31mCould not be able to download records!")
                 driver.quit()
-                sys.exit()
-                pass
+                raise Warning("Could not be able to download records!"
+                              "Either they no longer exist in database"
+                              "or you have exceeded the download limit")
             else:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
                 sleep(3)
@@ -734,7 +739,7 @@ class downloader:
             if str(warn) == 'Invalid email or password.':
                 print(warn)
                 driver.quit()
-                sys.exit()
+                raise ValueError('Invalid email or password.')
             else:
                 RSNs = ''
                 for i in self.rec_rsn:
@@ -758,6 +763,7 @@ class downloader:
         else:
             print('You have to use NGA_W2 database to use ngaw2_download method.')
 
+
 #############################################################################################
 #############################################################################################
 
@@ -765,7 +771,7 @@ class conditonal_spectrum(downloader, file_manager):
     """
     This class is used to
         1) Create target spectrum
-            Uncoditional spectrum using specified gmpe
+            Unconditional spectrum using specified gmpe
             Conditional spectrum using average spectral acceleration
             Conditional spectrum using spectral acceleration
             with and without considering variance
@@ -782,7 +788,7 @@ class conditonal_spectrum(downloader, file_manager):
         
         Parameters
         ----------
-        Tstar    : int, float, numpy.ndarray, the default is None.
+        Tstar    : int, float, numpy.array, the default is None.
             Conditioning period or periods in case of AvgSa [sec].
         gmpe     : str, optional
             GMPE model (see OpenQuake library). 
@@ -810,7 +816,7 @@ class conditonal_spectrum(downloader, file_manager):
         matfile = os.path.join('Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
-        
+
         # initialize the objects being used
         downloader.__init__(self)
         file_manager.__init__(self)
@@ -866,7 +872,7 @@ class conditonal_spectrum(downloader, file_manager):
             print('The mandatory input site parameters are %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
             print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
             print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
-    
+
     @staticmethod
     def BakerJayaramCorrelationModel(T1, T2, orth=0):
         """
@@ -894,24 +900,24 @@ class conditonal_spectrum(downloader, file_manager):
         rho: int
              Predicted correlation coefficient
         """
-    
+
         t_min = min(T1, T2)
         t_max = max(T1, T2)
-    
+
         c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
-    
+
         if t_max < 0.2:
             c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
         else:
             c2 = 0
-    
+
         if t_max < 0.109:
             c3 = c2
         else:
             c3 = c1
-    
+
         c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
-    
+
         if t_max <= 0.109:
             rho = c2
         elif t_min > 0.109:
@@ -920,12 +926,12 @@ class conditonal_spectrum(downloader, file_manager):
             rho = min(c2, c4)
         else:
             rho = c4
-    
+
         if orth:
             rho = rho * (0.79 - 0.023 * np.log(np.sqrt(t_min * t_max)))
-    
+
         return rho
-    
+
     @staticmethod
     def AkkarCorrelationModel(T1, T2):
         """
@@ -955,22 +961,21 @@ class conditonal_spectrum(downloader, file_manager):
                             0.32, 0.34, 0.36, 0.38, 0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.55, 0.6,
                             0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5,
                             1.6, 1.7, 1.8, 1.9, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4])
-    
+
         if np.any([T1, T2] < periods[0]) or \
                 np.any([T1, T2] > periods[-1]):
-            raise ValueError("contains values outside of the "
+            raise ValueError("Period array contains values outside of the "
                              "range supported by the Akkar et al. (2014) "
                              "correlation model")
-    
+
         if T1 == T2:
             rho = 1.0
         else:
             with open(os.path.join('Meta_Data', 'akkar_coeff_table.npy'), 'rb') as f:
                 coeff_table = np.load(f)
             rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
-    
-        return rho
 
+        return rho
 
     def get_correlation(self, T1, T2):
         """
@@ -1025,26 +1030,25 @@ class conditonal_spectrum(downloader, file_manager):
         scenario : list
             [sites, rup, dists] source, distance and site context 
             of openquake gmpe object for the specified scenario.
-        T : numpy.ndarray
+        T : numpy.array
             Array of interested Periods (sec).
     
         Returns
         -------
-        Sa : numpy.ndarray
+        Sa : numpy.array
             Mean of logarithmic average spectral acceleration prediction.
-        sigma : numpy.ndarray
+        sigma : numpy.array
            logarithmic standard deviation of average spectral acceleration prediction.
         """
 
-        n = len(T);
+        n = len(T)
         mu_lnSaTstar = np.zeros(n)
         sigma_lnSaTstar = np.zeros(n)
         MoC = np.zeros((n, n))
         # Get the GMPE output
         for i in range(n):
             mu_lnSaTstar[i], stddvs_lnSaTstar = bgmpe.get_mean_and_stddevs(scenario[0], scenario[1], scenario[2],
-                                                                           imt.SA(period=T[i]),
-                                                                           [const.StdDev.TOTAL])
+                                                                           imt.SA(period=T[i]), [const.StdDev.TOTAL])
             # convert to sigma_arb
             # One should uncomment this line if the arbitary component is used for
             # record selection.
@@ -1085,10 +1089,10 @@ class conditonal_spectrum(downloader, file_manager):
         scenario : list
             [sites, rup, dists] source, distance and site context 
             of openquake gmpe object for the specified scenario.
-        T     : numpy.ndarray
+        T     : numpy.array
             Array of interested period to calculate correlation coefficient.
     
-        Tstar : numpy.ndarray
+        Tstar : numpy.array
             Period range where AvgSa is calculated.
     
         Returns
@@ -1277,8 +1281,8 @@ class conditonal_spectrum(downloader, file_manager):
                         varTstar = sigma_lnSaTstar ** 2
                         sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
                         sigma22 = np.array([varTstar])
-                        sigma12 = np.array(
-                            [rho_T_Tstar[i] * np.sqrt(var1 * varTstar), rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
+                        sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar),
+                                            rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
                         sigma12.shape = (2, 1)
                         sigma22.shape = (1, 1)
                         sigma_cond = sigma11 - sigma12 * 1. / (sigma22) * sigma12.T
@@ -1311,7 +1315,7 @@ class conditonal_spectrum(downloader, file_manager):
         # TgtCov_fin[np.abs(TgtCov_fin) < 1e-10] = 1e-10
         min_eig = np.min(np.real(np.linalg.eigvals(TgtCov_fin)))
         if min_eig < 0:
-            TgtCov_fin -= 10*min_eig * np.eye(*TgtCov_fin.shape)
+            TgtCov_fin -= 10 * min_eig * np.eye(*TgtCov_fin.shape)
 
         TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
         TgtSigma_fin[np.isnan(TgtSigma_fin)] = 0
@@ -1392,23 +1396,23 @@ class conditonal_spectrum(downloader, file_manager):
         
         Returns
         -------
-        sampleBig : numpy.ndarray
+        sampleBig : numpy.array
             An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.ndarray
+        soil_Vs30 : numpy.array
             An array which contains the Vs30s from filtered database.
-        magnitude : numpy.ndarray
+        magnitude : numpy.array
             An array which contains the magnitudes from filtered database.
-        Rjb : numpy.ndarray
+        Rjb : numpy.array
             An array which contains the Rjbs from filtered database.
-        mechanism : numpy.ndarray
+        mechanism : numpy.array
             An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.ndarray
+        Filename_1 : numpy.array
             An array which contains the filename of 1st gm component from filtered database.
             If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.ndarray
+        Filename_2 : numpy.array
             An array which contains the filenameof 2nd gm component filtered database.
             If selection is set to 1, it will be None value.
-        NGA_num : numpy.ndarray
+        NGA_num : numpy.array
             If NGA_W2 is used as record database, record sequence numbers from filtered
             database will be saved, for other databases this variable is None.
         """
@@ -1424,7 +1428,7 @@ class conditonal_spectrum(downloader, file_manager):
                 Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
                 NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
                 eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
-                
+
             elif self.database['Name'].startswith("EXSIM"):
                 SaKnown = self.database['Sa_1']
                 soil_Vs30 = self.database['soil_Vs30']
@@ -1433,15 +1437,14 @@ class conditonal_spectrum(downloader, file_manager):
                 fault = self.database['mechanism']
                 Filename_1 = self.database['Filename_1']
                 eq_ID = self.database['EQID']
-                
+
         elif self.selection == 2:  # SaKnown = Sa_g.m. or RotD50
             if self.Sa_def == 'GeoMean':
                 SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
-            elif self.Sa_def =='RotD50':  # SaKnown = Sa_RotD50.
+            elif self.Sa_def == 'RotD50':  # SaKnown = Sa_RotD50.
                 SaKnown = self.database['Sa_RotD50']
             else:
-                print('Unexpected Sa definition, exiting...')
-                sys.exit()
+                raise ValueError('Unexpected Sa definition, exiting...')
 
             soil_Vs30 = self.database['soil_Vs30']
             Mw = self.database['magnitude']
@@ -1451,10 +1454,9 @@ class conditonal_spectrum(downloader, file_manager):
             Filename_2 = self.database['Filename_2']
             NGA_num = self.database['NGA_num']
             eq_ID = self.database['EQID']
-            
+
         else:
-            print('Selection can only be performed for one or two components at the moment, exiting...')
-            sys.exit()
+            raise ValueError('Selection can only be performed for one or two components at the moment, exiting...')
 
         perKnown = self.database['Periods']
 
@@ -1462,22 +1464,22 @@ class conditonal_spectrum(downloader, file_manager):
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
 
-        if not self.Vs30_lim is None:  # limiting values on soil exist
+        if self.Vs30_lim is not None:  # limiting values on soil exist
             mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Mw_lim is None:  # limiting values on magnitude exist
+        if self.Mw_lim is not None:  # limiting values on magnitude exist
             mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Rjb_lim is None:  # limiting values on Rjb exist
+        if self.Rjb_lim is not None:  # limiting values on Rjb exist
             mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.fault_lim is None:  # limiting values on mechanism exist
+        if self.fault_lim is not None:  # limiting values on mechanism exist
             mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
@@ -1516,14 +1518,12 @@ class conditonal_spectrum(downloader, file_manager):
         # Check for invalid input
         sampleBig = SaKnown[:, recPer]
         if np.any(np.isnan(sampleBig)):
-            print('NaNs found in input response spectra')
-            sys.exit()
+            raise ValueError('NaNs found in input response spectra')
 
         if self.nGM > len(NGA_num):
-            print('There are not enough records which satisfy',
-                  'the given record selection criteria...',
-                  'Please use broaden your selection criteria...')
-            sys.exit()
+            raise ValueError('There are not enough records which satisfy',
+                             'the given record selection criteria...',
+                             'Please use broaden your selection criteria...')
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID
 
@@ -1578,7 +1578,7 @@ class conditonal_spectrum(downloader, file_manager):
             zero, the code randomizes the algorithm and different sets of
             ground motions (satisfying the target mean and variance) are
             generated each time.
-        weights : numpy.ndarray or list, optional, the default is [1,2,0.3].
+        weights : numpy.array or list, optional, the default is [1,2,0.3].
             Weights for error in mean, standard deviation and skewness
         nTrials : int, optional, the default is 20.
             nTrials sets of response spectra are simulated and the best set (in terms of
@@ -1633,8 +1633,8 @@ class conditonal_spectrum(downloader, file_manager):
         nBig = sampleBig.shape[0]
 
         # Find best matches to the simulated spectra from ground-motion database
-        recID = np.ones((self.nGM), dtype=int) * (-1)
-        finalScaleFac = np.ones((self.nGM))
+        recID = np.ones(self.nGM, dtype=int) * (-1)
+        finalScaleFac = np.ones(self.nGM)
         sampleSmall = np.ones((self.nGM, sampleBig.shape[1]))
         weights = np.array(weights)
 
@@ -1649,8 +1649,8 @@ class conditonal_spectrum(downloader, file_manager):
 
         # Find nGM ground motions, inital subset
         for i in range(self.nGM):
-            err = np.zeros((nBig))
-            scaleFac = np.ones((nBig))
+            err = np.zeros(nBig)
+            scaleFac = np.ones(nBig)
 
             # Calculate the scaling factor
             if self.isScaled == 1:
@@ -1662,20 +1662,18 @@ class conditonal_spectrum(downloader, file_manager):
                     scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
                         np.exp(sampleBig) ** 2, axis=1)
             else:
-                scaleFac = np.ones((nBig))
+                scaleFac = np.ones(nBig)
 
             mask = scaleFac > self.maxScale
             idxs = np.where(~mask)[0]
             err[mask] = 1000000
             err[~mask] = np.sum((np.log(
-                np.exp(sampleBig[idxs, :]) * scaleFac[~mask].reshape(len(scaleFac[~mask]), 1)) - self.sim_spec[i,
-                                                                                                 :]) ** 2, axis=1)
+                np.exp(sampleBig[idxs, :]) * scaleFac[~mask].reshape(len(scaleFac[~mask]), 1)) -
+                                 self.sim_spec[i, :]) ** 2, axis=1)
 
             recID[i] = int(np.argsort(err)[0])
             if err.min() >= 1000000:
-                print('Warning: Possible problem with simulated spectrum. No good matches found')
-                print(recID[i])
-                sys.exit()
+                raise Warning('Possible problem with simulated spectrum. No good matches found')
 
             if self.isScaled == 1:
                 finalScaleFac[i] = scaleFac[recID[i]]
@@ -1707,7 +1705,7 @@ class conditonal_spectrum(downloader, file_manager):
             minDev = 100000
             for j in range(nBig):
                 # Add to the sample the scaled spectra
-                temp = np.zeros((1, len(sampleBig[j, :])));
+                temp = np.zeros((1, len(sampleBig[j, :])))
                 temp[:, :] = sampleBig[j, :]
                 tempSample = np.concatenate((sampleSmall, temp + np.log(scaleFac[j])), axis=0)
                 devMean = mean_numba(tempSample) - mu_ln  # Compute deviations from target
@@ -1720,8 +1718,10 @@ class conditonal_spectrum(downloader, file_manager):
                 # Penalize bad spectra
                 elif penalty > 0:
                     for m in range(nGM):
-                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3.0 * sigma_ln))) * penalty
-                        devTotal = devTotal + np.sum(np.abs(np.exp(tempSample[m, :]) < np.exp(mu_ln - 3.0 * sigma_ln))) * penalty
+                        devTotal = devTotal + np.sum(
+                            np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3.0 * sigma_ln))) * penalty
+                        devTotal = devTotal + np.sum(
+                            np.abs(np.exp(tempSample[m, :]) < np.exp(mu_ln - 3.0 * sigma_ln))) * penalty
 
                 # Should cause improvement and record should not be repeated
                 if devTotal < minDev:
@@ -1746,7 +1746,7 @@ class conditonal_spectrum(downloader, file_manager):
                         scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
                             np.exp(sampleBig) ** 2, axis=1)
                 else:
-                    scaleFac = np.ones((nBig))
+                    scaleFac = np.ones(nBig)
 
                 # Try to add a new spectra to the subset list
                 minID = find_rec(sampleSmall, scaleFac, self.mu_ln, self.sigma_ln, recID)
@@ -1907,7 +1907,7 @@ class conditonal_spectrum(downloader, file_manager):
             plt.suptitle('Target Spectrum vs. Simulated Spectra', y=0.95)
 
             for i in range(self.nGM):
-                ax[0].loglog(self.T, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected');
+                ax[0].loglog(self.T, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected')
 
             ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
             if self.useVar == 1:
@@ -1964,7 +1964,7 @@ class conditonal_spectrum(downloader, file_manager):
             plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
 
             for i in range(self.nGM):
-                ax[0].loglog(self.T, np.exp(self.rec_spec[i, :]), color='gray', lw=1, label='Selected');
+                ax[0].loglog(self.T, np.exp(self.rec_spec[i, :]), color='gray', lw=1, label='Selected')
 
             ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
             if self.useVar == 1:
@@ -2017,6 +2017,7 @@ class conditonal_spectrum(downloader, file_manager):
         if show == 1:
             plt.show()
 
+
 #############################################################################################
 #############################################################################################
 
@@ -2057,12 +2058,13 @@ class tbdy_2018(downloader, file_manager):
         outdir_path = os.path.join(cwd, outdir)
         self.outdir = outdir_path
         self.create_dir(self.outdir)
-        
+
         # initialize the objects being used
         downloader.__init__(self)
         file_manager.__init__(self)
 
-    def get_Sae(self, T, SD1, SDS, PGA):
+    @staticmethod
+    def get_Sae(T, SD1, SDS, PGA):
         """
         Details
         -------
@@ -2082,12 +2084,12 @@ class tbdy_2018(downloader, file_manager):
             spectral acceleration coefficient for 1.0
         PGA:  float
             peak ground acceleration (g)
-        T:  numpy.ndarray
+        T:  numpy.array
             period array in which target spectrum is calculated
 
         Returns
         -------
-        Sae: numpy.ndarray
+        Sae: numpy.array
             Elastic acceleration response spectrum
         """
         Sae = np.zeros(len(T))
@@ -2101,9 +2103,9 @@ class tbdy_2018(downloader, file_manager):
                 Sae[i] = PGA
             elif T[i] <= TA:
                 Sae[i] = (0.4 + 0.6 * T[i] / TA) * SDS
-            elif T[i] > TA and T[i] <= TB:
+            elif TA < T[i] <= TB:
                 Sae[i] = SDS
-            elif T[i] > TB and T[i] <= TL:
+            elif TB < T[i] <= TL:
                 Sae[i] = SD1 / T[i]
             elif T[i] > TL:
                 Sae[i] = SD1 * TL / T[i] ** 2
@@ -2122,23 +2124,23 @@ class tbdy_2018(downloader, file_manager):
 
         Returns
         -------
-        sampleBig : numpy.ndarray
+        sampleBig : numpy.array
             An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.ndarray
+        soil_Vs30 : numpy.array
             An array which contains the Vs30s from filtered database.
-        magnitude : numpy.ndarray
+        magnitude : numpy.array
             An array which contains the magnitudes from filtered database.
-        Rjb : numpy.ndarray
+        Rjb : numpy.array
             An array which contains the Rjbs from filtered database.
-        mechanism : numpy.ndarray
+        mechanism : numpy.array
             An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.ndarray
+        Filename_1 : numpy.array
             An array which contains the filename of 1st gm component from filtered database.
             If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.ndarray
+        Filename_2 : numpy.array
             An array which contains the filenameof 2nd gm component filtered database.
             If selection is set to 1, it will be None value.
-        NGA_num : numpy.ndarray
+        NGA_num : numpy.array
             If NGA_W2 is used as record database, record sequence numbers from filtered
             database will be saved, for other databases this variable is None.
         """
@@ -2167,12 +2169,10 @@ class tbdy_2018(downloader, file_manager):
                 eq_ID = self.database['EQID']
 
             else:
-                print('Selection can only be performed for one or two components at the moment, exiting...')
-                sys.exit()
+                raise ValueError('Selection can only be performed for one or two components at the moment, exiting...')
 
         else:
-            print('Selection can only be performed using NGA_W2 database at the moment, exiting...')
-            sys.exit()
+            raise ValueError('Selection can only be performed using NGA_W2 database at the moment, exiting...')
 
         perKnown = self.database['Periods']
 
@@ -2180,22 +2180,22 @@ class tbdy_2018(downloader, file_manager):
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
 
-        if not self.Vs30_lim is None:  # limiting values on soil exist
+        if self.Vs30_lim is not None:  # limiting values on soil exist
             mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Mw_lim is None:  # limiting values on magnitude exist
+        if self.Mw_lim is not None:  # limiting values on magnitude exist
             mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.Rjb_lim is None:  # limiting values on Rjb exist
+        if self.Rjb_lim is not None:  # limiting values on Rjb exist
             mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
-        if not self.fault_lim is None:  # limiting values on mechanism exist
+        if self.fault_lim is not None:  # limiting values on mechanism exist
             mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
@@ -2236,22 +2236,20 @@ class tbdy_2018(downloader, file_manager):
 
         # Check for invalid input
         if np.any(np.isnan(sampleBig)):
-            print('NaNs found in input response spectra.',
-                  'Fix the response spectra of database.')
-            sys.exit()
+            raise Warning('NaNs found in input response spectra.',
+                          'Fix the response spectra of database.')
 
         # Check if enough records are available
         if self.nGM > len(NGA_num):
-            print('There are not enough records which satisfy',
-                  'the given record selection criteria...',
-                  'Please use broaden your selection criteria...')
-            sys.exit()
+            raise Warning('There are not enough records which satisfy',
+                          'the given record selection criteria...',
+                          'Please use broaden your selection criteria...')
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
     def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1,
-               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, 
-               maxScale=2, weights = [1,1]):
+               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,
+               maxScale=2, weights=[1, 1]):
         """
         Details
         -------
@@ -2320,7 +2318,7 @@ class tbdy_2018(downloader, file_manager):
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
         self.Tp = Tp
-        
+
         weights = np.array(weights, dtype=float)
 
         # Search the database and filter
@@ -2340,8 +2338,8 @@ class tbdy_2018(downloader, file_manager):
         mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2).mean(axis=1)
 
         recID_sorted = np.argsort(mse)
-        recIDs = np.ones((self.nGM), dtype=int) * (-1)
-        eqIDs = np.ones((self.nGM), dtype=int) * (-1)
+        recIDs = np.ones(self.nGM, dtype=int) * (-1)
+        eqIDs = np.ones(self.nGM, dtype=int) * (-1)
         idx1 = 0
         idx2 = 0
         while idx1 < self.nGM:  # not more than 3 of the records should be from the same event
@@ -2355,8 +2353,8 @@ class tbdy_2018(downloader, file_manager):
 
         # Initial selection results - based on MSE
         sampleSmall = sampleBig[recIDs.tolist(), :]
-        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0)) 
-        
+        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0))
+
         @njit
         def opt_method1(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID):
             # Optimize based on scaling factor
@@ -2381,11 +2379,11 @@ class tbdy_2018(downloader, file_manager):
                 # record should not be repeated and number of eqs from the same event should not exceed 3
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
-                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp = np.zeros((1, len(sampleBig[j, :])))
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    
+
                     # Should cause improvement
                     if abs(tempScale - 1) <= abs(scaleFac - 1):
                         minID = j
@@ -2403,7 +2401,7 @@ class tbdy_2018(downloader, file_manager):
                     res.append(a[:, i].mean())
 
                 return np.array(res)
-            
+
             def std_numba(a):
 
                 res = []
@@ -2414,42 +2412,42 @@ class tbdy_2018(downloader, file_manager):
 
             for j in range(nBig):
                 tmp = eq_ID[j]
-                
+
                 # record should not be repeated and number of eqs from the same event should not exceed 3
                 if not np.any(recIDs == j) and np.sum(eqIDs == tmp) <= 2:
                     # Add to the sample the scaled spectra
-                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp = np.zeros((1, len(sampleBig[j, :])))
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    devSig = np.max(std_numba(tempSample*tempScale)) # Compute standard deviation
-                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample))*tempScale)
-                    tempDevTot = devMean*weights[0] + devSig*weights[1]
-                    
+                    devSig = np.max(std_numba(tempSample * tempScale))  # Compute standard deviation
+                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample)) * tempScale)
+                    tempDevTot = devMean * weights[0] + devSig * weights[1]
+
                     # Should cause improvement
-                    if tempScale<maxScale and tempScale>1/maxScale and tempDevTot <= DevTot:
+                    if maxScale > tempScale > 1 / maxScale and tempDevTot <= DevTot:
                         minID = j
                         scaleFac = tempScale
                         DevTot = tempDevTot
 
             return minID, scaleFac
-        
+
         # Apply Greedy subset modification procedure to improve selection
         # Use njit to speed up the optimization algorithm
         if opt != 0:
             for i in range(self.nGM):  # Loop for nGM
                 minID = recIDs[i]
-                devSig = np.max(np.std(sampleSmall*scaleFac,axis=0)) # Compute standard deviation
-                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall,axis=0))*scaleFac)
-                DevTot = devMean*weights[0] + devSig*weights[1]
+                devSig = np.max(np.std(sampleSmall * scaleFac, axis=0))  # Compute standard deviation
+                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall, axis=0)) * scaleFac)
+                DevTot = devMean * weights[0] + devSig * weights[1]
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recIDs = np.delete(recIDs, i)
                 eqIDs = np.delete(eqIDs, i)
-                
+
                 # Try to add a new spectra to the subset list
-                if opt == 1: # try to optimize scaling factor only (closest to 1)
+                if opt == 1:  # try to optimize scaling factor only (closest to 1)
                     minID, scaleFac = opt_method1(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID)
-                if opt == 2: # try to optimize the error (max(mean-target) + max(std))
+                if opt == 2:  # try to optimize the error (max(mean-target) + max(std))
                     minID, scaleFac = opt_method2(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID, DevTot)
 
                 # Add new element in the right slot
@@ -2500,7 +2498,7 @@ class tbdy_2018(downloader, file_manager):
             self.target = self.get_Sae(self.T, SD1, SDS, PGA)
         elif selection == 2:
             self.target = self.get_Sae(self.T, SD1, SDS, PGA) * 1.3
-            
+
         print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
 
     def plot(self, save=0, show=1):
@@ -2566,11 +2564,12 @@ class tbdy_2018(downloader, file_manager):
         if show == 1:
             plt.show()
 
+
 #############################################################################################
 #############################################################################################
 
 class gm_processor:
-    
+
     def __init__(self):
         """
         
@@ -2579,7 +2578,7 @@ class gm_processor:
         This object contains methods being used to process ground motion
         records.
         
-        """        
+        """
         pass
 
     @staticmethod
@@ -2599,20 +2598,20 @@ class gm_processor:
             
         Parameters
         ----------
-        values: numpy.ndarray
+        values: numpy.array
             signal values      
         dt: float          
             sampling interval
-        polynomal_type: str
+        polynomial_type: str
             type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'    
             
         Returns
         -------
-        values_corrected: numpy.ndarray
+        values_corrected: numpy.array
             corrected values
             
         """
-    
+
         if polynomial_type == 'Constant':
             n = 0
         elif polynomial_type == 'Linear':
@@ -2621,14 +2620,14 @@ class gm_processor:
             n = 2
         elif polynomial_type == 'Cubic':
             n = 3
-    
+
         t = np.linspace(0, (len(values) - 1) * dt, len(values))  # Time array
         P = np.polyfit(t, values, n)  # Best fit line of values
         po_va = np.polyval(P, t)  # Matrix of best fit line
         values_corrected = values - po_va  # Baseline corrected values
-    
+
         return values_corrected
-    
+
     @staticmethod
     def butterworth_filter(values, dt, cut_off=(0.1, 25), **kwargs):
         """
@@ -2642,31 +2641,32 @@ class gm_processor:
             
         Parameters
         ----------
-        values: numpy.ndarray
+        values: numpy.array
             Input signal
+        dt: float
+            time-step
         cut_off: tuple, list, optional          
             Lower and upper cut off frequencies for the filter, if None then no filter. 
             e.g. (None, 15) applies a lowpass filter at 15Hz, whereas (0.1, 10) applies
             a bandpass filter at 0.1Hz to 10Hz.
-        filter_order: int        
-            Order of the Butterworth filter (default = 4)
-        remove_gibbs: str, the default is None.
-            Pads with zeros to remove the Gibbs filter effect
-            if = 'start' then pads at start,
-            if = 'end' then pads at end,
-            if = 'mid' then pads half at start and half at end
-            
         kwargs: keyword arguments, optional
+            filter_order: int
+                Order of the Butterworth filter (default = 4)
+            remove_gibbs: str, the default is None.
+                Pads with zeros to remove the Gibbs filter effect
+                if = 'start' then pads at start,
+                if = 'end' then pads at end,
+                if = 'mid' then pads half at start and half at end
             gibbs_extra: int, the default is 1
                 Each increment of the value doubles the record length using zero padding.
             gibbs_range: int, the default is 50
                 gibbs index range
         Returns
         -------
-        values_filtered: numpy.ndarray
+        values_filtered: numpy.array
             Filtered signal
         """
-    
+
         if isinstance(cut_off, list) or isinstance(cut_off, tuple):
             pass
         else:
@@ -2682,17 +2682,17 @@ class gm_processor:
         else:
             filter_type = 'high'
             cut_off = cut_off[0]
-    
+
         filter_order = kwargs.get('filter_order', 4)
         remove_gibbs = kwargs.get('remove_gibbs', None)
         gibbs_extra = kwargs.get('gibbs_extra', 1)
         gibbs_range = kwargs.get('gibbs_range', 50)
         sampling_rate = 1.0 / dt
         nyq = sampling_rate * 0.5
-    
+
         values_filtered = values
         org_len = len(values_filtered)
-    
+
         if remove_gibbs is not None:
             # Pad end of record with extra zeros then cut it off after filtering
             nindex = int(np.ceil(np.log2(len(values_filtered)))) + gibbs_extra
@@ -2707,7 +2707,7 @@ class gm_processor:
             else:
                 s_len = int(diff_len / 2)
                 f_len = s_len + org_len
-    
+
             end_value = np.mean(values_filtered[-gibbs_range:])
             start_value = np.mean(values_filtered[:gibbs_range])
             temp = start_value * np.ones(new_len)
@@ -2717,15 +2717,15 @@ class gm_processor:
         else:
             s_len = 0
             f_len = org_len
-    
+
         wp = cut_off / nyq
         b, a = butter(filter_order, wp, btype=filter_type)
         values_filtered = filtfilt(b, a, values_filtered)
         # removing extra zeros from gibbs effect
         values_filtered = values_filtered[s_len:f_len]
-    
+
         return values_filtered
-    
+
     @staticmethod
     def sdof_ltha(Ag, dt, T, xi, m):
         """
@@ -2751,11 +2751,11 @@ class gm_processor:
         
         Parameters
         ----------
-        Ag: numpy.ndarray    
+        Ag: numpy.array    
             Acceleration values
         dt: float
             Time step [sec]
-        T:  float, numpy.ndarray
+        T:  float, numpy.array
             Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
         xi: float
             Damping ratio, e.g. 0.05 for 5%
@@ -2764,42 +2764,38 @@ class gm_processor:
             
         Returns
         -------
-        u: numpy.ndarray       
+        u: numpy.array       
             Relative displacement response history
-        v: numpy.ndarray   
+        v: numpy.array   
             Relative velocity response history
-        ac: numpy.ndarray 
+        ac: numpy.array 
             Relative acceleration response history
-        ac_tot: numpy.ndarray 
+        ac_tot: numpy.array 
             Total acceleration response history
         """
-    
+
         # Get the length of acceleration history array
         n1 = max(Ag.shape)
         # Get the length of period array
         n2 = max(T.shape)
         T = T.reshape((1, n2))
-    
+
         # Assign the external force
         p = -m * Ag
-    
+
         # Calculate system properties which depend on period
-        fn = np.ones(T.shape)
         fn = 1 / T  # frequency
-        wn = np.ones(T.shape)
         wn = 2 * np.pi * fn  # circular natural frequency
-        k = np.ones(T.shape)
         k = m * wn ** 2  # actual stiffness
-        c = np.ones(T.shape)
         c = 2 * m * wn * xi  # actual damping coefficient
-    
+
         # Newmark Beta Method coefficients
         Gamma = np.ones((1, n2)) * (1 / 2)
         # Use linear acceleration method for dt/T<=0.55
         Beta = np.ones((1, n2)) * 1 / 6
         # Use average acceleration method for dt/T>0.55
         Beta[np.where(dt / T > 0.55)] = 1 / 4
-    
+
         # Compute the constants used in Newmark's integration
         a1 = Gamma / (Beta * dt)
         a2 = 1 / (Beta * dt ** 2)
@@ -2810,33 +2806,33 @@ class gm_processor:
         kf = k + a1 * c + a2 * m
         a = a3 * m + a4 * c
         b = a5 * m + a6 * c
-    
+
         # Initialize the history arrays
         u = np.zeros((n1, n2))  # relative displacement history
         v = np.zeros((n1, n2))  # relative velocity history
         ac = np.zeros((n1, n2))  # relative acceleration history
         ac_tot = np.zeros((n1, n2))  # total acceleration history
-    
+
         # Set the Initial Conditions
         u[0] = 0
         v[0] = 0
         ac[0] = (p[0] - c * v[0] - k * u[0]) / m
         ac_tot[0] = ac[0] + Ag[0]
-    
+
         for i in range(n1 - 1):
             dpf = (p[i + 1] - p[i]) + a * v[i] + b * ac[i]
             du = dpf / kf
             dv = a1 * du - a4 * v[i] - a6 * ac[i]
             da = a2 * du - a3 * v[i] - a5 * ac[i]
-    
+
             # Update history variables
             u[i + 1] = u[i] + du
             v[i + 1] = v[i] + dv
             ac[i + 1] = ac[i] + da
             ac_tot[i + 1] = ac[i + 1] + Ag[i + 1]
-    
+
         return u, v, ac, ac_tot
-    
+
     def get_parameters(self, Ag, dt, T, xi):
         """
         Details
@@ -2851,11 +2847,11 @@ class gm_processor:
             
         Parameters
         ----------
-        Ag: numpy.ndarray    
+        Ag: numpy.array    
             Acceleration values [m/s2]
         dt: float
             Time step [sec]
-        T:  float, numpy.ndarray
+        T:  float, numpy.array
             Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
         xi: float
             Damping ratio, e.g. 0.05 for 5%
@@ -2864,25 +2860,25 @@ class gm_processor:
         -------
         param: dictionary
             Contains the following intensity measures:
-        PSa(T): numpy.ndarray       
+        PSa(T): numpy.array       
             Elastic pseudo-acceleration response spectrum [m/s2]
-        PSv(T): numpy.ndarray   
+        PSv(T): numpy.array   
             Elastic pseudo-velocity response spectrum [m/s]
-        Sd(T): numpy.ndarray 
+        Sd(T): numpy.array 
             Elastic displacement response spectrum  - relative displacement [m]
-        Sv(T): numpy.ndarray 
+        Sv(T): numpy.array 
             Elastic velocity response spectrum - relative velocity at [m/s]
-        Sa(T): numpy.ndarray 
+        Sa(T): numpy.array 
             Elastic accleration response spectrum - total accelaration [m/s2]
-        Ei_r(T): numpy.ndarray 
+        Ei_r(T): numpy.array 
             Relative input energy spectrum for elastic system [N.m]
-        Ei_a(T): numpy.ndarray 
+        Ei_a(T): numpy.array 
             Absolute input energy spectrum for elastic system [N.m]
-        Periods: numpy.ndarray 
+        Periods: numpy.array 
             Periods where spectral values are calculated [sec]
-        FAS: numpy.ndarray 
+        FAS: numpy.array 
             Fourier amplitude spectra
-        PAS: numpy.ndarray 
+        PAS: numpy.array 
             Power amplitude spectra
         PGA: float
             Peak ground acceleration [m/s2]
@@ -2890,7 +2886,7 @@ class gm_processor:
             Peak ground velocity [m/s]
         PGD: float
             Peak ground displacement [m]
-        Aint: numpy.ndarray 
+        Aint: numpy.array 
             Arias intensity ratio vector with time [m/s]
         Arias: float 
             Maximum value of arias intensity ratio [m/s]
@@ -2949,11 +2945,11 @@ class gm_processor:
             Requires T to be defined between (0.1-2.5 sec)
             Otherwise not applicable, and equal to 'N.A'
         """
-    
+
         # INITIALIZATION
         T = T[T != 0]  # do not use T = zero for response spectrum calculations
         param = {'Periods': T}
-    
+
         # GET SPECTRAL VALUES
         # Get the length of acceleration history array
         n1 = max(Ag.shape)
@@ -2969,21 +2965,21 @@ class gm_processor:
         # Carry out linear time history analyses for SDOF system
         u, v, ac, ac_tot = self.sdof_ltha(Ag, dt, T, xi, m)
         # Calculate the spectral values
-        param['Sd'] = np.max(np.abs((u)), axis=0)
-        param['Sv'] = np.max(np.abs((v)), axis=0)
-        param['Sa'] = np.max(np.abs((ac_tot)), axis=0)
+        param['Sd'] = np.max(np.abs(u), axis=0)
+        param['Sv'] = np.max(np.abs(v), axis=0)
+        param['Sa'] = np.max(np.abs(ac_tot), axis=0)
         param['PSv'] = (2 * np.pi / T) * param['Sd']
         param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
         ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m
         ei_a = cumtrapz(-numpy.matlib.repmat(Dg, n2, 1).T, ac_tot, axis=0, initial=0) * m
         param['Ei_r'] = ei_r[-1]
         param['Ei_a'] = ei_a[-1]
-    
+
         # GET PEAK GROUND ACCELERATION, VELOCITY AND DISPLACEMENT
         param['PGA'] = np.max(np.abs(Ag))
         param['PGV'] = np.max(np.abs(Vg))
         param['PGD'] = np.max(np.abs(Dg))
-    
+
         # GET ARIAS INTENSITY
         Aint = np.cumsum(Ag ** 2) * np.pi * dt / (2 * 9.81)
         param['Arias'] = Aint[-1]
@@ -2991,7 +2987,7 @@ class gm_processor:
         temp[:, 0] = t
         temp[:, 1] = Aint
         param['Aint'] = temp
-    
+
         # GET HOUSNER INTENSITY
         try:
             index1 = np.where(T == 0.1)[0][0]
@@ -2999,7 +2995,7 @@ class gm_processor:
             param['HI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
         except:
             param['HI'] = 'N.A.'
-    
+
         # SIGNIFICANT DURATION (5%-75% Ia)
         mask = (Aint >= 0.05 * Aint[-1]) * (Aint <= 0.75 * Aint[-1])
         timed = t[mask]
@@ -3007,7 +3003,7 @@ class gm_processor:
         t2 = round(timed[-1], 3)
         param['t_5_75'] = [t1, t2]
         param['D_5_75'] = round(t2 - t1, 3)
-    
+
         # SIGNIFICANT DURATION (5%-95% Ia)
         mask = (Aint >= 0.05 * Aint[-1]) * (Aint <= 0.95 * Aint[-1])
         timed = t[mask]
@@ -3015,11 +3011,11 @@ class gm_processor:
         t2 = round(timed[-1], 3)
         param['t_5_95'] = [t1, t2]
         param['D_5_95'] = round(t2 - t1, 3)
-    
+
         # BRACKETED DURATION (0.05g)
         try:
-            # mask = np.abs(Ag) >= 0.05 * 9.81
-            mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag))
+            mask = np.abs(Ag) >= 0.05 * 9.81
+            # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
             indices = np.where(mask)[0]
             t1 = round(t[indices[0]], 3)
             t2 = round(t[indices[-1]], 3)
@@ -3028,30 +3024,30 @@ class gm_processor:
         except:  # in case of ground motions with low intensities
             param['t_bracketed'] = 'N.A.'
             param['D_bracketed'] = 'N.A.'
-    
+
         # UNIFORM DURATION (0.05g)
         try:
-            # mask = np.abs(Ag) >= 0.05 * 9.81
-            mask = np.abs(Ag)>=0.05*np.max(np.abs(Ag))
+            mask = np.abs(Ag) >= 0.05 * 9.81
+            # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
             indices = np.where(mask)[0]
             t_treshold = t[indices]
             param['t_uniform'] = [t_treshold]
-            temp = np.round(np.diff(t_treshold),8)
-            param['D_uniform'] = round(np.sum(temp[temp==dt]), 3)
+            temp = np.round(np.diff(t_treshold), 8)
+            param['D_uniform'] = round(np.sum(temp[temp == dt]), 3)
         except:  # in case of ground motions with low intensities
             param['t_uniform'] = 'N.A.'
             param['D_uniform'] = 'N.A.'
-    
+
         # CUMULATVE ABSOLUTE VELOCITY
         param['CAV'] = np.trapz(np.abs(Ag), t)
-    
+
         # CHARACTERISTIC INTENSITY, ROOT MEAN SQUARE OF ACC, VEL, DISP
         Td = t[-1]  # note this might not be the best indicative, different Td might be chosen
         param['aRMS'] = np.sqrt(np.trapz(Ag ** 2, t) / Td)
         param['vRMS'] = np.sqrt(np.trapz(Vg ** 2, t) / Td)
         param['dRMS'] = np.sqrt(np.trapz(Dg ** 2, t) / Td)
-        param['Ic'] = param['aRMS'] ** (1.5) * np.sqrt(Td)
-    
+        param['Ic'] = param['aRMS'] ** 1.5 * np.sqrt(Td)
+
         # ACCELERATION AND VELOCITY SPECTRUM INTENSITY
         try:
             index3 = np.where(T == 0.5)[0][0]
@@ -3064,7 +3060,7 @@ class gm_processor:
         except:
             param['MASI'] = 'N.A.'
             param['VSI'] = 'N.A.'
-    
+
         # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
         # Number of sample points, add zeropads
         N = 2 ** int(np.ceil(np.log2(len(Ag))))
@@ -3083,21 +3079,21 @@ class gm_processor:
         PAS[:, 1] = Pamp
         param['FAS'] = FAS
         param['PAS'] = FAS
-    
+
         # MEAN PERIOD
         mask = (freq > 0.25) * (freq < 20)
         indices = np.where(mask)[0]
         fi = freq[indices]
         Ci = Famp[indices]
         param['Tm'] = np.sum(Ci ** 2 / fi) / np.sum(Ci ** 2)
-    
+
         # PREDOMINANT PERIOD
         mask = param['Sa'] == max(param['Sa'])
         indices = np.where(mask)[0]
         param['Tp'] = T[indices]
-    
+
         return param
-    
+
     def RotDxx_spectrum(self, Ag1, Ag2, dt, T, xi, xx):
         """
         Details
@@ -3123,13 +3119,13 @@ class gm_processor:
             
         Parameters
         ----------
-        Ag1 : numpy.ndarray    
+        Ag1 : numpy.array    
             Acceleration values of 1st horizontal ground motion component
-        Ag2 : numpy.ndarray    
+        Ag2 : numpy.array    
             Acceleration values of 2nd horizontal ground motion component
         dt: float
             Time step [sec]
-        T:  float, numpy.ndarray
+        T:  float, numpy.array
             Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
         xi: float
             Damping ratio, e.g. 0.05 for 5%
@@ -3138,10 +3134,10 @@ class gm_processor:
             
         Returns
         -------
-        Sa_RotDxx: numpy.ndarray 
+        Sa_RotDxx: numpy.array 
             RotDxx Spectra
         """
-    
+
         # Verify if the length of arrays are the same
         if len(Ag1) == len(Ag2):
             pass
@@ -3149,26 +3145,26 @@ class gm_processor:
             Ag2 = np.append(Ag2, np.zeros(len(Ag1) - len(Ag2)))
         elif len(Ag2) > len(Ag1):
             Ag1 = np.append(Ag1, np.zeros(len(Ag2) - len(Ag1)))
-    
+
         # Get the length of period array 
         n2 = max(T.shape)
-    
+
         # Mass (kg)
         m = 1
-    
+
         # Carry out linear time history analyses for SDOF system
         u1, _, _, _ = self.sdof_ltha(Ag1, dt, T, xi, m)
         u2, _, _, _ = self.sdof_ltha(Ag2, dt, T, xi, m)
-    
+
         # RotD definition is taken from Boore 2010.
         Rot_Disp = np.zeros((180, n2))
         for theta in range(0, 180, 1):
-            Rot_Disp[theta] = np.max(np.abs(u1*np.cos(np.deg2rad(theta))+u2*np.sin(np.deg2rad(theta))), axis = 0)
-    
+            Rot_Disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
+
         Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
         Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
-    
+
         return Sa_RotDxx
-    
+
 #############################################################################################
 #############################################################################################

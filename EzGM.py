@@ -14,7 +14,7 @@
 |                                                                       |
 |-----------------------------------------------------------------------|
 """
-
+# TODO: Add Eurocode8 based selection
 # Import python libraries
 import copy
 import errno
@@ -780,6 +780,7 @@ class conditonal_spectrum(downloader, file_manager):
     """
 
     def __init__(self, Tstar=0.5, gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1):
+        # TODO: Combine record databases into single sql file.
         """
         Details
         -------

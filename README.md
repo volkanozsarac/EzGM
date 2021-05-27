@@ -45,4 +45,4 @@ Special thanks to Besim Yukselen for his help in the development of ngaw2_downlo
 
 ### Reference
 If you are going to use the code presented herein any official study, please refer to 
-Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records (Under Review).
+Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records. Structure and Infrastructure Engineering (Accepted).

@@ -44,5 +44,5 @@ Installation of Openquake package in Linux and MACOS is straightforward. In case
 Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.conditional_spectrum method is greatly inspired by the CS_Selection code of Prof. Jack W. Baker whom I thank for sharing his work with the research community.
 
 ### Reference
-If you are going to use the code presented herein any official study, please refer to 
-Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records (Under Review).
+If you are going to use the code presented herein for any official study, please refer to 
+Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records. Structure and Infrastructure Engineering (Accepted).

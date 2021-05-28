@@ -10,7 +10,8 @@ startTime = EzGM.time()
 
 # %% Hazard Analysis via OpenQuake
 # Set path to OpenQuake model .ini file path
-oq_ini = EzGM.os.path.join('OQ_Model', 'job.ini')
+oq_model = 'OQ_Model' # this is the folder where oq model is located
+oq_ini = 'job.ini' # this is .ini file used to run hazard model via openquake
 
 # Set command to call OpenQuake
 oq = 'oq'
@@ -19,14 +20,14 @@ oq = 'oq'
 post_dir = 'OQproc_Outputs'
 
 # Read .ini file for post-processing purposes
-with open(EzGM.os.path.join(oq_ini)) as f:
+with open(EzGM.os.path.join(oq_model,oq_ini)) as f:
     info = f.readlines()
     for line in info:
         if line.startswith('poes'):
             poes = [float(poe) for poe in
                     line.split('\n')[0].split('=')[1].split(',')]
         if line.startswith('export_dir'):
-            results_dir = EzGM.os.path.join('OQ_Model', line.split('\n')[0].split('=')[1].strip())
+            results_dir = EzGM.os.path.join(oq_model, line.split('\n')[0].split('=')[1].strip())
         if line.startswith('mag_bin_width'):
             exec(line.strip())
         if line.startswith('distance_bin_width'):
@@ -39,7 +40,10 @@ EzGM.file_manager.create_dir(results_dir)
 EzGM.file_manager.create_dir(post_dir)
 
 # Run the analysis via system command
+cwd = EzGM.os.getcwd() # Current working directory
+EzGM.os.chdir(oq_model) # Change directory, head to OQ_model folder
 EzGM.os.system(oq + ' engine --run ' + oq_ini + ' --exports csv')
+EzGM.os.chdir(cwd) # go back to the previous working directory
 
 # Extract and plot hazard curves in a reasonable format
 OQproc.proc_hazard(poes, results_dir, post_dir)

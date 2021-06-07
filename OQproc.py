@@ -383,7 +383,6 @@ def proc_disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='P
     import math
     import pandas as pd
 
-    style.use('ggplot')
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
     lon = []

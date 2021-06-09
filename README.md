@@ -8,6 +8,8 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 
 EzGM.tbdy_2018 is used to perform record selection in accordance with TBDY2018 (Turkish Building Code). 
 
+EzGM.ec8_part1 is used to perform record selection in accordance with EC8 Part 1 (Eurocode 8 part 1). 
+
 EzGM.gm_processor is used to process a ground motion records.
 ***
 

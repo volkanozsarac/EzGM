@@ -2569,6 +2569,550 @@ class tbdy_2018(downloader, file_manager):
 #############################################################################################
 #############################################################################################
 
+
+class ec8_part1(downloader, file_manager):
+    """
+    This class is used to
+        1) Create target spectrum based on TBDY2018
+        2) Selecting and scaling suitable ground motion sets for target spectrum in accordance with EC8 - Part 1
+            - Currently, only supports the record selection from NGA_W2 record database
+    """
+
+    def __init__(self, database='NGA_W2', outdir='Outputs'):
+        """
+        Details
+        -------
+        Loads the record database to use
+
+        Parameters
+        ----------
+        database : str, optional
+            database to use: e.g. NGA_W2.
+            The default is NGA_W2.
+        outdir : str, optional
+            output directory
+            The default is 'Outputs'
+
+        Returns
+        -------
+        None.
+        """
+
+        # initialize the objects being used
+        downloader.__init__(self)
+        file_manager.__init__(self)
+
+        # Add the input the ground motion database to use
+        matfile = os.path.join('Meta_Data', database)
+        self.database = loadmat(matfile, squeeze_me=True)
+        self.database['Name'] = database
+        # create the output directory and add the path to self
+        cwd = os.getcwd()
+        outdir_path = os.path.join(cwd, outdir)
+        self.outdir = outdir_path
+        self.create_dir(self.outdir)
+        
+    @staticmethod
+    def get_EC804_spectrum_Sa_el(ag,xi,T,Type,Soil):
+        """
+        Details:
+        Get the elastic response spectrum for EN 1998-1:2004
+    
+        Notes:
+        Requires get_EC804_spectrum_props
+    
+        References:
+        CEN. Eurocode 8: Design of Structures for Earthquake Resistance -
+        Part 1: General Rules, Seismic Actions and Rules for Buildings
+        (EN 1998-1:2004). Brussels, Belgium: 2004.
+    
+        Inputs:
+        ag: PGA
+        xi: Damping
+        T: Period
+        Type: Type of spectrum (Option: 'Type1' or 'Type2')
+        Soil: Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
+    
+        Returns:
+        Sa: Spectral acceleration
+    
+        """
+        SpecProp={
+            'Type1' : {
+               'A': {'S':  1.00, 'Tb': 0.15, 'Tc': 0.4, 'Td': 2.0},
+               'B': {'S':  1.20, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
+               'C': {'S':  1.15, 'Tb': 0.20, 'Tc': 0.6, 'Td': 2.0},
+               'D': {'S':  1.35, 'Tb': 0.20, 'Tc': 0.8, 'Td': 2.0},
+               'E': {'S':  1.40, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
+               },
+    
+            'Type2' : {
+               'A': {'S':  1.00, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+               'B': {'S':  1.35, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+               'C': {'S':  1.50, 'Tb': 0.10, 'Tc': 0.25, 'Td': 1.2},
+               'D': {'S':  1.80, 'Tb': 0.10, 'Tc': 0.30, 'Td': 1.2},
+               'E': {'S':  1.60, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+            }
+        }
+    
+        S=SpecProp[Type][Soil]['S']
+        Tb=SpecProp[Type][Soil]['Tb']
+        Tc=SpecProp[Type][Soil]['Tc']
+        Td=SpecProp[Type][Soil]['Td']
+    
+        eta=max(np.sqrt(0.10/(0.05+xi)),0.55)
+
+        Sa = []
+        for i in range(len(T)):
+            if T[i] >= 0 and T[i] <= Tb:
+                Sa_el=ag*S*(1.0+T[i]/Tb*(2.5*eta-1.0))
+            elif T[i] >= Tb and T[i] <= Tc:
+                Sa_el=ag*S*2.5*eta
+            elif T[i] >= Tc and T[i] <= Td:
+                Sa_el=ag*S*2.5*eta*(Tc/T[i])
+            elif T[i] >= Td:
+                Sa_el=ag*S*2.5*eta*(Tc*Td/T[i]/T[i])
+            else:
+                print('Error! Cannot compute a value of Sa_el')
+            
+            Sa.append(Sa_el)
+            
+        return np.array(Sa)
+
+
+    def search_database(self):
+        """
+        Details
+        -------
+        Searches the record database and does the filtering.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        sampleBig : numpy.ndarray
+            An array which contains the IMLs from filtered database.
+        soil_Vs30 : numpy.ndarray
+            An array which contains the Vs30s from filtered database.
+        magnitude : numpy.ndarray
+            An array which contains the magnitudes from filtered database.
+        Rjb : numpy.ndarray
+            An array which contains the Rjbs from filtered database.
+        mechanism : numpy.ndarray
+            An array which contains the fault type info from filtered database.
+        Filename_1 : numpy.ndarray
+            An array which contains the filename of 1st gm component from filtered database.
+            If selection is set to 1, it will include filenames of both components.
+        Filename_2 : numpy.ndarray
+            An array which contains the filenameof 2nd gm component filtered database.
+            If selection is set to 1, it will be None value.
+        NGA_num : numpy.ndarray
+            If NGA_W2 is used as record database, record sequence numbers from filtered
+            database will be saved, for other databases this variable is None.
+        """
+
+        if self.database['Name'] == "NGA_W2":
+
+            if self.selection == 1:  # SaKnown = Sa_arb
+                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+                soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
+                Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
+                Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
+                fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
+                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
+                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
+
+            elif self.selection == 2:  # SaKnown = (Sa_1**2+Sa_2**2)**0.5
+                SaKnown = (self.database['Sa_1'] + self.database['Sa_2'])/2
+                soil_Vs30 = self.database['soil_Vs30']
+                Mw = self.database['magnitude']
+                Rjb = self.database['Rjb']
+                fault = self.database['mechanism']
+                Filename_1 = self.database['Filename_1']
+                Filename_2 = self.database['Filename_2']
+                NGA_num = self.database['NGA_num']
+                eq_ID = self.database['EQID']
+
+            else:
+                print('Selection can only be performed for one or two components at the moment, exiting...')
+                sys.exit()
+
+        else:
+            print('Selection can only be performed using NGA_W2 database at the moment, exiting...')
+            sys.exit()
+
+        perKnown = self.database['Periods']
+
+        # Limiting the records to be considered using the `notAllowed' variable
+        # Sa cannot be negative or zero, remove these.
+        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
+
+        if not self.Vs30_lim is None:  # limiting values on soil exist
+            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
+            temp = [i for i, x in enumerate(mask) if not x]
+            notAllowed.extend(temp)
+
+        if not self.Mw_lim is None:  # limiting values on magnitude exist
+            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
+            temp = [i for i, x in enumerate(mask) if not x]
+            notAllowed.extend(temp)
+
+        if not self.Rjb_lim is None:  # limiting values on Rjb exist
+            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
+            temp = [i for i, x in enumerate(mask) if not x]
+            notAllowed.extend(temp)
+
+        if not self.fault_lim is None:  # limiting values on mechanism exist
+            mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
+            temp = [i for i, x in enumerate(mask) if not x]
+            notAllowed.extend(temp)
+
+        # get the unique values
+        notAllowed = (list(set(notAllowed)))
+        Allowed = [i for i in range(SaKnown.shape[0])]
+        for i in notAllowed:
+            Allowed.remove(i)
+
+        # Use only allowed records
+        SaKnown = SaKnown[Allowed, :]
+        soil_Vs30 = soil_Vs30[Allowed]
+        Mw = Mw[Allowed]
+        Rjb = Rjb[Allowed]
+        fault = fault[Allowed]
+        eq_ID = eq_ID[Allowed]
+        Filename_1 = Filename_1[Allowed]
+
+        if self.selection == 1:
+            Filename_2 = None
+        else:
+            Filename_2 = Filename_2[Allowed]
+
+        if self.database['Name'] == "NGA_W2":
+            NGA_num = NGA_num[Allowed]
+        else:
+            NGA_num = None
+
+        # Match periods (known periods and periods for error computations)
+        # Add Sa(T=0) or PGA, approximated as Sa(T=0.01)
+        self.T = np.append(perKnown[0],perKnown[(perKnown >= 0.2 * self.Tp) * (perKnown <= 2.0 * self.Tp)])
+
+        # Arrange the available spectra for error computations
+        recPer = []
+        for i in range(len(self.T)):
+            recPer.append(np.where(perKnown == self.T[i])[0][0])
+        sampleBig = SaKnown[:, recPer]
+
+        # Check for invalid input
+        if np.any(np.isnan(sampleBig)):
+            print('NaNs found in input response spectra.',
+                  'Fix the response spectra of database.')
+            sys.exit()
+
+        # Check if enough records are available
+        if self.nGM > len(NGA_num):
+            print('There are not enough records which satisfy',
+                  'the given record selection criteria...',
+                  'Please use broaden your selection criteria...')
+            sys.exit()
+
+        return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
+
+    def select(self, ag=0.25,xi=0.05,Type='Type1',Soil='B', nGM=7, selection=1, Tp=1,
+               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, 
+               maxScale=2, weights = [1,1]):
+        """
+        Details
+        -------
+        Select the suitable ground motion set
+        in accordance with EC8 - PART 1
+        
+        Mean of selected records should remain above the lower bound target spectra.
+            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * SaTarget(0.2Tp-1.5Tp) 
+            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 0.9 * SaTarget(0.2Tp-1.5Tp) 
+            Always Sa(T=0) > Sa(T=0)_target
+            
+        Parameters
+        ----------
+        ag:  float, optional, the default is 0.25.
+            Peak ground acceleration [g]
+        xi: float, optional, the default is 0.05.
+            Damping
+        Type: str, optional, the default is 'Type1'
+            Type of spectrum (Option: 'Type1' or 'Type2')
+        Soil: str, optional, the default is 'B'
+            Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
+        nGM : int, optional, the default is 11.
+            Number of records to be selected. 
+        selection : int, optional, the default is 1.
+            Number of ground motion components to select. 
+        Tp : float, optional, the default is 1.
+            Predominant period of the structure. 
+        Mw_lim : list, optional, the default is None.
+            The limiting values on magnitude. 
+        Vs30_lim : list, optional, the default is None.
+            The limiting values on Vs30. 
+        Rjb_lim : list, optional, the default is None.
+            The limiting values on Rjb. 
+        fault_lim : int, optional, the default is None.
+            The limiting fault mechanism. 
+            0 for unspecified fault 
+            1 for strike-slip fault
+            2 for normal fault
+            3 for reverse fault
+        opt : int, optional, the default is 1.
+            If equal to 0, the record set is selected using
+            method of “least squares”.
+            If equal to 1, the record set selected such that 
+            scaling factor is closer to 1.
+            If equal to 2, the record set selected such that 
+            both scaling factor and standard deviation is lowered.
+        maxScale : float, optional, the default is 2.
+            Maximum allowed scaling factor, used with opt=2 case.
+        weights = list, optional, the default is [1,1].
+            Error weights (mean,std), used with opt=2 case.
+
+        Returns
+        -------
+
+        """
+
+        # Add selection settings to self
+        self.nGM = nGM
+        self.selection = selection
+        self.Mw_lim = Mw_lim
+        self.Vs30_lim = Vs30_lim
+        self.Rjb_lim = Rjb_lim
+        self.fault_lim = fault_lim
+        self.Tp = Tp
+
+        weights = np.array(weights, dtype=float)
+        # Search the database and filter
+        sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
+
+        # Determine the lower bound spectra
+        target_spec = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,Type,Soil)
+        target_spec[1:] = 0.9 * target_spec[1:] # lower bound spectra except PGA
+
+        # Sample size of the filtered database
+        nBig = sampleBig.shape[0]
+
+        # Find best matches to the target spectrum from ground-motion database
+        mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2).mean(axis=1)
+        recID_sorted = np.argsort(mse)
+        recIDs = recID_sorted[:self.nGM]
+
+        # Initial selection results - based on MSE
+        sampleSmall = sampleBig[recIDs.tolist(), :]
+        scaleFac = np.max(target_spec / sampleSmall.mean(axis=0))
+
+        # Apply Greedy subset modification procedure to improve selection
+        # Use njit to speed up the optimization algorithm
+        @njit
+        def opt_method1(sampleSmall, scaleFac, target_spec, recIDs, minID):
+
+            def mean_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].mean())
+
+                return np.array(res)
+
+            for j in range(nBig):
+                if not np.any(recIDs == j):
+                    # Add to the sample the scaled spectra
+                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp[:, :] = sampleBig[j, :]  # get the trial spectra
+                    tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
+                    tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
+
+                    # Should cause improvement and record should not be repeated
+                    if abs(tempScale - 1) <= abs(scaleFac - 1):
+                        minID = j
+                        scaleFac = tempScale
+
+            return minID, scaleFac
+
+        @njit
+        def opt_method2(sampleSmall, scaleFac, target_spec, recIDs, minID, DevTot):
+            # Optimize based on dispersion
+            def mean_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].mean())
+
+                return np.array(res)
+            
+            def std_numba(a):
+
+                res = []
+                for i in range(a.shape[1]):
+                    res.append(a[:, i].std())
+
+                return np.array(res)
+
+            for j in range(nBig):
+                
+                # record should not be repeated
+                if not np.any(recIDs == j):
+                    # Add to the sample the scaled spectra
+                    temp = np.zeros((1, len(sampleBig[j, :])));
+                    temp[:, :] = sampleBig[j, :]  # get the trial spectra
+                    tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
+                    tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
+                    devSig = np.max(std_numba(tempSample*tempScale)) # Compute standard deviation
+                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample))*tempScale)
+                    tempDevTot = devMean*weights[0] + devSig*weights[1]
+                    
+                    # Should cause improvement
+                    if tempScale<maxScale and tempScale>1/maxScale and tempDevTot <= DevTot:
+                        minID = j
+                        scaleFac = tempScale
+                        DevTot = tempDevTot
+
+            return minID, scaleFac
+        
+        # Apply Greedy subset modification procedure to improve selection
+        # Use njit to speed up the optimization algorithm
+        if opt != 0:
+            for i in range(self.nGM):  # Loop for nGM
+                minID = recIDs[i]
+                devSig = np.max(np.std(sampleSmall*scaleFac,axis=0)) # Compute standard deviation
+                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall,axis=0))*scaleFac)
+                DevTot = devMean*weights[0] + devSig*weights[1]
+                sampleSmall = np.delete(sampleSmall, i, 0)
+                recIDs = np.delete(recIDs, i)
+                
+                # Try to add a new spectra to the subset list
+                if opt == 1: # try to optimize scaling factor only (closest to 1)
+                    minID, scaleFac = opt_method1(sampleSmall, scaleFac, target_spec, recIDs, minID)
+                if opt == 2: # try to optimize the error (max(mean-target) + max(std))
+                    minID, scaleFac = opt_method2(sampleSmall, scaleFac, target_spec, recIDs, minID, DevTot)
+
+                # Add new element in the right slot
+                sampleSmall = np.concatenate(
+                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]), sampleSmall[i:, :]),
+                    axis=0)
+                recIDs = np.concatenate((recIDs[:i], np.array([minID]), recIDs[i:]))
+
+        recIDs = recIDs.tolist()
+        # Add selected record information to self
+        self.rec_scale = scaleFac
+        self.rec_Vs30 = Vs30[recIDs]
+        self.rec_Rjb = Rjb[recIDs]
+        self.rec_Mw = Mw[recIDs]
+        self.rec_fault = fault[recIDs]
+        self.rec_eqID = eq_ID[recIDs]
+        self.rec_h1 = Filename_1[recIDs]
+
+        if self.selection == 1:
+            self.rec_h2 = None
+        elif self.selection == 2:
+            self.rec_h2 = Filename_2[recIDs]
+
+        if self.database['Name'] == 'NGA_W2':
+            self.rec_rsn = NGA_num[recIDs]
+        else:
+            self.rec_rsn = None
+
+        rec_idxs = []
+        if self.selection == 1:
+            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            for rec in self.rec_h1:
+                rec_idxs.append(np.where(Filename_1 == rec)[0][0])
+            self.rec_spec = SaKnown[rec_idxs, :]
+            
+        elif self.selection == 2:
+            for rec in self.rec_h1:
+                rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
+            self.rec_spec1 = self.database['Sa_1'][rec_idxs, :]
+            self.rec_spec2 = self.database['Sa_2'][rec_idxs, :]
+
+        # Save the results for whole spectral range
+        self.T = self.database['Periods']
+        self.design_spectrum = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,Type,Soil)
+            
+        print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
+
+    def plot(self, save=0, show=1):
+        """
+        Details
+        -------
+        Plots the target spectrum and spectra 
+        of selected records.
+
+        Parameters
+        ----------
+        save   : int, optional
+            Flag to save plotted figures in pdf format.
+            The default is 0.
+        show  : int, optional
+            Flag to show figures
+            The default is 1.
+            
+        Notes
+        -----
+        0: no, 1: yes
+
+        Returns
+        -------
+        None.
+        """
+
+        SMALL_SIZE = 12
+        MEDIUM_SIZE = 14
+        BIG_SIZE = 16
+        BIGGER_SIZE = 18
+
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.ioff()
+
+        hatch = [self.Tp * 0.2, self.Tp * 2.0]
+        # Plot Target spectrum vs. Selected response spectra
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        if self.selection == 1:
+            for i in range(self.rec_spec.shape[0]):
+                ax.plot(self.T, self.rec_spec[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
+            ax.plot(self.T, np.mean(self.rec_spec, axis=0) * self.rec_scale, color='black', lw=2, label='Selected Mean')
+        if self.selection == 2:
+            for i in range(self.rec_spec1.shape[0]):
+                ax.plot(self.T, self.rec_spec1[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
+                ax.plot(self.T, self.rec_spec2[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
+            ax.plot(self.T, np.mean((self.rec_spec1+self.rec_spec2)/2, axis=0) * self.rec_scale, color='black', lw=2, label='Selected Mean')
+        ax.plot(self.T, self.design_spectrum, color='blue', lw=2, label='Design Spectrum')
+        ax.plot(self.T, 0.9*self.design_spectrum, color='blue', lw=2, ls='--', label='0.9 x Design Spectrum')
+        ax.axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+        ax.set_xlabel('Period [sec]')
+        ax.set_ylabel('Spectral Acceleration [g]')
+        ax.grid(True)
+        handles, labels = ax.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        ax.legend(by_label.values(), by_label.keys(), frameon=False)
+        ax.set_xlim([self.T[0], self.Tp * 3])
+        plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
+
+        if save == 1:
+            plt.savefig(os.path.join(self.outdir, 'Selected.pdf'))
+
+        # Show the figure
+        if show == 1:
+            plt.show()
+
+
+#############################################################################################
+#############################################################################################
+
 class gm_processor:
 
     def __init__(self):

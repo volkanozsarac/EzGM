@@ -2613,7 +2613,7 @@ class ec8_part1(downloader, file_manager):
         self.create_dir(self.outdir)
         
     @staticmethod
-    def get_EC804_spectrum_Sa_el(ag,xi,T,Type,Soil):
+    def get_EC804_spectrum_Sa_el(ag,xi,T,I,Type,Soil):
         """
         Details:
         Get the elastic response spectrum for EN 1998-1:2004
@@ -2630,6 +2630,7 @@ class ec8_part1(downloader, file_manager):
         ag: PGA
         xi: Damping
         T: Period
+        I: Importance factor
         Type: Type of spectrum (Option: 'Type1' or 'Type2')
         Soil: Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
     
@@ -2661,6 +2662,8 @@ class ec8_part1(downloader, file_manager):
         Td=SpecProp[Type][Soil]['Td']
     
         eta=max(np.sqrt(0.10/(0.05+xi)),0.55)
+
+        ag = ag*I
 
         Sa = []
         for i in range(len(T)):
@@ -2820,7 +2823,7 @@ class ec8_part1(downloader, file_manager):
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
-    def select(self, ag=0.25,xi=0.05,Type='Type1',Soil='B', nGM=7, selection=1, Tp=1,
+    def select(self, ag=0.2,xi=0.05, I=1.0, Type='Type1',Soil='A', nGM=3, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, 
                maxScale=2, weights = [1,1]):
         """
@@ -2840,6 +2843,8 @@ class ec8_part1(downloader, file_manager):
             Peak ground acceleration [g]
         xi: float, optional, the default is 0.05.
             Damping
+        I:  float, optional, the default is 1.2.
+            importance factor
         Type: str, optional, the default is 'Type1'
             Type of spectrum (Option: 'Type1' or 'Type2')
         Soil: str, optional, the default is 'B'
@@ -2893,7 +2898,7 @@ class ec8_part1(downloader, file_manager):
         sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
 
         # Determine the lower bound spectra
-        target_spec = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,Type,Soil)
+        target_spec = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,I,Type,Soil)
         target_spec[1:] = 0.9 * target_spec[1:] # lower bound spectra except PGA
 
         # Sample size of the filtered database
@@ -3035,7 +3040,7 @@ class ec8_part1(downloader, file_manager):
 
         # Save the results for whole spectral range
         self.T = self.database['Periods']
-        self.design_spectrum = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,Type,Soil)
+        self.design_spectrum = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,I,Type,Soil)
             
         print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
 

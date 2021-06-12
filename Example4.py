@@ -32,6 +32,9 @@ with open(EzGM.os.path.join(oq_model,oq_ini)) as f:
             exec(line.strip())
         if line.startswith('distance_bin_width'):
             exec(line.strip())
+        if line.startswith('reference_vs30_value'):
+            exec(line.strip())
+
 
 # Create the export directory for analysis results
 EzGM.file_manager.create_dir(results_dir)
@@ -71,7 +74,7 @@ for im in ims:  # for each im in the im list
 
     for i in range(len(poes)):
         # 2.) Create target spectrum
-        cs.create(site_param={'vs30': 400}, rup_param={'rake': 0.0, 'mag': [mean_mags[i]]},
+        cs.create(site_param={'vs30': reference_vs30_value}, rup_param={'rake': 0.0, 'mag': [mean_mags[i]]},
                   dist_param={'rjb': [mean_dists[i]]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
                   im_Tstar=imls[i], epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram',
                   outdir=EzGM.os.path.join('EzGM_Outputs_' + im, 'POE-' + str(poes[i]) + '-in-50-years'))
@@ -92,7 +95,7 @@ for im in ims:  # for each im in the im list
         # 5.) If you have records already inside recs_f\database.zip\database or
         # downloaded records for database = NGA_W2 case, write whatever you want,
         # the object itself, selected and scaled time histories
-        # cs.write(obj=1, recs=1, recs_f='')
+        cs.write(obj=1, recs=0, recs_f='')
 
 # Calculate the total time passed
 EzGM.RunTime(startTime)

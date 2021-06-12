@@ -779,8 +779,8 @@ class conditonal_spectrum(downloader, file_manager):
         3) Scaling and processing of selected ground motion records
     """
 
-    def __init__(self, Tstar=0.5, gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1):
-        # TODO: Combine record databases into single sql file.
+    def __init__(self, Tstar=0.5, gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1):
+        # TODO: Combine all metadata into single sql file.
         """
         Details
         -------
@@ -793,7 +793,7 @@ class conditonal_spectrum(downloader, file_manager):
             Conditioning period or periods in case of AvgSa [sec].
         gmpe     : str, optional
             GMPE model (see OpenQuake library). 
-            The default is 'Boore_EtAl_2014'.
+            The default is 'BooreEtAl2014'.
         database : str, optional
             database to use: NGA_W2 or EXSIM_Duzce
             The default is NGA_W2.        
@@ -846,25 +846,12 @@ class conditonal_spectrum(downloader, file_manager):
                 self.database['Sa_RotD50'] = Sa[:, np.argsort(Periods)]
 
             self.database['Periods'] = Periods[np.argsort(Periods)]
-
-        gmpe_handles = {
-            'Boore_Atkinson_2008': gsim.boore_atkinson_2008.BooreAtkinson2008,
-            'Boore_EtAl_2014': gsim.boore_2014.BooreEtAl2014,
-            'Akkar_EtAlRjb_2014': gsim.akkar_2014.AkkarEtAlRjb2014,
-            'AkkarCagnan2010': gsim.akkar_cagnan_2010.AkkarCagnan2010,
-            'ChiouYoungs2008': gsim.chiou_youngs_2008.ChiouYoungs2008,
-            'CampbellBozorgnia2008': gsim.campbell_bozorgnia_2008.CampbellBozorgnia2008,
-            'ChiouYoungs2014': gsim.chiou_youngs_2014.ChiouYoungs2014,
-            'CampbellBozorgnia2014': gsim.campbell_bozorgnia_2014.CampbellBozorgnia2014,
-            'Idriss2014': gsim.idriss_2014.Idriss2014,
-            'AbrahamsonEtAl2014': gsim.abrahamson_2014.AbrahamsonEtAl2014
-        }
-
-        # Check for existing correlation function
-        if gmpe not in gmpe_handles:
-            raise ValueError('Not a valid gmpe')
-        else:
-            self.bgmpe = gmpe_handles[gmpe]()
+            
+        try: # this is smth like self.bgmpe = gsim.boore_2014.BooreEtAl2014()
+            self.bgmpe = gsim.get_available_gsims()[gmpe]()
+            
+        except: 
+            raise KeyError('Not a valid gmpe')
 
         if pInfo == 1:  # print the selected gmpe info
             print('For the selected gmpe;')
@@ -872,7 +859,7 @@ class conditonal_spectrum(downloader, file_manager):
             print('The mandatory input rupture parameters are %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
             print('The mandatory input site parameters are %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
             print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
-            print('The defined tectonic region type is %s' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
+            print('The defined tectonic region type is %s\n' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
 
     @staticmethod
     def BakerJayaramCorrelationModel(T1, T2, orth=0):
@@ -1218,6 +1205,8 @@ class conditonal_spectrum(downloader, file_manager):
             # Covariance
             Cov = np.zeros((len(T_Tgt), len(T_Tgt)))
 
+            # TODO: it could be better to calculate some parameters automatically
+            # It could better to use something like Elisa did (input_GMPE.py)
             # Set the contexts for the scenario
             sites = gsim.base.SitesContext()
             for key in site_param.keys():

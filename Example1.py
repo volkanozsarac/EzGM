@@ -6,7 +6,7 @@ import EzGM
 
 startTime = EzGM.time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = EzGM.conditonal_spectrum(Tstar=1.0, gmpe='Akkar_EtAlRjb_2014', database='NGA_W2', pInfo=1)
+cs = EzGM.conditonal_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
 cs.create(site_param={'vs30': 400}, rup_param={'rake': 0.0, 'mag': [7.54]},

@@ -67,7 +67,7 @@ for im in ims:  # for each im in the im list
     mean_dists = EzGM.np.loadtxt(EzGM.os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
     # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-    cs = EzGM.conditonal_spectrum(Tstar=EzGM.np.arange(0.1, 1.1, 0.1), gmpe='Boore_EtAl_2014', database='NGA_W2', pInfo=1)
+    cs = EzGM.conditonal_spectrum(Tstar=EzGM.np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):
         # 2.) Create target spectrum

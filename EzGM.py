@@ -14,7 +14,7 @@
 |                                                                       |
 |-----------------------------------------------------------------------|
 """
-# TODO: Add Eurocode8 based selection
+# TODO: Add TBDY2018 Hazard Map as metadata
 # Import python libraries
 import copy
 import errno

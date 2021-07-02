@@ -514,26 +514,39 @@ class downloader:
                 for chunk in r.iter_content(chunk_size=chunk_size):
                     fd.write(chunk)
 
-        def find_latest_ver():
+        def get_driver_version(browser_version):
             """
             
             Details
             -------
             
-            This function finds the latest version of the chrome driver from  
-            'https://chromedriver.chromium.org/'.
+            This function gets the suitable version of the chrome driver
 
             """
-            r = requests.get('https://chromedriver.chromium.org/')
-            a = r.text
-            start = a.find('Latest stable')
-            text = a.replace(a[0:start], '')
-            start = text.find('path=')
-
-            text = text.replace(text[0:start + 5], '')
-            end = text.find("/")
-            latest_ver = text.replace(text[end::], '')
-            return latest_ver
+            # find the latest version.
+            if browser_version == 0: 
+                req = requests.get('https://chromedriver.chromium.org/')
+                texts = req.text
+                start = texts.find('Latest stable')
+                text = texts.replace(texts[0:start], '')
+                start = text.find('path=')
+    
+                text = text.replace(text[0:start + 5], '')
+                end = text.find("/")
+                driver_version = text.replace(text[end::], '')
+            
+            else: # find the browser compatible version.
+                req = requests.get('https://chromedriver.chromium.org/downloads')
+                texts = req.text
+                start = texts.find('>ChromeDriver ' + browser_version)
+                text = texts.replace(texts[0:start], '')
+                start = text.find('path=')
+    
+                text = text.replace(text[0:start + 5], '')
+                end = text.find("/")
+                driver_version = text.replace(text[end::], '')
+                
+            return driver_version
 
         def add_driver_to_the_PATH(save_path):
             paths = sys.path
@@ -564,7 +577,7 @@ class downloader:
                     print(flag_lim - flag)
             print(f'Downloaded files are located in\n{Down_Dir}')
 
-        def seek_and_download():
+        def seek_and_download(browser_version=0):
             """
             
             Details
@@ -587,15 +600,15 @@ class downloader:
                 current_platform = 'mac64'
                 aim_driver = 'chromedriver'
             if aim_driver not in os.listdir(package):
-                latest_ver = find_latest_ver()
+                driver_version = get_driver_version(browser_version)
                 save_path = os.path.join(os.getcwd(), 'chromedriver.zip')
-                url = f"https://chromedriver.storage.googleapis.com/{latest_ver}/chromedriver_{current_platform}.zip"
+                url = f"https://chromedriver.storage.googleapis.com/{driver_version}/chromedriver_{current_platform}.zip"
                 download_url(url, save_path, chunk_size=128)
                 add_driver_to_the_PATH(save_path)
-                print('chromedriver downloaded successfully!!')
+                print('Downloaded chromedriver successfully!')
                 os.remove(save_path)
             else:
-                print("chromedriver already exists!!")
+                print("Chromedriver already exists, something went wrong!")
 
         def go_to_sign_in_page(Download_Dir):
             """
@@ -625,11 +638,27 @@ class downloader:
                 aim_driver = 'chromedriver'
             path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
             if not os.path.exists(path_of_driver):
-                print('Downloading the chromedriver!!')
+                print('Downloading the latest version of chromedriver!')
                 seek_and_download()
                 if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
                     os.chmod(path_of_driver, 0o777)
+
             driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
+            # version check is required because google chrome updates itself
+            browser_version = driver.capabilities['browserVersion'][0:2]
+            driver_version = driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0][0:2]
+            if browser_version != driver_version:
+                print('Downloading the browser compatible version of chromedriver!')
+                 # remove the old driver, and download the compatible driver
+                driver.quit()
+                os.chmod(path_of_driver, 0o777)
+                os.remove(path_of_driver) 
+                seek_and_download(browser_version)
+                if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+                    os.chmod(path_of_driver, 0o777)                
+
+                driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)                
+
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
             driver.get(url_sign_in)
             return driver
@@ -2449,7 +2478,7 @@ class tbdy_2018(downloader, file_manager):
 
         recIDs = recIDs.tolist()
         # Add selected record information to self
-        self.rec_scale = scaleFac
+        self.rec_scale = float(scaleFac)
         self.rec_Vs30 = Vs30[recIDs]
         self.rec_Rjb = Rjb[recIDs]
         self.rec_Mw = Mw[recIDs]
@@ -2995,7 +3024,7 @@ class ec8_part1(downloader, file_manager):
 
         recIDs = recIDs.tolist()
         # Add selected record information to self
-        self.rec_scale = scaleFac
+        self.rec_scale = float(scaleFac)
         self.rec_Vs30 = Vs30[recIDs]
         self.rec_Rjb = Rjb[recIDs]
         self.rec_Mw = Mw[recIDs]

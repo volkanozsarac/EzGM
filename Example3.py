@@ -9,7 +9,7 @@ startTime = EzGM.time()
 spec = EzGM.ec8_part1(database='NGA_W2', outdir='Outputs')
 
 # 2.) Select the ground motions
-spec.select(ag=0.2,xi=0.05, I=1.0, Type='Type1',Soil='A', nGM=3, selection=1, Tp=1,
+spec.select(ag=0.2,xi=0.05, I=1.0, Type='Type1',Soil='A', nGM=11, selection=1, Tp=1,
            Mw_lim=[6.5, 8], Vs30_lim=[200, 700], Rjb_lim=[0, 20], fault_lim=None, opt=2, 
            maxScale=2, weights = [1,1])
 

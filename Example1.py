@@ -9,7 +9,7 @@ startTime = EzGM.time()
 cs = EzGM.conditonal_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
-cs.create(site_param={'vs30': 400}, rup_param={'rake': 0.0, 'mag': [7.54]},
+cs.create(site_param={'vs30': 500}, rup_param={'rake': 0.0, 'mag': [7.5]},
           dist_param={'rjb': [10]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
           im_Tstar=2.288, epsilon=None, cond=1, useVar=1, corr_func='akkar',
           outdir='Outputs')
@@ -19,7 +19,7 @@ cs.plot(tgt=1, sim=0, rec=0, save=1, show=1)
 
 # 3.) Select the ground motions
 cs.select(nGM=10, selection=1, Sa_def='RotD50', isScaled=1, maxScale=2.5,
-          Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, nTrials=20,
+          Mw_lim=[5.5,8], Vs30_lim=[360,760], Rjb_lim=[0,50], fault_lim=None, nTrials=20,
           weights=[1, 2, 0.3], seedValue=0, nLoop=2, penalty=1, tol=10)
 
 # The simulated spectra and spectra of selected records can be plotted at this stage

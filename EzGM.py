@@ -2439,9 +2439,11 @@ class tbdy_2018(downloader, file_manager):
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    devSig = np.max(std_numba(tempSample * tempScale))  # Compute standard deviation
-                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample)) * tempScale)
-                    tempDevTot = devMean * weights[0] + devSig * weights[1]
+                    tempSig = std_numba(tempSample*tempScale) # Compute standard deviation
+                    tempMean = mean_numba(tempSample*tempScale) # Compute mean
+                    devSig = np.max(tempSig) # Compute maximum standard deviation
+                    devMean = np.max(np.abs(target_spec - tempMean)) # Compute maximum difference in mean
+                    tempDevTot = devMean*weights[0] + devSig*weights[1]
 
                     # Should cause improvement
                     if maxScale > tempScale > 1 / maxScale and tempDevTot <= DevTot:
@@ -2987,8 +2989,10 @@ class ec8_part1(downloader, file_manager):
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    devSig = np.max(std_numba(tempSample*tempScale)) # Compute standard deviation
-                    devMean = np.max(np.abs(target_spec - mean_numba(tempSample))*tempScale)
+                    tempSig = std_numba(tempSample*tempScale) # Compute standard deviation
+                    tempMean = mean_numba(tempSample*tempScale) # Compute mean
+                    devSig = np.max(tempSig) # Compute maximum standard deviation
+                    devMean = np.max(np.abs(target_spec - tempMean)) # Compute maximum difference in mean
                     tempDevTot = devMean*weights[0] + devSig*weights[1]
                     
                     # Should cause improvement

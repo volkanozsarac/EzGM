@@ -10,7 +10,8 @@ spec = EzGM.tbdy_2018(database='NGA_W2', outdir='Outputs')
 
 # 2.) Select the ground motions
 spec.select(SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1,
-            Mw_lim=[6.5, 8], Vs30_lim=[200, 700], Rjb_lim=[0, 20], fault_lim=None, opt=2)
+            Mw_lim=[6.5, 8], Vs30_lim=[200, 700], Rjb_lim=[0, 20], fault_lim=None, opt=0, 
+            maxScale=2)
 
 # selected records can be plotted at this stage
 spec.plot(save=0, show=1)

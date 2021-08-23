@@ -21,7 +21,7 @@ from time import time
 from EzGM.Utility import RunTime
 
 startTime = time()
-# 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
+# 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
 cs = conditional_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
@@ -120,11 +120,56 @@ RunTime(startTime)
 
 ### D) EzGM can be used to process ground motion records (Filtering, Correction, IML calculation etc.)
 ```
-EzGM.GMProc.baseline_correction(Ag, dt, polynomial_type)
-EzGM.GMProc.butterworth_filter(Ag, dt, cut_off=(0.1, 25), **kwargs)
-EzGM.GMProc.sdof_ltha(Ag, dt, T, xi, m)
-EzGM.GMProc.get_parameters(Ag, dt, T, xi)
-EzGM.GMProc.RotDxx_spectrum(self, Ag1, Ag2, dt, T, xi, xx)
+from EzGM import GMProc
+from EzGM.Utility import file_manager, RunTime
+from time import time
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Acquire the run start time
+startTime = time()
+
+# Read records
+dt, npts, desc, t, Ag1 = file_manager.ReadNGA(inFilename='RSN1158_KOCAELI_DZC180.AT2', content=None, outFilename=None)
+dt, npts, desc, t, Ag2 = file_manager.ReadNGA(inFilename='RSN1158_KOCAELI_DZC270.AT2', content=None, outFilename=None)
+
+# Apply baseline correction
+Ag_corrected = GMProc.baseline_correction(Ag1, dt, polynomial_type='Linear')
+
+# Apply band-pass filtering
+Ag_filtered = GMProc.butterworth_filter(Ag1, dt, cut_off=(0.1, 25))
+
+# Linear elastic analysis of a single degree of freedom system
+u, v, ac, ac_tot = GMProc.sdof_ltha(Ag1, dt, T = 1.0, xi = 0.05, m = 1)
+
+# Calculate ground motion parameters
+param1 = GMProc.get_parameters(Ag1, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
+param2 = GMProc.get_parameters(Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
+
+# Obtain RotDxx Spectrum
+Periods, Sa_RotD50 = GMProc.RotDxx_spectrum(Ag1, Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05, xx = 50)
+
+# Since the NGAW2 records are already processed we will not see any difference.
+plt.figure()
+plt.plot(t, Ag1, label='Component 1 - raw')
+plt.plot(t, Ag_corrected, label='Component 1 - corrected')
+plt.plot(t, Ag_filtered, label='Component 1 - filtered')
+plt.legend()
+plt.grid(True)
+plt.xlabel('Time [sec]')
+plt.ylabel('Acceleration [g]')
+
+plt.figure()
+plt.plot(param1['Periods'], param1['PSa'], label='Sa1')
+plt.plot(param2['Periods'], param2['PSa'], label='Sa2')
+plt.plot(Periods, Sa_RotD50, label='RotD50')
+plt.legend()
+plt.grid(True)
+plt.xlabel('Period [sec]')
+plt.ylabel('Sa [g]')
+
+# Calculate the total time passed
+RunTime(startTime)
 ```
 ***
 ### E) EzGM can be used to post-process outputs of PSHA in OpenQuake.
@@ -207,7 +252,7 @@ for im in ims:  # for each im in the im list
     mean_mags = np.loadtxt(os.path.join(post_dir, 'mean_mags_' + im + '.out'))
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
-    # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
+    # 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
     cs = conditional_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):

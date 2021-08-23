@@ -7,7 +7,7 @@ from time import time
 from EzGM.Utility import RunTime
 
 startTime = time()
-# 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
+# 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
 cs = conditional_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum

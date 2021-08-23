@@ -153,7 +153,7 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), **kwargs):
     return values_filtered
 
 
-def sdof_ltha(Ag, dt, T, xi, m):
+def sdof_ltha(Ag, dt, T, xi, m = 1):
     """
     Details
     -------
@@ -199,6 +199,13 @@ def sdof_ltha(Ag, dt, T, xi, m):
     ac_tot: numpy.array 
         Total acceleration response history
     """
+
+    if isinstance(T, (int, float)):
+        T = np.array([T])
+    if isinstance(T, list):
+         T = np.array(T)
+    elif isinstance(T, numpy.ndarray):
+        T = T
 
     # Get the length of acceleration history array
     n1 = max(Ag.shape)
@@ -260,7 +267,7 @@ def sdof_ltha(Ag, dt, T, xi, m):
     return u, v, ac, ac_tot
 
 
-def get_parameters(self, Ag, dt, T, xi):
+def get_parameters(Ag, dt, T, xi):
     """
     Details
     -------
@@ -373,6 +380,13 @@ def get_parameters(self, Ag, dt, T, xi):
         Otherwise not applicable, and equal to 'N.A'
     """
 
+    if isinstance(T, (int, float)):
+        T = np.array([T])
+    if isinstance(T, list):
+         T = np.array(T)
+    elif isinstance(T, numpy.ndarray):
+        T = T
+
     # INITIALIZATION
     T = T[T != 0]  # do not use T = zero for response spectrum calculations
     param = {'Periods': T}
@@ -390,7 +404,7 @@ def get_parameters(self, Ag, dt, T, xi):
     # Mass (kg)
     m = 1
     # Carry out linear time history analyses for SDOF system
-    u, v, ac, ac_tot = self.sdof_ltha(Ag, dt, T, xi, m)
+    u, v, ac, ac_tot = sdof_ltha(Ag, dt, T, xi, m)
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs(u), axis=0)
     param['Sv'] = np.max(np.abs(v), axis=0)
@@ -522,7 +536,7 @@ def get_parameters(self, Ag, dt, T, xi):
     return param
 
 
-def RotDxx_spectrum(self, Ag1, Ag2, dt, T, xi, xx):
+def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     """
     Details
     -------
@@ -566,6 +580,15 @@ def RotDxx_spectrum(self, Ag1, Ag2, dt, T, xi, xx):
         RotDxx Spectra
     """
 
+    if isinstance(T, (int, float)):
+        T = np.array([T])
+    if isinstance(T, list):
+         T = np.array(T)
+    elif isinstance(T, numpy.ndarray):
+        T = T
+
+    T = T[T != 0]  # do not use T = zero for response spectrum calculations
+
     # Verify if the length of arrays are the same
     if len(Ag1) == len(Ag2):
         pass
@@ -591,5 +614,6 @@ def RotDxx_spectrum(self, Ag1, Ag2, dt, T, xi, xx):
 
     Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
     Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
+    Periods = T
 
-    return Sa_RotDxx
+    return Periods, Sa_RotDxx

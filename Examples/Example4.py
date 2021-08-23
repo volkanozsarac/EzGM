@@ -74,7 +74,7 @@ for im in ims:  # for each im in the im list
     mean_mags = np.loadtxt(os.path.join(post_dir, 'mean_mags_' + im + '.out'))
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
-    # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
+    # 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
     cs = conditional_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):

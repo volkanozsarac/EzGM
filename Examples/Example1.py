@@ -2,7 +2,7 @@
 # Conditional Spectrum (CS) Based Record Selection #
 ####################################################
 
-from EzGM.Selection import conditonal_spectrum
+from EzGM.Selection import conditional_spectrum
 from time import time
 from EzGM.Utility import RunTime
 

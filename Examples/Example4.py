@@ -3,7 +3,7 @@
 # Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
 ##################################################################################
 
-from EzGM.Selection import conditonal_spectrum
+from EzGM.Selection import conditional_spectrum
 from EzGM import OQProc
 from EzGM.Utility import file_manager, RunTime
 from time import time
@@ -75,7 +75,7 @@ for im in ims:  # for each im in the im list
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
     # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-    cs = conditonal_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
+    cs = conditional_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):
         # 2.) Create target spectrum

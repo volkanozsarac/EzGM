@@ -8,7 +8,7 @@ import EzGM
 
 ### A) Conditional Spectrum Based Record Selection
 
-EzGM.cs is used to perform record selection based on CS(AvgSa) and CS(Sa) for the given metadata. The tool makes use of Openquake hazardlib, thus any available gmpe available can directly be used.
+EzGM.Selection.conditional_spectrum is used to perform record selection based on CS(AvgSa) and CS(Sa) for the given metadata. The tool makes use of Openquake hazardlib, thus any available gmpe available can directly be used.
 If user desires to get formatted records, for the given metadata.
 S/he should place the available records from metadata file into the Records.zip with the name of database.
 e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the records directly by inserting account username and password into the associated method. 
@@ -22,7 +22,7 @@ from EzGM.Utility import RunTime
 
 startTime = time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = conditonal_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
+cs = conditional_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
 cs.create(site_param={'vs30': 500}, rup_param={'rake': 0.0, 'mag': [7.5]},
@@ -136,7 +136,7 @@ Moreover, the class can be used to prepare input required for the CS-based recor
 # Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
 ##################################################################################
 
-from EzGM.Selection import conditonal_spectrum
+from EzGM.Selection import conditional_spectrum
 from EzGM import OQProc
 from EzGM.Utility import file_manager, RunTime
 from time import time
@@ -208,7 +208,7 @@ for im in ims:  # for each im in the im list
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
     # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-    cs = conditonal_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
+    cs = conditional_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', database='NGA_W2', pInfo=1)
 
     for i in range(len(poes)):
         # 2.) Create target spectrum

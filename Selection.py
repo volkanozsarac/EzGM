@@ -18,7 +18,7 @@ from scipy.io import loadmat
 from scipy.stats import skew
 from .Utility import downloader, file_manager
 
-class conditonal_spectrum(downloader, file_manager):
+class conditional_spectrum(downloader, file_manager):
     """
     This class is used to
         1) Create target spectrum

@@ -2,6 +2,7 @@
 Toolbox for ground motion record selection and processing.
 
 ```
+pip install EzGM
 import EzGM
 ```
 

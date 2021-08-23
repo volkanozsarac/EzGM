@@ -1,22 +1,64 @@
 """
-|-----------------------------------------------------------------------|
-|                                                                       |
-|    OQproc                                                             |
-|    Toolbox for processing of                                          |
-|    OpenQuake outputs                                                  |
-|    Version: 1.0                                                       |
-|                                                                       |
-|    Created on 06/04/2020                                              |
-|    Update on 08/12/2020                                               |
-|    Author: Volkan Ozsarac                                             |
-|    Affiliation: University School for Advanced Studies IUSS Pavia     |
-|    Earthquake Engineering PhD Candidate                               |
-|                                                                       |
-|-----------------------------------------------------------------------|
+OpenQuake PSHA Post-Processing ToolBox
 """
 
+import os
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
+from matplotlib import cm  # import colormap
+from matplotlib.patches import Patch
+import numpy as np
+import numpy.matlib
+import pandas as pd
+from scipy import interpolate
 
-def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazard_curve-mean'):
+def get_iml(poes, apoe_data, iml_data, inv_t):
+    """
+    Details
+    -------
+    This script will take results of PSHA analysis, and return
+    the intensity measure levels for desired probability of exceedance values
+
+    Parameters
+    ----------
+    poes: list
+        desired probability of exceedance values to calculate their
+        corresponding intensity measure levels
+    apoe_data: list
+        annual probability of exceedance values
+    iml_data: list
+        intensity measure levels
+    inv_t: int
+        investigation time
+
+    Returns
+    -------
+    iml: list
+        intensity measure levels corresponding to poes
+    """
+
+    infs = np.isinf(apoe_data)
+    apoe_data = apoe_data[~infs]
+    iml_data = iml_data[~infs]
+    nans = np.isnan(apoe_data)
+    apoe_data = apoe_data[~nans]
+    iml_data = iml_data[~nans]
+
+    Ninterp = 1e5
+    iml_range = np.arange(min(iml_data), max(iml_data), (max(iml_data) - min(iml_data)) / Ninterp)
+    apoe_fit = interpolate.interp1d(iml_data, apoe_data, kind='quadratic')(iml_range)
+    poe = 1 - (1 - apoe_fit) ** inv_t
+
+    idxs = []
+    for i in range(len(poes)):
+        temp = abs(poe - poes[i]).tolist()
+        idxs.append(temp.index(min(temp)))
+        # These are actual points where the analysis are carried out and losses are calculated for
+    iml = iml_range[idxs]
+
+    return iml
+
+def hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazard_curve-mean'):
     """
     Details
     -------
@@ -39,13 +81,7 @@ def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazar
     None.
 
     """
-
-    import matplotlib.pyplot as plt
-    from matplotlib import style
-    import os
-    import pandas as pd
-    import numpy as np
-
+    
     # Initialise some lists
     lat = []
     lon = []
@@ -99,6 +135,7 @@ def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazar
                 apoe.append(temp)
 
     # Get intensity measure levels corresponding to poes
+    plt.figure()
     for i in range(len(s)):
         plt.loglog(s[i], apoe[i], label=im[i])
         iml = get_iml(np.asarray(poes), np.asarray(apoe[i]), np.asarray(s[i]), inv_t)
@@ -133,57 +170,7 @@ def proc_hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazar
         np.savetxt(fname, haz_cur)
 
 
-def get_iml(poes, apoe_data, iml_data, inv_t):
-    """
-    Details
-    -------
-    This script will take results of PSHA analysis, and return
-    the intensity measure levels for desired probability of exceedance values
-
-    Parameters
-    ----------
-    poes: list
-        desired probability of exceedance values to calculate their
-        corresponding intensity measure levels
-    apoe_data: list
-        annual probability of exceedance values
-    iml_data: list
-        intensity measure levels
-    inv_t: int
-        investigation time
-
-    Returns
-    -------
-    iml: list
-        intensity measure levels corresponding to poes
-    """
-
-    import numpy as np
-    from scipy import interpolate
-
-    infs = np.isinf(apoe_data)
-    apoe_data = apoe_data[~infs]
-    iml_data = iml_data[~infs]
-    nans = np.isnan(apoe_data)
-    apoe_data = apoe_data[~nans]
-    iml_data = iml_data[~nans]
-
-    Ninterp = 1e5
-    iml_range = np.arange(min(iml_data), max(iml_data), (max(iml_data) - min(iml_data)) / Ninterp)
-    apoe_fit = interpolate.interp1d(iml_data, apoe_data, kind='quadratic')(iml_range)
-    poe = 1 - (1 - apoe_fit) ** inv_t
-
-    idxs = []
-    for i in range(len(poes)):
-        temp = abs(poe - poes[i]).tolist()
-        idxs.append(temp.index(min(temp)))
-        # These are actual points where the analysis are carried out and losses are calculated for
-    iml = iml_range[idxs]
-
-    return iml
-
-
-def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
+def disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
     """
     Details
     -------
@@ -211,14 +198,6 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
 
     """
     # lets add the plotting options to make everything clearer
-    from mpl_toolkits.mplot3d import axes3d
-    import matplotlib.pyplot as plt
-    from matplotlib import cm  # import colormap
-    from matplotlib import style  # import syle
-    import os
-    import numpy as np
-    import math
-    import pandas as pd
 
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
@@ -290,7 +269,7 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
     mags = []
     dists = []
 
-    n_cols = math.floor(n_Tr / n_rows)
+    n_cols = int(np.floor(n_Tr / n_rows))
     if np.mod(n_Tr, n_rows):
         n_cols += 1
 
@@ -344,8 +323,7 @@ def proc_disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post
         fname = os.path.join(output_dir, 'mean_dists_' + ims[idx1] + '.out')
         np.savetxt(fname, np.asarray(dists), fmt='%.1f')
 
-
-def proc_disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
+def disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outputs', n_rows=1):
     """
     Details
     -------
@@ -373,15 +351,6 @@ def proc_disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='P
 
     """
     # lets add the plotting options to make everything clearer
-    from mpl_toolkits.mplot3d import axes3d
-    import matplotlib.pyplot as plt
-    from matplotlib import cm  # import colormap
-    from matplotlib import style  # import syle
-    from matplotlib.patches import Patch
-    import os
-    import numpy as np
-    import math
-    import pandas as pd
 
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
@@ -457,7 +426,7 @@ def proc_disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='P
     lon = lon[0]
     lat = lat[0]
 
-    n_cols = math.floor(n_Tr / n_rows)
+    n_cols = int(np.floor(n_Tr / n_rows))
     if np.mod(n_Tr, n_rows):
         n_cols += 1
 

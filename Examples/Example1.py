@@ -2,23 +2,25 @@
 # Conditional Spectrum (CS) Based Record Selection #
 ####################################################
 
-import EzGM
+from EzGM.Selection import conditonal_spectrum
+from time import time
+from EzGM.Utility import RunTime
 
-startTime = EzGM.time()
+startTime = time()
 # 1.) Initialize the cs_master object for record selection, check which parameters are required for the gmpe you are using.
-cs = EzGM.conditonal_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
+cs = conditonal_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
 cs.create(site_param={'vs30': 500}, rup_param={'rake': 0.0, 'mag': [7.5]},
           dist_param={'rjb': [10]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
-          im_Tstar=2.288, epsilon=None, cond=1, useVar=1, corr_func='akkar',
+          im_Tstar=1.5, epsilon=None, cond=1, useVar=1, corr_func='akkar',
           outdir='Outputs')
 
 # Target spectrum can be plotted at this stage
 cs.plot(tgt=1, sim=0, rec=0, save=1, show=1)
 
 # 3.) Select the ground motions
-cs.select(nGM=10, selection=1, Sa_def='RotD50', isScaled=1, maxScale=2.5,
+cs.select(nGM=10, selection=1, Sa_def='RotD50', isScaled=1, maxScale=4,
           Mw_lim=[5.5,8], Vs30_lim=[360,760], Rjb_lim=[0,50], fault_lim=None, nTrials=20,
           weights=[1, 2, 0.3], seedValue=0, nLoop=2, penalty=1, tol=10)
 
@@ -35,4 +37,4 @@ cs.plot(tgt=0, sim=1, rec=1, save=1, show=1)
 # cs.write(obj=1, recs=1, recs_f='')
 
 # Calculate the total time passed
-EzGM.RunTime(startTime)
+RunTime(startTime)

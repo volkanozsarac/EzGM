@@ -5,6 +5,26 @@ Toolbox for ground motion record selection and processing.
 pip install EzGM
 import EzGM
 ```
+***
+
+## Note
+ngaw2_download method can be used only if google-chrome is readily available.
+Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, write:
+```
+conda install shapely
+or
+pip install shapely
+```
+***
+
+## Acknowledgements
+Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.conditional_spectrum method is greatly inspired by the CS_Selection code of Prof. Jack W. Baker whom I thank for sharing his work with the research community.
+***
+
+## Reference
+If you are going to use the code presented herein for any official study, please refer to 
+Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records. Structure and Infrastructure Engineering.
+***
 
 ### A) Conditional Spectrum Based Record Selection
 
@@ -176,10 +196,8 @@ RunTime(startTime)
 Moreover, the class can be used to prepare input required for the CS-based record selection.
 
 ```
-##################################################################################
-# Conditional Spectrum (CS) Based Record Selection for Multiple Stripes Analysis #
-# Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
-##################################################################################
+# Conditional Spectrum (CS) Based Record Selection for Multiple Stripes Analysis
+# Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake
 
 from EzGM.Selection import conditional_spectrum
 from EzGM import OQProc
@@ -284,36 +302,3 @@ for im in ims:  # for each im in the im list
 RunTime(startTime)
 
 ```
-***
-
-## Required Packages
-sys,
-os,
-shutil,
-errno,
-stat,
-zipfile,
-time,
-pickle,
-copy,
-numba,
-numpy,
-scipy,
-matplotlib,
-openquake,
-selenium,
-requests,
-pandas
-***
-
-## Note
-Installation of Openquake package in Linux and MACOS is straightforward. In case of windows package may not be installed correctly, in other words, geos_c.dll or similar .dll files could be missing). To fix this simply write, pip install shapely or conda install shapely (in case of anaconda). ngaw2_download method can be used if google-chrome is readily available.
-***
-
-## Acknowledgements
-Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.conditional_spectrum method is greatly inspired by the CS_Selection code of Prof. Jack W. Baker whom I thank for sharing his work with the research community.
-***
-
-## Reference
-If you are going to use the code presented herein for any official study, please refer to 
-Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records. Structure and Infrastructure Engineering.

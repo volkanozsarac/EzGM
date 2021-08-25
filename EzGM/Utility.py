@@ -600,38 +600,69 @@ class downloader:
 
             """
 
-            ChromeOptions = webdriver.ChromeOptions()
-            prefs = {"download.default_directory": Download_Dir}
-            ChromeOptions.add_experimental_option("prefs", prefs)
-            ChromeOptions.headless = True
-            if sys.platform.startswith('win'):
-                aim_driver = 'chromedriver.exe'
-            elif sys.platform.startswith('linux'):
-                aim_driver = 'chromedriver'
-            elif sys.platform.startswith('darwin'):
-                aim_driver = 'chromedriver'
-            path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
-            if not os.path.exists(path_of_driver):
-                print('Downloading the latest version of chromedriver!')
-                seek_and_download()
-                if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+            # Check if ipython is installed
+            try:
+                __IPYTHON__
+                _in_ipython_session = True
+            except NameError:
+                _in_ipython_session = False
+            
+            # Running on Google Colab
+            if _in_ipython_session and 'google.colab' in str(get_ipython()):
+                os.system('apt-get update')
+                os.system('sudo apt install chromium-chromedriver')
+                os.system('sudo cp /usr/lib/chromium-browser/chromedriver /usr/bin')
+                options = webdriver.ChromeOptions()
+                options.add_argument('-headless')
+                options.add_argument('-no-sandbox')
+                options.add_argument('-disable-dev-shm-usage')
+                prefs = {"download.default_directory": Download_Dir}
+                options.add_experimental_option("prefs", prefs)
+                driver = webdriver.Chrome('chromedriver',options=options)
+
+            # Running on Binder, let's use firefox here
+            elif _in_ipython_session and 'jovyan' in os.getcwd():
+                from selenium.webdriver.firefox.options import Options
+                options = Options()
+                options.headless = True
+                options.set_preference("browser.download.folderList", 2)
+                options.set_preference("browser.download.dir", Download_Dir)
+                driver = webdriver.Firefox(options=options)
+
+            # Running on personal computer (PC)
+            else:
+                ChromeOptions = webdriver.ChromeOptions()
+                prefs = {"download.default_directory": Download_Dir}
+                ChromeOptions.add_experimental_option("prefs", prefs)
+                ChromeOptions.headless = True
+                if sys.platform.startswith('win'):
+                    aim_driver = 'chromedriver.exe'
+                elif sys.platform.startswith('linux'):
+                    aim_driver = 'chromedriver'
+                elif sys.platform.startswith('darwin'):
+                    aim_driver = 'chromedriver'
+                path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
+                if not os.path.exists(path_of_driver):
+                    print('Downloading the latest version of chromedriver!')
+                    seek_and_download()
+                    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+                        os.chmod(path_of_driver, 0o777)
+
+                driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
+                # version check is required because google chrome updates itself
+                browser_version = driver.capabilities['browserVersion'][0:2]
+                driver_version = driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0][0:2]
+                if browser_version != driver_version:
+                    print('Downloading the browser compatible version of chromedriver!')
+                     # remove the old driver, and download the compatible driver
+                    driver.quit()
                     os.chmod(path_of_driver, 0o777)
+                    os.remove(path_of_driver) 
+                    seek_and_download(browser_version)
+                    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+                        os.chmod(path_of_driver, 0o777)                
 
-            driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
-            # version check is required because google chrome updates itself
-            browser_version = driver.capabilities['browserVersion'][0:2]
-            driver_version = driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0][0:2]
-            if browser_version != driver_version:
-                print('Downloading the browser compatible version of chromedriver!')
-                 # remove the old driver, and download the compatible driver
-                driver.quit()
-                os.chmod(path_of_driver, 0o777)
-                os.remove(path_of_driver) 
-                seek_and_download(browser_version)
-                if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-                    os.chmod(path_of_driver, 0o777)                
-
-                driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)                
+                    driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)                
 
             url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
             driver.get(url_sign_in)

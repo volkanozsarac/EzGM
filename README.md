@@ -1,6 +1,5 @@
 # EzGM
-Toolbox for ground motion record selection and processing. 
-Google Colab Examples can be found here: https://drive.google.com/drive/folders/1MWAycwo9ryIcwGWyg8udlX_9ZBt9T3GT?usp=sharing
+Toolbox for ground motion record selection and processing. Examples can be found here: https://github.com/volkanozsarac/EzGM/tree/master/Examples
 
 ```
 pip install EzGM

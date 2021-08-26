@@ -446,7 +446,7 @@ class downloader:
         """
         pass
 
-    def ngaw2_download(self, username, pwd):
+    def ngaw2_download(self, username, pwd, sleeptime = 3):
         """
         
         Details
@@ -464,6 +464,10 @@ class downloader:
         pwd          : str
                 Account password
                             e.g.: 'password!12345'
+
+        sleeptime    : int, default is 3
+                Time (sec) spent between each browser operation
+                This can be increased or decreased depending on the internet speed
 
         """
 
@@ -542,7 +546,7 @@ class downloader:
             flag_lim = 5
             while delta_size > 0 and flag < flag_lim:
                 size_0 = dir_size(Down_Dir)
-                sleep(6)
+                sleep(1.5*sleeptime)
                 size_1 = dir_size(Down_Dir)
                 if size_1 - size_0 > 0:
                     delta_size = size_1 - size_0
@@ -620,13 +624,14 @@ class downloader:
                 options.add_experimental_option("prefs", prefs)
                 driver = webdriver.Chrome('chromedriver',options=options)
 
-            # Running on Binder, let's use firefox here
+            # Running on Binder, we use firefox here
             elif _in_ipython_session and 'jovyan' in os.getcwd():
-                from selenium.webdriver.firefox.options import Options
-                options = Options()
+                options = webdriver.firefox.options.Options()
                 options.headless = True
                 options.set_preference("browser.download.folderList", 2)
                 options.set_preference("browser.download.dir", Download_Dir)
+                options.set_preference('browser.download.useDownloadDir', True)
+                options.set_preference('browser.helperApps.neverAsk.saveToDisk','application/zip')
                 driver = webdriver.Firefox(options=options)
 
             # Running on personal computer (PC)
@@ -727,11 +732,11 @@ class downloader:
             url_get_record = 'https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1'
             print("Listing the Records!....")
             driver.get(url_get_record)
-            sleep(2)
+            sleep(sleeptime)
             driver.find_element_by_xpath("//button[@type='button']").submit()
-            sleep(2)
+            sleep(sleeptime)
             driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
-            sleep(3)
+            sleep(sleeptime)
             driver.find_element_by_xpath(
                 "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
             try:
@@ -747,18 +752,18 @@ class downloader:
                               "or you have exceeded the download limit")
             else:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
-                sleep(3)
+                sleep(sleeptime)
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
                 print("Downloading the Records!...")
                 obj = driver.switch_to.alert
                 msg = obj.text
                 print("Alert shows following message: " + msg)
-                sleep(5)
+                sleep(sleeptime)
                 obj.accept()
                 obj = driver.switch_to.alert
                 msg = obj.text
                 print("Alert shows following message: " + msg)
-                sleep(3)
+                sleep(sleeptime)
                 obj.accept()
                 print("Downloading the Records!...")
                 download_wait(Download_Dir)

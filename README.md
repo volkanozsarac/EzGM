@@ -28,7 +28,7 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample4.ipynb)
 ***
 
-- EzGM.OQProc can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple stripes analysis
+- EzGM.OQProc can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple stripe analysis (MSA)
 upon carrying out probabilistic seismic hazard analysis (PSHA) via OpenQuake.Engine.
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample5.ipynb)

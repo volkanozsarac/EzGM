@@ -18,9 +18,8 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 ***
 
 - EzGM.Selection.tbdy_2018 is used to perform TBDY 2018 (Turkish Building Code) based record selection
-```
-Example3
-```
+- 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample3.ipynb)
 ***
 
 - EzGM.Selection.ec8_part1 is used to perform Eurocode 8 part 1 based record selection

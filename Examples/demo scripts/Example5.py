@@ -15,7 +15,8 @@ startTime = time()
 
 # %% Hazard Analysis via OpenQuake
 # Set path to OpenQuake model .ini file path
-oq_model = 'OQ_Model' # this is the folder where oq model is located
+parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+oq_model = os.path.join(parent_path,'input files','OQ_Model') # this is the folder where oq model is located
 oq_ini = 'job.ini' # this is .ini file used to run hazard model via openquake
 
 # Set command to call OpenQuake

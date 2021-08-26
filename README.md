@@ -13,13 +13,8 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 
 - See https://docs.openquake.org/oq-engine/master/openquake.hazardlib.gsim.html for available ground motion prediction equations.
 
-Example 1, IM = Sa(Tstar) 
-
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample1.ipynb)
-```
-Example1 --> IM = Sa(Tstar)
-Example2 --> IM = AvgSa(Tstar)
-```
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample2.ipynb)
 ***
 
 - EzGM.Selection.tbdy_2018 is used to perform TBDY 2018 (Turkish Building Code) based record selection

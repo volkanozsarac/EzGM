@@ -571,7 +571,7 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
     xi: float
         Damping ratio, e.g. 0.05 for 5%
-    xx: int
+    xx: int, list
         Percentile to calculate, e.g. 50 for RotD50
         
     Returns
@@ -611,9 +611,12 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     Rot_Disp = np.zeros((180, n2))
     for theta in range(0, 180, 1):
         Rot_Disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
-
+   
     Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
-    Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
+    if isinstance(xx,list):
+        Sa_RotDxx = [np.percentile(Rot_Acc, value, axis=0) for value in xx]
+    else:
+        Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
     Periods = T
 
     return Periods, Sa_RotDxx

@@ -13,35 +13,31 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 
 - See https://docs.openquake.org/oq-engine/master/openquake.hazardlib.gsim.html for available ground motion prediction equations.
 
-```
-Example1 --> IM = Sa(Tstar)
-Example2 --> IM = AvgSa(Tstar)
-```
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample1.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample2.ipynb)
 ***
 
 - EzGM.Selection.tbdy_2018 is used to perform TBDY 2018 (Turkish Building Code) based record selection
-```
-Example3
-```
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample3.ipynb)
 ***
 
 - EzGM.Selection.ec8_part1 is used to perform Eurocode 8 part 1 based record selection
-```
-Example4
-```
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample4.ipynb)
+
 ***
 
 - EzGM.OQProc can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple stripes analysis
 upon carrying out probabilistic seismic hazard analysis (PSHA) via OpenQuake.Engine.
-```
-Example5
-```
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample5.ipynb)
 ***
 
 - EzGM.GMProc can be used to process ground motion records (filtering, baseline corrections, IM calculations).
-```
-Example6
-```
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=%2FExamples%2Fbinder%2FExample6.ipynb)
+***
 
 ## Note
 - ngaw2_download method can be used only if google-chrome is readily available. EzGM is set to download chromedriver automatically into site-packages if it is not available.

@@ -739,6 +739,7 @@ class downloader:
             sleep(sleeptime)
             driver.find_element_by_xpath(
                 "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
+            sleep(sleeptime)
             try:
                 note = driver.find_element_by_id('notice').text
                 print(note)

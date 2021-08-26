@@ -3,13 +3,17 @@ from EzGM.Utility import file_manager, RunTime
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 # Acquire the run start time
 startTime = time()
 
 # Read records
-dt, npts, desc, t, Ag1 = file_manager.ReadNGA(inFilename='RSN1158_KOCAELI_DZC180.AT2', content=None, outFilename=None)
-dt, npts, desc, t, Ag2 = file_manager.ReadNGA(inFilename='RSN1158_KOCAELI_DZC270.AT2', content=None, outFilename=None)
+parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+gm_path1 = os.path.join(parent_path, 'input files', 'RSN1158_KOCAELI_DZC180.AT2')
+gm_path2 = os.path.join(parent_path, 'input files', 'RSN1158_KOCAELI_DZC270.AT2')
+dt, npts, desc, t, Ag1 = file_manager.ReadNGA(inFilename= gm_path1, content=None, outFilename=None)
+dt, npts, desc, t, Ag2 = file_manager.ReadNGA(inFilename= gm_path2, content=None, outFilename=None)
 
 # Apply baseline correction
 Ag_corrected = GMProc.baseline_correction(Ag1, dt, polynomial_type='Linear')
@@ -25,7 +29,7 @@ param1 = GMProc.get_parameters(Ag1, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
 param2 = GMProc.get_parameters(Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
 
 # Obtain RotDxx Spectrum
-Periods, Sa_RotD50 = GMProc.RotDxx_spectrum(Ag1, Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05, xx = 50)
+Periods, Sa_RotDxx = GMProc.RotDxx_spectrum(Ag1, Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05, xx = [0, 50, 100])
 
 # Since the NGAW2 records are already processed we will not see any difference.
 plt.figure()
@@ -40,7 +44,9 @@ plt.ylabel('Acceleration [g]')
 plt.figure()
 plt.plot(param1['Periods'], param1['PSa'], label='Sa1')
 plt.plot(param2['Periods'], param2['PSa'], label='Sa2')
-plt.plot(Periods, Sa_RotD50, label='RotD50')
+plt.plot(Periods, Sa_RotDxx[0], label='RotD00')
+plt.plot(Periods, Sa_RotDxx[1], label='RotD50')
+plt.plot(Periods, Sa_RotDxx[2], label='RotD100')
 plt.legend()
 plt.grid(True)
 plt.xlabel('Period [sec]')

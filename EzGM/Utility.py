@@ -739,7 +739,7 @@ class downloader:
             sleep(sleeptime)
             driver.find_element_by_xpath(
                 "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
-            sleep(sleeptime)
+            sleep(1.5*sleeptime)
             try:
                 note = driver.find_element_by_id('notice').text
                 print(note)
@@ -747,6 +747,8 @@ class downloader:
                 note = 'NO'
 
             if 'NO' in note:
+                driver.set_window_size(800, 800)
+                driver.save_screenshot(os.path.join(self.outdir,'download_error.png'))
                 driver.quit()
                 raise Warning("Could not be able to download records!"
                               "Either they no longer exist in database"
@@ -756,17 +758,20 @@ class downloader:
                 sleep(sleeptime)
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
                 print("Downloading the Records!...")
-                obj = driver.switch_to.alert
-                msg = obj.text
-                print("Alert shows following message: " + msg)
+                # obj = driver.switch_to.alert
+                # msg = obj.text
+                # print("Alert shows following message: " + msg)
+                # sleep(sleeptime)
+                # obj.accept()
+                driver.switch_to.alert.accept()
                 sleep(sleeptime)
-                obj.accept()
-                obj = driver.switch_to.alert
-                msg = obj.text
-                print("Alert shows following message: " + msg)
+                # obj = driver.switch_to.alert
+                # msg = obj.text
+                # print("Alert shows following message: " + msg)
+                # sleep(sleeptime)
+                # obj.accept()
+                driver.switch_to.alert.accept()
                 sleep(sleeptime)
-                obj.accept()
-                print("Downloading the Records!...")
                 download_wait(Download_Dir)
                 driver.quit()
 

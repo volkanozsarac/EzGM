@@ -1,5 +1,5 @@
 # EzGM
-Toolbox for ground motion record selection and processing. Examples can be found here: https://github.com/volkanozsarac/EzGM/tree/master/Examples
+Toolbox for ground motion record selection and processing.
 
 Tutorial
 

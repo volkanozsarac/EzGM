@@ -17,17 +17,25 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 
 - See https://docs.openquake.org/oq-engine/master/openquake.hazardlib.gsim.html for available ground motion prediction equations.
 
+Example 1
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample1.ipynb)
+
+Example 2
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample2.ipynb)
 ***
 
 - EzGM.Selection.tbdy_2018 is used to perform TBDY 2018 (Turkish Building Code) based record selection
 
+Example 3
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample3.ipynb)
 ***
 
 - EzGM.Selection.ec8_part1 is used to perform Eurocode 8 part 1 based record selection
+
+Example 4
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample4.ipynb)
 ***
@@ -35,16 +43,20 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 - EzGM.OQProc can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple-stripe analysis (MSA)
 upon carrying out probabilistic seismic hazard analysis (PSHA) via OpenQuake.Engine.
 
+Example 5
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample5.ipynb)
 ***
 
 - EzGM.GMProc can be used to process ground motion records (filtering, baseline corrections, IM calculations).
 
+Example 6
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample6.ipynb)
 ***
 
 ## Note
-- ngaw2_download method can be used only if google-chrome is readily available. EzGM is set to download chromedriver automatically into site-packages if it is not available.
+- On PC, ngaw2_download method can be used only if google-chrome is readily available. EzGM is set to download chromedriver automatically into site-packages if it is not available.
 - Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly if anaconda is used, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, write:
 ```
 conda install shapely

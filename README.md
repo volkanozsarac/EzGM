@@ -17,7 +17,7 @@ e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the
 
 - See https://docs.openquake.org/oq-engine/master/openquake.hazardlib.gsim.html for available ground motion prediction equations.
 
--- Example 1
+Example 1
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample1.ipynb)
 

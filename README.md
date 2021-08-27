@@ -57,7 +57,7 @@ Example 6
 
 ## Note
 - On PC, ngaw2_download method can be used only if google-chrome is readily available. EzGM is set to download chromedriver automatically into site-packages if it is not available.
-- Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly if anaconda is used, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, write:
+- Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly if anaconda is used, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, on conda prompt window write:
 ```
 conda install shapely
 ```

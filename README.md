@@ -1,6 +1,8 @@
 # EzGM
 Toolbox for ground motion record selection and processing. Examples can be found here: https://github.com/volkanozsarac/EzGM/tree/master/Examples
 
+Tutorial
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/HEAD?filepath=Examples%2Fbinder%2FTutorial.ipynb)
 
 ```

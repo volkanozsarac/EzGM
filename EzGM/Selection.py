@@ -1815,7 +1815,7 @@ class tbdy_2018(downloader, file_manager):
 class ec8_part1(downloader, file_manager):
     """
     This class is used to
-        1) Create target spectrum based on TBDY2018
+        1) Create target spectrum based on EC8 - Part 1
         2) Selecting and scaling suitable ground motion sets for target spectrum in accordance with EC8 - Part 1
             - Currently, only supports the record selection from NGA_W2 record database
     """

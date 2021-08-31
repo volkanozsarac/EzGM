@@ -2,11 +2,10 @@
 Record Selection ToolBox
 """
 
-# TODO: Add TBDY2018 Hazard Map as metadata
 # Import python libraries
 import os
 import sys
-from time import gmtime
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,6 +15,7 @@ from openquake.hazardlib import gsim, imt, const
 from scipy import interpolate
 from scipy.io import loadmat
 from scipy.stats import skew
+from time import gmtime
 from .Utility import downloader, file_manager
 
 class conditional_spectrum(downloader, file_manager):
@@ -1305,7 +1305,7 @@ class tbdy_2018(downloader, file_manager):
         file_manager.__init__(self)
 
     @staticmethod
-    def get_Sae(T, SD1, SDS, PGA):
+    def get_Sae(T, Lat, Long, DD, Soil):
         """
         Details
         -------
@@ -1319,12 +1319,14 @@ class tbdy_2018(downloader, file_manager):
 
         Parameters
         ----------
-        SDS: float
-            short period spectral acceleration coefficient
-        SD1: float
-            spectral acceleration coefficient for 1.0
-        PGA:  float
-            peak ground acceleration (g)
+        Lat: float
+            Site latitude
+        Long: float
+            Site longitude
+        DD:  int
+            Earthquake ground motion intensity level (1,2,3,4)
+        Soil: str
+            Site soil class
         T:  numpy.array
             period array in which target spectrum is calculated
 
@@ -1333,6 +1335,115 @@ class tbdy_2018(downloader, file_manager):
         Sae: numpy.array
             Elastic acceleration response spectrum
         """
+        excel_file = 'Parameters_TBDY2018.xlsx'
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', excel_file)
+        data = pd.read_excel(file_path, sheet_name = 'Parameters', engine='openpyxl') 
+        
+        # Check if the coordinates are within the limits
+        if Long > np.max(data['Longitude']) or Long < np.min(data['Longitude']):
+            raise ValueError('Longitude value must be within the limits: [24.55,45.95]')
+        if Lat > np.max(data['Latitude']) or Lat < np.min(data['Latitude']):
+            raise ValueError('Latitude value must be within the limits: [34.25,42.95]')
+            
+        # Targeted probability of exceedance in 50 years
+        if DD == 1: PoE = '2'
+        elif DD == 2: PoE = '10'
+        elif DD == 3: PoE = '50'
+        elif DD == 4: PoE = '68'
+        
+        # Determine Peak Ground Acceleration PGA [g]
+        PGA_col = 'PGA (g) - %'+PoE
+        data_pga = np.array([data['Longitude'], data['Latitude'],data[PGA_col]]).T
+        PGA = interpolate.griddata(data_pga[:,0:2], data_pga[:,2], [(Long, Lat)], method='linear')
+        
+        # Short period map spectral acceleration coefficient [dimensionless]
+        SS_col = 'SS (g) - %'+PoE
+        data_ss = np.array([data['Longitude'], data['Latitude'],data[SS_col]]).T
+        SS = interpolate.griddata(data_ss[:,0:2], data_ss[:,2], [(Long, Lat)], method='linear')
+        
+        # Map spectral acceleration coefficient for a 1.0 second period [dimensionless]
+        S1_col = 'S1 (g) - %'+PoE        
+        data_s1 = np.array([data['Longitude'], data['Latitude'],data[S1_col]]).T
+        S1 = interpolate.griddata(data_s1[:,0:2], data_s1[:,2], [(Long, Lat)], method='linear')
+
+        SoilParam={
+            'FS' : {
+               'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+               'ZB': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
+               'ZC': [1.3, 1.3, 1.2, 1.2, 1.2, 1.2],
+               'ZD': [1.6, 1.4, 1.2, 1.1, 1.0, 1.0],
+               'ZE': [2.4, 1.7, 1.3, 1.1, 0.9, 0.8]
+               },
+        
+            'SS' : [0.25, 0.5, 0.75, 1.0, 1.25, 1.5],
+        
+            'F1' : {
+               'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+               'ZB': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+               'ZC': [1.5, 1.5, 1.5, 1.5, 1.5, 1.4],
+               'ZD': [2.4, 2.2, 2.0, 1.9, 1.8, 1.7],
+               'ZE': [4.2, 3.3, 2.8, 2.4, 2.2, 2.0]
+               },
+        
+            'S1' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+        
+            }
+        
+        # Local soil response coefficient for the short period region
+        if SS <= SoilParam['SS'][0]:
+            FS = SoilParam['FS'][Soil][0]
+        elif SS > SoilParam['SS'][0] and SS <= SoilParam['SS'][1]:
+            FS=(SoilParam['FS'][Soil][1]-SoilParam['FS'][Soil][0]) \
+            *(SS-SoilParam['SS'][0])/(SoilParam['SS'][1]-SoilParam['SS'][0]) \
+            +SoilParam['FS'][Soil][0]
+        elif SS > SoilParam['SS'][1] and SS <= SoilParam['SS'][2]:
+            FS=(SoilParam['FS'][Soil][2]-SoilParam['FS'][Soil][1]) \
+            *(SS-SoilParam['SS'][1])/(SoilParam['SS'][2]-SoilParam['SS'][1]) \
+            +SoilParam['FS'][Soil][1]
+        elif SS > SoilParam['SS'][2] and SS <= SoilParam['SS'][3]:
+            FS=(SoilParam['FS'][Soil][3]-SoilParam['FS'][Soil][2]) \
+            *(SS-SoilParam['SS'][2])/(SoilParam['SS'][3]-SoilParam['SS'][2]) \
+            +SoilParam['FS'][Soil][2]
+        elif SS > SoilParam['SS'][3] and SS <= SoilParam['SS'][4]:
+            FS=(SoilParam['FS'][Soil][4]-SoilParam['FS'][Soil][3]) \
+            *(SS-SoilParam['SS'][3])/(SoilParam['SS'][4]-SoilParam['SS'][3]) \
+            +SoilParam['FS'][Soil][3]
+        elif SS > SoilParam['SS'][4] and SS <= SoilParam['SS'][5]:
+            FS=(SoilParam['FS'][Soil][5]-SoilParam['FS'][Soil][4]) \
+            *(SS-SoilParam['SS'][4])/(SoilParam['SS'][5]-SoilParam['SS'][4]) \
+            +SoilParam['FS'][Soil][4]
+        elif SS >= SoilParam['SS'][5]:
+            FS = SoilParam['FS'][Soil][5]
+        
+        # Local soil response coefficient for 1.0 second period
+        if S1 <= SoilParam['S1'][0]:
+            F1 = SoilParam['F1'][Soil][0]
+        elif S1 > SoilParam['S1'][0] and S1 <= SoilParam['S1'][1]:
+            F1=(SoilParam['F1'][Soil][1]-SoilParam['F1'][Soil][0]) \
+            *(S1-SoilParam['S1'][0])/(SoilParam['S1'][1]-SoilParam['S1'][0]) \
+            +SoilParam['F1'][Soil][0]
+        elif S1 > SoilParam['S1'][1] and S1 <= SoilParam['S1'][2]:
+            F1=(SoilParam['F1'][Soil][2]-SoilParam['F1'][Soil][1]) \
+            *(S1-SoilParam['S1'][1])/(SoilParam['S1'][2]-SoilParam['S1'][1]) \
+            +SoilParam['F1'][Soil][1]
+        elif S1 > SoilParam['S1'][2] and S1 <= SoilParam['S1'][3]:
+            F1=(SoilParam['F1'][Soil][3]-SoilParam['F1'][Soil][2]) \
+            *(S1-SoilParam['S1'][2])/(SoilParam['S1'][3]-SoilParam['S1'][2]) \
+            +SoilParam['F1'][Soil][2]
+        elif S1 > SoilParam['S1'][3] and S1 <= SoilParam['S1'][4]:
+            F1=(SoilParam['F1'][Soil][4]-SoilParam['F1'][Soil][3]) \
+            *(S1-SoilParam['S1'][3])/(SoilParam['S1'][4]-SoilParam['S1'][3]) \
+            +SoilParam['F1'][Soil][3]
+        elif S1 > SoilParam['S1'][4] and S1 <= SoilParam['S1'][5]:
+            F1=(SoilParam['F1'][Soil][5]-SoilParam['F1'][Soil][4]) \
+            *(S1-SoilParam['S1'][4])/(SoilParam['S1'][5]-SoilParam['S1'][4]) \
+            +SoilParam['F1'][Soil][4]
+        elif S1 >= SoilParam['S1'][5]:
+            F1 = SoilParam['F1'][Soil][5]
+        
+        SDS = SS*FS # short period spectral acceleration coefficient
+        SD1 = S1*F1 # spectral acceleration coefficient for 1.0
+        
         Sae = np.zeros(len(T))
 
         TA = 0.2 * SD1 / SDS
@@ -1488,7 +1599,7 @@ class tbdy_2018(downloader, file_manager):
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
-    def select(self, SD1=1.073, SDS=2.333, PGA=0.913, nGM=11, selection=1, Tp=1,
+    def select(self, Lat=41.0582, Long=29.00951, DD=2, Soil='ZC', nGM=11, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,
                maxScale=2, weights=[1, 1]):
         """
@@ -1510,12 +1621,14 @@ class tbdy_2018(downloader, file_manager):
 
         Parameters
         ----------
-        SD1 : float, optional, the default is 1.073.
-            Short period design spectral acceleration coefficient. 
-        SDS : float, optional, the default is 2.333.
-            Design spectral acceleration coefficient for a period of 1.0 seconds. 
-        PGA : float, optional, the default is 0.913.
-            Peak ground acceleration. 
+        Lat: float, optional, the default is 41.0582.
+            Site latitude
+        Long: float, optional, the default is 29.00951.
+            Site longitude
+        DD:  int, optional, the default is 2.
+            Earthquake ground motion intensity level (1,2,3,4)
+        Soil: str, optional, the default is 'ZC'.
+            Site soil class
         nGM : int, optional, the default is 11.
             Number of records to be selected. 
         selection : int, optional, the default is 1.
@@ -1559,6 +1672,10 @@ class tbdy_2018(downloader, file_manager):
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
         self.Tp = Tp
+        self.Lat = Lat
+        self.Long = Long
+        self.DD = DD
+        self.Soil = Soil
 
         weights = np.array(weights, dtype=float)
 
@@ -1566,7 +1683,7 @@ class tbdy_2018(downloader, file_manager):
         sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
 
         # Determine the lower bound spectra
-        target_spec = self.get_Sae(self.T, SD1, SDS, PGA)
+        target_spec = self.get_Sae(self.T, Lat, Long, DD, Soil)
         if selection == 1:
             target_spec = 1.0 * target_spec
         elif selection == 2:
@@ -1738,9 +1855,9 @@ class tbdy_2018(downloader, file_manager):
         self.rec_spec = rec_spec
         self.T = self.database['Periods']
         if selection == 1:
-            self.target = self.get_Sae(self.T, SD1, SDS, PGA)
+            self.target = self.get_Sae(self.T, Lat, Long, DD, Soil)
         elif selection == 2:
-            self.target = self.get_Sae(self.T, SD1, SDS, PGA) * 1.3
+            self.target = self.get_Sae(self.T, Lat, Long, DD, Soil) * 1.3
 
         print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
 
@@ -2134,6 +2251,10 @@ class ec8_part1(downloader, file_manager):
         self.Rjb_lim = Rjb_lim
         self.fault_lim = fault_lim
         self.Tp = Tp
+        self.ag = ag
+        self.I = I
+        self.Type = Type
+        self.Soil = Soil
 
         weights = np.array(weights, dtype=float)
         # Search the database and filter

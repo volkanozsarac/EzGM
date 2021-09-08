@@ -456,8 +456,7 @@ class conditional_spectrum(downloader, file_manager):
             # Covariance
             Cov = np.zeros((len(T_Tgt), len(T_Tgt)))
 
-            # TODO: it could be better to calculate some parameters automatically
-            # It could better to use something like Elisa did (input_GMPE.py)
+            # TODO: it could be better to calculate some parameters automatically elsewhere
             # Set the contexts for the scenario
             sites = gsim.base.SitesContext()
             for key in site_param.keys():

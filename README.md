@@ -70,3 +70,9 @@ conda install shapely
 - If you are going to use the code presented herein for any official study, please refer to 
 Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). Probabilistic seismic assessment of RC bridges using simulated records. Structure and Infrastructure Engineering.
 ***
+
+## Potential Improvements
+- Computation of exact CS
+- Selection from ESM database
+- Addition of other scaling or matching methods
+- Use of SQL database files instead of .csv or .mat (reduces file size)

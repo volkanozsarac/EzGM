@@ -1338,9 +1338,9 @@ class tbdy_2018(downloader, file_manager):
         Sae: numpy.array
             Elastic acceleration response spectrum
         """
-        excel_file = 'Parameters_TBDY2018.xlsx'
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', excel_file)
-        data = pd.read_excel(file_path, sheet_name = 'Parameters', engine='openpyxl') 
+        csv_file = 'Parameters_TBDY2018.csv'
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', csv_file)
+        data = pd.read_csv(file_path) 
         
         # Check if the coordinates are within the limits
         if Long > np.max(data['Longitude']) or Long < np.min(data['Longitude']):

@@ -1,2 +1,2 @@
 webdriverdownloader==1.1.0.3
-EzGM==1.2.5
+EzGM==1.3.1

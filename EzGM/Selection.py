@@ -458,8 +458,11 @@ class conditional_spectrum(downloader, file_manager):
 
             # TODO: it could be better to calculate some parameters automatically elsewhere
             # Set the contexts for the scenario
+            site_param['sids'] = [0] # This is required in OQ version 3.12.0
             sites = gsim.base.SitesContext()
             for key in site_param.keys():
+                if key == 'rake':
+                    site_param[key] = float(site_param[key])
                 temp = np.array([site_param[key]])
                 setattr(sites, key, temp)
 
@@ -1094,9 +1097,9 @@ class conditional_spectrum(downloader, file_manager):
 
         if self.cond == 1:
             if len(self.Tstar) == 1:
-                hatch = [self.Tstar * 0.98, self.Tstar * 1.02]
+                hatch = [float(self.Tstar * 0.98), float(self.Tstar * 1.02)]
             else:
-                hatch = [self.Tstar.min(), self.Tstar.max()]
+                hatch = [float(self.Tstar.min()), float(self.Tstar.max())]
 
         if tgt == 1:
             # Plot Target spectrum vs. Simulated response spectra
@@ -1116,6 +1119,7 @@ class conditional_spectrum(downloader, file_manager):
             ax[0].set_xlabel('Period [sec]')
             ax[0].set_ylabel('Spectral Acceleration [g]')
             ax[0].grid(True)
+
             handles, labels = ax[0].get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
             ax[0].legend(by_label.values(), by_label.keys(), frameon=False)

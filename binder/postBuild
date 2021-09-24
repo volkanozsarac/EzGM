@@ -4,4 +4,4 @@ from webdriverdownloader import GeckoDriverDownloader
 import os
 gdd = GeckoDriverDownloader()
 gdd.download_and_install("v0.23.0")
-os.system("conda install numba -y")
+# os.system("conda install numba -y")

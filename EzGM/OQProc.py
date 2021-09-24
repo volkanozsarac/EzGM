@@ -305,12 +305,12 @@ def disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outp
             plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km'
                       % ("{:.0f}".format(Tr[idx2]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
                          "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
-                      fontsize=11, loc='right', verticalalignment='top')
+                      fontsize=11, loc='right', verticalalignment='top', y=0.95)
 
             mags.append(meanLst[i][0])
             dists.append(meanLst[i][1])
 
-        plt.subplots_adjust(hspace=0.1, wspace=0.05)  # adjust the subplot to the right for the legend
+        plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
         fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
             ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12,
                      y=0.97)
@@ -466,7 +466,7 @@ def disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_O
                 % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
                    "{:.1f}".format(modeLst[i][2]),
                    "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1]), "{:.1f}".format(meanLst[i][2])),
-                fontsize=11, loc='right', va='top')
+                fontsize=11, loc='right', va='top', y=0.95)
 
             mags.append(meanLst[i][0])
             dists.append(meanLst[i][1])

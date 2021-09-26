@@ -445,7 +445,7 @@ class downloader:
         """
         pass
 
-    def ngaw2_download(self, username, pwd, sleeptime = 3, browser = 'chrome'):
+    def ngaw2_download(self, username, pwd, sleeptime = 2, browser = 'chrome'):
         """
         
         Details
@@ -467,6 +467,9 @@ class downloader:
         sleeptime    : int, default is 3
                 Time (sec) spent between each browser operation
                 This can be increased or decreased depending on the internet speed
+        browser       : str, default is 'chrome'
+                The browser to use for download purposes. Valid entries are:
+                'chrome' or 'firefox'
 
         """
 
@@ -503,7 +506,7 @@ class downloader:
                     delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print('Ending in ', flag_lim - flag, '...')
+                    print('Ending in ', flag_lim - flag, 'sec...')
             print(f'Downloaded files are located in\n{Download_Dir}')
 
         def set_driver(Download_Dir, browser):
@@ -518,6 +521,9 @@ class downloader:
             ----------
             Download_Dir     : str
                     Directory for the output time histories to be downloaded
+            browser       : str, default is 'chrome'
+                The browser to use for download purposes. Valid entries are:
+                'chrome' or 'firefox'
 
             """
 
@@ -663,20 +669,17 @@ class downloader:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
                 sleep(sleeptime)
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
-                # print("Downloading the records...")
                 obj = driver.switch_to.alert
                 msg = obj.text
                 print(msg)
                 sleep(sleeptime)
                 obj.accept()
-                # driver.switch_to.alert.accept()
                 sleep(sleeptime)
                 obj = driver.switch_to.alert
                 msg = obj.text
                 print(msg)
                 sleep(sleeptime)
                 obj.accept()
-                # driver.switch_to.alert.accept()
                 sleep(sleeptime)
                 download_wait(Download_Dir)
                 driver.quit()

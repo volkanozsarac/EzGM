@@ -56,7 +56,7 @@ Example 6
 ***
 
 ## Note
-- On PC, ngaw2_download method can be used only if google-chrome is readily available. EzGM is set to download chromedriver automatically into site-packages if it is not available.
+- EzGM downloads google-chrome or firefox webdriver while executing ngaw2_download method. Therefore, user-specified browser ('chrome' or 'firefox') must be readily available.
 - Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly if anaconda is used, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, on conda prompt window write:
 ```
 conda install shapely
@@ -67,12 +67,11 @@ conda install shapely
 ***
 
 ## Reference
-- If you are going to use the code presented herein for any official study, please refer to 
-Ozsarac V, Monteiro R.C., Calvi, G.M. (2021). [Probabilistic seismic assessment of RC bridges using simulated records](https://doi.org/10.1080/15732479.2021.1956551). Structure and Infrastructure Engineering. 
+- If you are going to use the code presented herein for any official study, please refer to:
+Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2021) Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
 ***
 
 ## Potential Improvements
 - Computation of exact CS
 - Selection from ESM database
 - Addition of other scaling or matching methods
-- Use of SQL database files instead of .csv or .mat (reduces file size)

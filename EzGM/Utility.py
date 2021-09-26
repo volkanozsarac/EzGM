@@ -16,7 +16,7 @@ import numpy as np
 import numpy.matlib
 import requests
 from selenium import webdriver
-
+from webdriverdownloader import ChromeDriverDownloader, GeckoDriverDownloader
 
 def RunTime(startTime):
     """
@@ -445,7 +445,7 @@ class downloader:
         """
         pass
 
-    def ngaw2_download(self, username, pwd, sleeptime = 3):
+    def ngaw2_download(self, username, pwd, sleeptime = 3, browser = 'chrome'):
         """
         
         Details
@@ -470,131 +470,49 @@ class downloader:
 
         """
 
-        def download_url(url, save_path, chunk_size=128):
+        def dir_size(Download_Dir):
             """
             
             Details
             -------
             
-            This function downloads file from given url.Herein, it is being used 
+            Measures download directory size
 
             Parameters
             ----------
-            url          : str
-                    e.g.: 'www.example.com/example_file.pdf'
-            save_path    : str
-                    Save directory.
+            Download_Dir     : str
+                    Directory for the output time histories to be downloaded
 
             """
-            r = requests.get(url, stream=True)
-            with open(save_path, 'wb') as fd:
-                for chunk in r.iter_content(chunk_size=chunk_size):
-                    fd.write(chunk)
-
-        def get_driver_version(browser_version):
-            """
-            
-            Details
-            -------
-            
-            This function gets the suitable version of the chrome driver
-
-            """
-            # find the latest version.
-            if browser_version == 0: 
-                req = requests.get('https://chromedriver.chromium.org/')
-                texts = req.text
-                start = texts.find('Latest stable')
-                text = texts.replace(texts[0:start], '')
-                start = text.find('path=')
-    
-                text = text.replace(text[0:start + 5], '')
-                end = text.find("/")
-                driver_version = text.replace(text[end::], '')
-            
-            else: # find the browser compatible version.
-                req = requests.get('https://chromedriver.chromium.org/downloads')
-                texts = req.text
-                start = texts.find('>ChromeDriver ' + browser_version)
-                text = texts.replace(texts[0:start], '')
-                start = text.find('path=')
-    
-                text = text.replace(text[0:start + 5], '')
-                end = text.find("/")
-                driver_version = text.replace(text[end::], '')
-                
-            return driver_version
-
-        def add_driver_to_the_PATH(save_path):
-            paths = sys.path
-            package = [i for i in paths if 'site-packages' in i][0]
-            with zipfile.ZipFile(save_path, 'r') as zip_ref:
-                zip_ref.extractall(package)
-
-        def dir_size(Down_Dir):
             total_size = 0
-            for path, dirs, files in os.walk(Down_Dir):
+            for path, dirs, files in os.walk(Download_Dir):
                 for f in files:
                     fp = os.path.join(path, f)
                     total_size += os.path.getsize(fp)
             return total_size
 
-        def download_wait(Down_Dir):
+        def download_wait(Download_Dir):
             delta_size = 100
             flag = 0
             flag_lim = 5
             while delta_size > 0 and flag < flag_lim:
-                size_0 = dir_size(Down_Dir)
+                size_0 = dir_size(Download_Dir)
                 sleep(1.5*sleeptime)
-                size_1 = dir_size(Down_Dir)
+                size_1 = dir_size(Download_Dir)
                 if size_1 - size_0 > 0:
                     delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print(flag_lim - flag)
-            print(f'Downloaded files are located in\n{Down_Dir}')
+                    print('Ending in ', flag_lim - flag, '...')
+            print(f'Downloaded files are located in\n{Download_Dir}')
 
-        def seek_and_download(browser_version=0):
+        def set_driver(Download_Dir, browser):
             """
             
             Details
             -------
             
-            This function finds the latest version of the chrome driver from  
-            'https://chromedriver.chromium.org/' and downloads the compatible
-            version to the OS and extract it to the path.
-
-            """
-            paths = sys.path
-            package = [i for i in paths if 'site-packages' in i][0]
-            if sys.platform.startswith('win'):
-                current_platform = 'win32'
-                aim_driver = 'chromedriver.exe'
-            elif sys.platform.startswith('linux'):
-                current_platform = 'linux64'
-                aim_driver = 'chromedriver'
-            elif sys.platform.startswith('darwin'):
-                current_platform = 'mac64'
-                aim_driver = 'chromedriver'
-            if aim_driver not in os.listdir(package):
-                driver_version = get_driver_version(browser_version)
-                save_path = os.path.join(os.getcwd(), 'chromedriver.zip')
-                url = f"https://chromedriver.storage.googleapis.com/{driver_version}/chromedriver_{current_platform}.zip"
-                download_url(url, save_path, chunk_size=128)
-                add_driver_to_the_PATH(save_path)
-                print('Downloaded chromedriver successfully!')
-                os.remove(save_path)
-            else:
-                print("Chromedriver already exists, something went wrong!")
-
-        def go_to_sign_in_page(Download_Dir):
-            """
-            
-            Details
-            -------
-            
-            This function starts the webdriver in headless mode and 
-            opens the sign in page to 'https://ngawest2.berkeley.edu/'
+            This function starts the webdriver in headless mode
 
             Parameters
             ----------
@@ -603,6 +521,8 @@ class downloader:
 
             """
 
+            print('Getting the webdriver to use...')
+
             # Check if ipython is installed
             try:
                 __IPYTHON__
@@ -610,69 +530,50 @@ class downloader:
             except NameError:
                 _in_ipython_session = False
             
-            # Running on Google Colab
-            if _in_ipython_session and 'google.colab' in str(get_ipython()):
-                os.system('apt-get update')
-                os.system('sudo apt install chromium-chromedriver')
-                os.system('sudo cp /usr/lib/chromium-browser/chromedriver /usr/bin')
-                options = webdriver.ChromeOptions()
-                options.add_argument('-headless')
-                options.add_argument('-no-sandbox')
-                options.add_argument('-disable-dev-shm-usage')
-                prefs = {"download.default_directory": Download_Dir}
-                options.add_experimental_option("prefs", prefs)
-                driver = webdriver.Chrome('chromedriver',options=options)
+            try:
+                # Running on Google Colab
+                if _in_ipython_session and 'google.colab' in str(get_ipython()):
+                    os.system('apt-get update')
+                    os.system('sudo apt install chromium-chromedriver')
+                    os.system('sudo cp /usr/lib/chromium-browser/chromedriver /usr/bin')
+                    options = webdriver.ChromeOptions()
+                    options.add_argument('-headless')
+                    options.add_argument('-no-sandbox')
+                    options.add_argument('-disable-dev-shm-usage')
+                    prefs = {"download.default_directory": Download_Dir}
+                    options.add_experimental_option("prefs", prefs)
+                    driver = webdriver.Chrome('chromedriver',options=options)
 
-            # Running on Binder, we use firefox here
-            elif _in_ipython_session and 'jovyan' in os.getcwd():
-                options = webdriver.firefox.options.Options()
-                options.headless = True
-                options.set_preference("browser.download.folderList", 2)
-                options.set_preference("browser.download.dir", Download_Dir)
-                options.set_preference('browser.download.useDownloadDir', True)
-                options.set_preference('browser.helperApps.neverAsk.saveToDisk','application/zip')
-                driver = webdriver.Firefox(options=options)
+                # Running on Binder or Running on personal computer (PC) using firefox
+                elif (_in_ipython_session and 'jovyan' in os.getcwd()) or browser == 'firefox':
+                    gdd = GeckoDriverDownloader()
+                    driver_path = gdd.download_and_install("v0.26.0")
+                    options = webdriver.firefox.options.Options()
+                    options.headless = True
+                    options.set_preference("browser.download.folderList", 2)
+                    options.set_preference("browser.download.dir", Download_Dir)
+                    options.set_preference('browser.download.useDownloadDir', True)
+                    options.set_preference('browser.helperApps.neverAsk.saveToDisk','application/zip')
+                    driver = webdriver.Firefox(executable_path=driver_path[1], options=options)
 
-            # Running on personal computer (PC)
-            else:
-                ChromeOptions = webdriver.ChromeOptions()
-                prefs = {"download.default_directory": Download_Dir}
-                ChromeOptions.add_experimental_option("prefs", prefs)
-                ChromeOptions.headless = True
-                if sys.platform.startswith('win'):
-                    aim_driver = 'chromedriver.exe'
-                elif sys.platform.startswith('linux'):
-                    aim_driver = 'chromedriver'
-                elif sys.platform.startswith('darwin'):
-                    aim_driver = 'chromedriver'
-                path_of_driver = os.path.join([i for i in sys.path if 'site-packages' in i][0], aim_driver)
-                if not os.path.exists(path_of_driver):
-                    print('Downloading the latest version of chromedriver!')
-                    seek_and_download()
-                    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-                        os.chmod(path_of_driver, 0o777)
+                # Running on personal computer (PC) using chrome
+                elif browser == 'chrome':
+                    gdd = ChromeDriverDownloader()
+                    driver_path = gdd.download_and_install()
+                    ChromeOptions = webdriver.ChromeOptions()
+                    prefs = {"download.default_directory": Download_Dir}
+                    ChromeOptions.add_experimental_option("prefs", prefs)
+                    ChromeOptions.headless = True
+                    driver = webdriver.Chrome(executable_path=driver_path[1], options=ChromeOptions)
 
-                driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)
-                # version check is required because google chrome updates itself
-                browser_version = driver.capabilities['browserVersion'][0:2]
-                driver_version = driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0][0:2]
-                if browser_version != driver_version:
-                    print('Downloading the browser compatible version of chromedriver!')
-                     # remove the old driver, and download the compatible driver
-                    driver.quit()
-                    os.chmod(path_of_driver, 0o777)
-                    os.remove(path_of_driver) 
-                    seek_and_download(browser_version)
-                    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-                        os.chmod(path_of_driver, 0o777)                
+                print('Webdriver is obtained successfully.')
 
-                    driver = webdriver.Chrome(executable_path=path_of_driver, options=ChromeOptions)                
+            except:
+                raise  RuntimeError('Failed to get webdriver.')
 
-            url_sign_in = 'https://ngawest2.berkeley.edu/users/sign_in'
-            driver.get(url_sign_in)
             return driver
 
-        def sign_in_with_given_creds(driver, USERNAME, PASSWORD):
+        def sign_in(driver, USERNAME, PASSWORD):
             """
             
             Details
@@ -693,20 +594,27 @@ class downloader:
                     Account password
                                 e.g.: 'password!12345' 
             """
-            print("Signing in with given account!...")
+            print("Signing in with credentials...")
+            driver.get('https://ngawest2.berkeley.edu/users/sign_in')
             driver.find_element_by_id('user_email').send_keys(USERNAME)
             driver.find_element_by_id('user_password').send_keys(PASSWORD)
             driver.find_element_by_id('user_submit').click()
+
             try:
                 alert = driver.find_element_by_css_selector('p.alert')
                 warn = alert.text
-                print(warn)
             except:
-                warn = ''
-                pass
-            return driver, warn
+                warn = None
 
-        def Download_Given(RSNs, Download_Dir, driver):
+            if str(warn) == 'Invalid email or password.':
+                driver.quit()
+                raise Warning('Invalid email or password.')
+            else:
+                print('Signed in successfully.')
+
+            return driver
+
+        def download(RSNs, Download_Dir, driver):
             """
             
             Details
@@ -728,9 +636,8 @@ class downloader:
                     sign_in_with_given_creds' function
 
             """
-            url_get_record = 'https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1'
-            print("Listing the Records!....")
-            driver.get(url_get_record)
+            print("Listing the Records...")
+            driver.get('https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1')
             sleep(sleeptime)
             driver.find_element_by_xpath("//button[@type='button']").submit()
             sleep(sleeptime)
@@ -756,53 +663,49 @@ class downloader:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
                 sleep(sleeptime)
                 driver.find_element_by_xpath("//button[@type='button' and @onclick='getSelectedResult(true)']").click()
-                print("Downloading the Records!...")
-                # obj = driver.switch_to.alert
-                # msg = obj.text
-                # print("Alert shows following message: " + msg)
-                # sleep(sleeptime)
-                # obj.accept()
-                driver.switch_to.alert.accept()
+                # print("Downloading the records...")
+                obj = driver.switch_to.alert
+                msg = obj.text
+                print(msg)
                 sleep(sleeptime)
-                # obj = driver.switch_to.alert
-                # msg = obj.text
-                # print("Alert shows following message: " + msg)
-                # sleep(sleeptime)
-                # obj.accept()
-                driver.switch_to.alert.accept()
+                obj.accept()
+                # driver.switch_to.alert.accept()
+                sleep(sleeptime)
+                obj = driver.switch_to.alert
+                msg = obj.text
+                print(msg)
+                sleep(sleeptime)
+                obj.accept()
+                # driver.switch_to.alert.accept()
                 sleep(sleeptime)
                 download_wait(Download_Dir)
                 driver.quit()
 
+
         if self.database['Name'] == 'NGA_W2':
             print('\nStarted executing ngaw2_download method...')
+
             self.username = username
             self.pwd = pwd
-            driver = go_to_sign_in_page(self.outdir)
-            driver, warn = sign_in_with_given_creds(driver, self.username, self.pwd)
-            if str(warn) == 'Invalid email or password.':
-                print(warn)
-                driver.quit()
-                raise ValueError('Invalid email or password.')
-            else:
-                RSNs = ''
-                for i in self.rec_rsn:
-                    RSNs += str(int(i)) + ','
-
-                RSNs = RSNs[:-1:]
-                files_before_download = set(os.listdir(self.outdir))
-                Download_Given(RSNs, self.outdir, driver)
-                files_after_download = set(os.listdir(self.outdir))
-                Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
-                file_extension = Downloaded_File[Downloaded_File.find('.')::]
-                time_tag = gmtime()
-                time_tag_str = f'{time_tag[0]}'
-                for i in range(1, len(time_tag)):
-                    time_tag_str += f'_{time_tag[i]}'
-                new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
-                Downloaded_File = os.path.join(self.outdir, Downloaded_File)
-                Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
-                os.rename(Downloaded_File, Downloaded_File_Rename)
-                self.Unscaled_rec_file = Downloaded_File_Rename
+            driver = set_driver(self.outdir, browser)
+            driver = sign_in(driver, self.username, self.pwd)
+            RSNs = ''
+            for i in self.rec_rsn:
+                RSNs += str(int(i)) + ','
+            RSNs = RSNs[:-1:]
+            files_before_download = set(os.listdir(self.outdir))
+            download(RSNs, self.outdir, driver)
+            files_after_download = set(os.listdir(self.outdir))
+            Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
+            file_extension = Downloaded_File[Downloaded_File.find('.')::]
+            time_tag = gmtime()
+            time_tag_str = f'{time_tag[0]}'
+            for i in range(1, len(time_tag)):
+                time_tag_str += f'_{time_tag[i]}'
+            new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
+            Downloaded_File = os.path.join(self.outdir, Downloaded_File)
+            Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
+            os.rename(Downloaded_File, Downloaded_File_Rename)
+            self.Unscaled_rec_file = Downloaded_File_Rename
         else:
             print('You have to use NGA_W2 database to use ngaw2_download method.')

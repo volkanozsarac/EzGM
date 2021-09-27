@@ -506,7 +506,7 @@ class downloader:
                     delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print('Ending in ', flag_lim - flag, 'sec...')
+                    print('Finishing in ', flag_lim - flag, '...')
             print(f'Downloaded files are located in\n{Download_Dir}')
 
         def set_driver(Download_Dir, browser):

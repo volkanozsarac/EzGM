@@ -77,5 +77,6 @@ Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2021). Probabilistic seis
 ## Potential Improvements
 - Computation of the exact CS
 - Selection from ESM database
-- Addition of other scaling or matching methods
-- Generalized conditional intensity measure approach (GCIM)
+- Addition of spectral matching methods
+- Addition of generalized conditional intensity measure approach (GCIM)
+- Addition of other code-based scaling methods (e.g. ASCE 7-16)

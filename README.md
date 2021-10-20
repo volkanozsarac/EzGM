@@ -2,6 +2,7 @@
 Toolbox for ground motion record selection and processing. 
 
 [![DOI](https://zenodo.org/badge/291944652.svg)](https://zenodo.org/badge/latestdoi/291944652) 
+***
 
 Tutorial
 

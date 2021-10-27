@@ -156,6 +156,7 @@ def hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazard_cur
     plt.legend()
     plt.grid(True)
     plt.title('Mean Hazard Curves for Lat:%s Lon:%s' % (str(lat[0]), str(lon[0])))
+    plt.tight_layout()
     fname = os.path.join(output_dir, 'Hazard_Curves.png')
     plt.savefig(fname, format='png', dpi=220)
 
@@ -309,9 +310,10 @@ def disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outp
 
         plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
         fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
-            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12,
-                     y=0.97)
+            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.0,
+                     y=1.0)
 
+        plt.tight_layout(rect=[0, 0.0, 1, 0.94])
         fname = os.path.join(output_dir, 'Disaggregation_MR_' + ims[idx1] + '.png')
         plt.savefig(fname, format='png', dpi=220)
 
@@ -472,13 +474,13 @@ def disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_O
             legend_elements.append(Patch(facecolor=rgba[n_eps - j - 1],
                                          label='\u03B5 = %.2f' % (np.unique(np.asarray(eps))[n_eps - j - 1])))
 
-        fig.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(0.5, 0.05), borderaxespad=0.,
+        fig.legend(handles=legend_elements, loc="lower center", borderaxespad=0.,
                    ncol=n_eps)
         plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
         fig.suptitle('Disaggregation of Seismic Hazard\nIntensity Measure: %s\nLatitude: %s, Longitude: %s' % (
-            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.12,
-                     y=0.97)
-
+            ims[idx1], "{:.4f}".format(lat), "{:.4f}".format(lon)), fontsize=14, weight='bold', ha='left', x=0.0,
+                     y=1.0)
+        plt.tight_layout(rect=[0, 0.03, 1, 0.94])
         fname = os.path.join(output_dir, 'Disaggregation_MReps_' + ims[idx1] + '.png')
         plt.savefig(fname, format='png', dpi=220)
 

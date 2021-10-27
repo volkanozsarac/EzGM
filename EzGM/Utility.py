@@ -67,6 +67,10 @@ class database_manager:
         -------
         Search the database and does the filtering.
         
+        Notes:
+        ------
+        If any value in database file is -1, it means that the value is unknown.
+
         Parameters
         ----------
         None.
@@ -158,29 +162,26 @@ class database_manager:
         # Limiting the records to be considered using the `notAllowed' variable
         # Sa cannot be negative or zero, remove these.
         notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-        # Remove if Sa is nan
-        temp = np.unique(np.where(np.isnan(SaKnown))[0]).tolist()
-        notAllowed.extend(temp)
 
         if self.Vs30_lim is not None:  # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
+            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
         if self.Mw_lim is not None:  # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
+            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
         if self.Rjb_lim is not None:  # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
+            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim))
             temp = [i for i, x in enumerate(mask) if not x]
             notAllowed.extend(temp)
 
         if self.fault_lim is not None:  # limiting values on mechanism exist
             for fault_i in range(len(self.fault_lim)):
                 if fault_i == 0:
-                    mask = (fault == self.fault_lim[fault_i] * np.invert(np.isnan(fault)))
+                    mask = fault == self.fault_lim[fault_i]
                 else:
                     mask = np.logical_or(mask, fault == self.fault_lim[fault_i])
             temp = [i for i, x in enumerate(mask) if not x]
@@ -700,7 +701,7 @@ class downloader:
         """
         Details
         -------
-        This function get ESM database token.
+        This function retrieves ESM database token.
 
         Notes
         -------
@@ -806,7 +807,7 @@ class downloader:
 
             shutil.rmtree(folder_temp)
             self.Unscaled_rec_file = file_name
-            print('Finished esm2018_download method successfully.')
+            print(f'Downloaded files are located in\n{self.Unscaled_rec_file}')
 
         else:
             raise ValueError('You have to use ESM_2018 database to use esm2018_download method.')
@@ -890,8 +891,7 @@ class downloader:
                     delta_size = size_1 - size_0
                 else:
                     flag += 1
-                    print('Finishing in ', flag_lim - flag, '...')
-            print(f'Downloaded files are located in\n{Download_Dir}')
+                    print('Finishing in', flag_lim - flag, '...')
 
         def set_driver(Download_Dir, browser):
             """
@@ -1097,5 +1097,6 @@ class downloader:
             Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
             os.rename(Downloaded_File, Downloaded_File_Rename)
             self.Unscaled_rec_file = Downloaded_File_Rename
+            print(f'Downloaded files are located in\n{self.Unscaled_rec_file}')
         else:
             raise ValueError('You have to use NGA_W2 database to use ngaw2_download method.')

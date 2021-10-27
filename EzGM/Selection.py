@@ -1820,7 +1820,7 @@ class ec8_part1(downloader, file_manager, database_manager):
 
         Sae = np.array(Sae)
 
-        return Sa
+        return Sae
 
     def select(self, ag=0.2, xi=0.05, I=1.0, Type='Type1', Soil='A', nGM=3, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,

@@ -46,10 +46,10 @@ class conditional_spectrum(downloader, file_manager, database_manager):
             GMPE model (see OpenQuake library). 
             The default is 'BooreEtAl2014'.
         database : str, optional
-            database to use: NGA_W2 or EXSIM_Duzce
+            Database to use: NGA_W2, ESM_2018, EXSIM_Duzce
             The default is NGA_W2.        
         pInfo    : int, optional
-            flag to print required input for the gmpe which is going to be used. 
+            Flag to print required input for the gmpe which is going to be used. 
             (0: no, 1:yes)
             The default is 1.
             
@@ -126,17 +126,16 @@ class conditional_spectrum(downloader, file_manager, database_manager):
     
         Parameters
         ----------
-            T1: int
-                First period
-            T2: int
-                Second period
-            orth: int, default is 0
-                1 if the correlation coefficient is computed for the two
-                   orthogonal components
+        T1: float
+            First period
+        T2: float
+            Second period
+        orth: int, default is 0
+            1 if the correlation coefficient is computed for the two orthogonal components
     
         Returns
         -------
-        rho: int
+        rho: float
              Predicted correlation coefficient
         """
 
@@ -180,20 +179,20 @@ class conditional_spectrum(downloader, file_manager, database_manager):
         
         References
         ----------
-        Akkar S., Sandikkaya MA., Ay BO., 2014, Compatible ground-motion
-        prediction equations for damping scaling factors and vertical to
-        horizontal spectral amplitude ratios for the broader Europe region,
-        Bull Earthquake Eng, 12, pp. 517-547.
+        Akkar S., Sandikkaya MA., Ay BO., 2014, Compatible ground-motion prediction equations for damping scaling factors and vertical to
+        horizontal spectral amplitude ratios for the broader Europe region, Bull Earthquake Eng, 12, pp. 517-547.
     
         Parameters
         ----------
-            T1: int
-                First period
-            T2: int
-                Second period
-    
-        :return float:
-            The predicted correlation coefficient.
+        T1: float
+            First period
+        T2: float
+            Second period
+                
+        Returns
+        -------
+        rho: float
+             Predicted correlation coefficient
         """
         periods = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.075, 0.1, 0.11, 0.12, 0.13, 0.14,
                             0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.22, 0.24, 0.26, 0.28, 0.3,
@@ -225,16 +224,15 @@ class conditional_spectrum(downloader, file_manager, database_manager):
         
         Parameters
         ----------
-            T1: int
-                First period
-            T2: int
-                Second period
+        T1: float
+            First period
+        T2: float
+            Second period
                 
         Returns
         -------
-        rho: int
+        rho: float
              Predicted correlation coefficient
-    
         """
 
         correlation_function_handles = {
@@ -1148,10 +1146,10 @@ class tbdy_2018(downloader, file_manager, database_manager):
         Parameters
         ----------
         database : str, optional
-            database to use: e.g. NGA_W2.
+            Database to use: NGA_W2, ESM_2018, EXSIM_Duzce
             The default is NGA_W2.
         outdir : str, optional
-            output directory
+            Output directory
             The default is 'Outputs'
 
         Returns
@@ -1204,6 +1202,7 @@ class tbdy_2018(downloader, file_manager, database_manager):
         Sae: numpy.array
             Elastic acceleration response spectrum
         """
+
         csv_file = 'Parameters_TBDY2018.csv'
         file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', csv_file)
         data = pd.read_csv(file_path)
@@ -1408,7 +1407,7 @@ class tbdy_2018(downloader, file_manager, database_manager):
         
         Returns
         -------
-
+        None.
         """
 
         # Add selection settings to self
@@ -1714,7 +1713,7 @@ class ec8_part1(downloader, file_manager, database_manager):
         Parameters
         ----------
         database : str, optional
-            database to use: e.g. NGA_W2.
+            Database to use: NGA_W2, ESM_2018, EXSIM_Duzce
             The default is NGA_W2.
         outdir : str, optional
             output directory
@@ -1742,27 +1741,39 @@ class ec8_part1(downloader, file_manager, database_manager):
     @staticmethod
     def get_Sae_EC8(ag, xi, T, I, Type, Soil):
         """
-        Details:
+        Details
+        -------
         Get the elastic response spectrum for EN 1998-1:2004
     
-        Notes:
+        Notes
+        -----
         Requires get_EC804_spectrum_props
     
-        References:
+        References
+        ----------
         CEN. Eurocode 8: Design of Structures for Earthquake Resistance -
         Part 1: General Rules, Seismic Actions and Rules for Buildings
         (EN 1998-1:2004). Brussels, Belgium: 2004.
     
-        Inputs:
-        ag: PGA
-        xi: Damping
-        T: Period
-        I: Importance factor
-        Type: Type of spectrum (Option: 'Type1' or 'Type2')
-        Soil: Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
+        Parameters
+        ----------
+        ag: float
+            Peak ground acceleration
+        xi: float
+            Damping ratio
+        T: list or numpy.array
+            Period array to get Sa values
+        I: int or float
+            Importance factor
+        Type: str
+            Type of spectrum (Option: 'Type1' or 'Type2')
+        Soil: str
+            Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
     
-        Returns:
-        Sa: Spectral acceleration
+        Returns
+        -------
+        Sae: numpy.array
+            Elastic acceleration response spectrum
     
         """
         SpecProp = {
@@ -1792,7 +1803,7 @@ class ec8_part1(downloader, file_manager, database_manager):
 
         ag = ag * I
 
-        Sa = []
+        Sae = []
         for i in range(len(T)):
             if T[i] >= 0 and T[i] <= Tb:
                 Sa_el = ag * S * (1.0 + T[i] / Tb * (2.5 * eta - 1.0))
@@ -1805,9 +1816,11 @@ class ec8_part1(downloader, file_manager, database_manager):
             else:
                 print('Error! Cannot compute a value of Sa_el')
 
-            Sa.append(Sa_el)
+            Sae.append(Sa_el)
 
-        return np.array(Sa)
+        Sae = np.array(Sae)
+
+        return Sa
 
     def select(self, ag=0.2, xi=0.05, I=1.0, Type='Type1', Soil='A', nGM=3, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,
@@ -1876,7 +1889,7 @@ class ec8_part1(downloader, file_manager, database_manager):
 
         Returns
         -------
-
+        None.
         """
 
         # Add selection settings to self

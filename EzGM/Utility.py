@@ -21,7 +21,6 @@ from webdriverdownloader import ChromeDriverDownloader, GeckoDriverDownloader
 
 def RunTime(startTime):
     """
-
     Details
     -------
     Prints the time passed between startTime and Finishtime (now)
@@ -29,13 +28,14 @@ def RunTime(startTime):
 
     Parameters
     ----------
-    startTime : The initial time obtained via time()
+    startTime : int
+        The initial time obtained via time().
 
     Returns
     -------
-
     None.
     """
+
     finishTime = time()
     # Procedure to obtained elapsed time in Hr, Min, and Sec
     timeSeconds = finishTime - startTime
@@ -54,7 +54,6 @@ class database_manager:
     def __init__(self):
 
         """
-
         Details
         -------
         This class object contains methods to manipulate used databases.
@@ -98,7 +97,6 @@ class database_manager:
         station_code : numpy.array
             If ESM_2018 is used as record database, station codes from filtered
             database will be saved, for other databases this variable is None.
-
         """
 
         if self.selection == 1:  # SaKnown = Sa_arb
@@ -245,7 +243,6 @@ class file_manager:
     def __init__(self):
 
         """
-
         Details
         -------
         This class object contains methods being used to read and write 
@@ -280,7 +277,6 @@ class file_manager:
     @staticmethod
     def ContentFromZip(paths, zipName):
         """
-
         Details
         -------
         This function reads the contents of all selected records
@@ -297,8 +293,8 @@ class file_manager:
         -------
         contents   : dictionary
             Containing raw contents of the files which are read from the zipfile.
-    
         """
+
         contents = {}
         with zipfile.ZipFile(zipName, 'r') as myzip:
             for i in range(len(paths)):
@@ -310,7 +306,6 @@ class file_manager:
     @staticmethod
     def ReadNGA(inFilename=None, content=None, outFilename=None):
         """
-
         Details
         -------
         This function process acceleration history for NGA data file (.AT2 format).
@@ -329,7 +324,7 @@ class file_manager:
     
         Notes
         -----
-        At least one of the two variables must be defined: inFilename, content
+        At least one of the two variables must be defined: inFilename, content.
     
         Returns
         -------
@@ -344,7 +339,6 @@ class file_manager:
         acc  : numpy.array (n x 1)
             acceleration array, same length with time unit 
             usually in (g) unless stated as other.
-
         """
 
         try:
@@ -434,7 +428,6 @@ class file_manager:
     @staticmethod
     def ReadESM(inFilename=None, content=None, outFilename=None):
         """
-
         Details
         -------
         This function process acceleration history for ESM data file.
@@ -464,7 +457,6 @@ class file_manager:
         acc  : numpy.array (n x 1)
             acceleration array, same length with time unit
             usually in (g) unless stated as other.
-
         """
 
         try:
@@ -498,7 +490,6 @@ class file_manager:
     @staticmethod
     def ReadEXSIM(inFilename=None, content=None, outFilename=None):
         """
-
         Details
         -------
         This function process acceleration history for EXSIM data file.
@@ -528,7 +519,6 @@ class file_manager:
         acc  : numpy.array (n x 1)
             acceleration array, same length with time unit 
             usually in (g) unless stated as other.
-
         """
 
         try:
@@ -564,10 +554,9 @@ class file_manager:
 
     def write(self, obj=0, recs=1, recs_f=''):
         """
-        
         Details
         -------
-        Writes the cs_master object, selected and scaled records
+        Writes the cs_master object, selected and scaled records.
         
         Parameters
         ----------
@@ -590,7 +579,6 @@ class file_manager:
         Returns
         -------
         None.
-
         """
 
         if recs == 1:
@@ -697,21 +685,19 @@ class downloader:
 
     def __init__(self):
         """
-
         Details
         -------
         This object contains the methods to download records from 
         record databases available online. 
         For now there are built-in methods is ngaw2_download and esm2018_download which is being used to
         download records from PEER NGA West2 record database.
-
         """
+
         pass
 
     @staticmethod
     def get_esm_token(username, pwd):
         """
-
         Details
         -------
         This function get ESM database token.
@@ -720,19 +706,18 @@ class downloader:
         -------
         Data must be obtained using any program supporting the HTTP-POST method, e.g. CURL.
         see: https://esm-db.eu/esmws/generate-signed-message/1/query-options.html
-        Credentials must have been retrieved from https://esm-db.eu/#/home
+        Credentials must have been retrieved from https://esm-db.eu/#/home.
 
         Parameters
         ----------
         username     : str
-            Account username (e-mail),  e.g. 'username@mail.com'
+            Account username (e-mail),  e.g. 'username@mail.com'.
         pwd          : str
-            Account password, e.g. 'password!12345'
+            Account password, e.g. 'password!12345'.
 
         Returns
         -------
-        None
-
+        None.
         """
 
         if sys.platform.startswith('win'):
@@ -758,11 +743,11 @@ class downloader:
 
         Parameters
         ----------
-        None
+        None.
 
         Returns
         -------
-        None
+        None.
 
         """
 
@@ -828,7 +813,6 @@ class downloader:
 
     def ngaw2_download(self, username, pwd, sleeptime=2, browser='chrome'):
         """
-
         Details
         -------
         This function has been created as a web automation tool in order to 
@@ -842,26 +826,21 @@ class downloader:
         Parameters
         ----------
         username     : str
-            Account username (e-mail),  e.g. 'username@mail.com'
+            Account username (e-mail),  e.g. 'username@mail.com'.
         pwd          : str
-            Account password, e.g. 'password!12345'
-
+            Account password, e.g. 'password!12345'.
         sleeptime    : int, default is 3
-            Time (sec) spent between each browser operation
-            This can be increased or decreased depending on the internet speed
+            Time (sec) spent between each browser operation. This can be increased or decreased depending on the internet speed.
         browser       : str, default is 'chrome'
-            The browser to use for download purposes. Valid entries are:
-            'chrome' or 'firefox'
+            The browser to use for download purposes. Valid entries are: 'chrome' or 'firefox'.
 
         Returns
         -------
         None
-
         """
 
         def dir_size(Download_Dir):
             """
-
             Details
             -------
             Measures download directory size
@@ -877,6 +856,7 @@ class downloader:
                 Measured size of the download directory
 
             """
+
             total_size = 0
             for path, dirs, files in os.walk(Download_Dir):
                 for f in files:
@@ -886,21 +866,18 @@ class downloader:
 
         def download_wait(Download_Dir):
             """
-
             Details
             -------
-            Waits for download to finish, and an additional amount of time based on
-            the predefined sleeptime variable.
+            Waits for download to finish, and an additional amount of time based on the predefined sleeptime variable.
 
             Parameters
             ----------
             Download_Dir     : str
-                Directory for the output time histories to be downloaded
+                Directory for the output time histories to be downloaded.
 
             Returns
             -------
             None
-
             """
             delta_size = 100
             flag = 0
@@ -918,24 +895,21 @@ class downloader:
 
         def set_driver(Download_Dir, browser):
             """
-            
             Details
             -------
-            
-            This function starts the webdriver in headless mode
+            This function starts the webdriver in headless mode.
 
             Parameters
             ----------
             Download_Dir     : str
-                Directory for the output time histories to be downloaded
+                Directory for the output time histories to be downloaded.
             browser       : str, default is 'chrome'
-                The browser to use for download purposes. Valid entries are:
-                'chrome' or 'firefox'
+                The browser to use for download purposes. Valid entries are: 'chrome' or 'firefox'
 
             Returns
             -------
             driver      : selenium webdriver object
-                Driver object used to download NGA_W2 records
+                Driver object used to download NGA_W2 records.
             """
 
             print('Getting the webdriver to use...')
@@ -996,21 +970,21 @@ class downloader:
             Details
             -------
             This function signs in to 'https://ngawest2.berkeley.edu/' with
-            given account credentials
+            given account credentials.
 
             Parameters
             ----------
             driver     : selenium webdriver object
-                Driver object used to download NGA_W2 records
+                Driver object used to download NGA_W2 records.
             USERNAME   : str
-                Account username (e-mail), e.g.: 'username@mail.com'
+                Account username (e-mail), e.g.: 'username@mail.com'.
             PASSWORD   : str
-                Account password, e.g.: 'password!12345'
+                Account password, e.g.: 'password!12345'.
 
             Returns
             -------
             driver      : selenium webdriver object
-                Driver object used to download NGA_W2 records
+                Driver object used to download NGA_W2 records.
 
             """
             print("Signing in with credentials...")
@@ -1045,11 +1019,11 @@ class downloader:
             ----------
             RSNs     : str
                 A string variable contains RSNs to be downloaded which uses ',' as delimiter
-                between RNSs, e.g.: '1,5,91,35,468'
+                between RNSs, e.g.: '1,5,91,35,468'.
             Download_Dir     : str
-                Directory for the output time histories to be downloaded
+                Directory for the output time histories to be downloaded.
             driver     : selenium webdriver object
-                Driver object used to download NGA_W2 records
+                Driver object used to download NGA_W2 records.
 
             Returns
             -------

@@ -12,30 +12,29 @@ def baseline_correction(values, dt, polynomial_type):
     """
     Details
     -------
-    This script will return baseline corrected values for the given signal
+    This script will return baseline corrected values for the given signal.
     
     Notes
     -----
-    Applicable for Constant, Linear, Quadratic and Cubic polynomial functions
+    Applicable for Constant, Linear, Quadratic and Cubic polynomial functions.
         
     References
     ----------
-    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering. Prentice Hall
+    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering. Prentice Hall.
         
     Parameters
     ----------
     values: numpy.array
-        signal values      
+        signal values.
     dt: float          
-        sampling interval
+        sampling interval.
     polynomial_type: str
-        type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'    
+        type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'.
         
     Returns
     -------
     values_corrected: numpy.array
         corrected values
-        
     """
 
     if polynomial_type == 'Constant':
@@ -59,38 +58,38 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), **kwargs):
     """
     Details
     -------
-    This script will return filtered values for the given signal
+    This script will return filtered values for the given signal.
     
     References
     ----------
-    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering, Prentice Hall
+    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering, Prentice Hall.
         
     Parameters
     ----------
     values: numpy.array
-        Input signal
+        Input signal.
     dt: float
-        time-step
+        time-step.
     cut_off: tuple, list, optional          
         Lower and upper cut off frequencies for the filter, if None then no filter. 
         e.g. (None, 15) applies a lowpass filter at 15Hz, whereas (0.1, 10) applies
         a bandpass filter at 0.1Hz to 10Hz.
     kwargs: keyword arguments, optional
         filter_order: int
-            Order of the Butterworth filter (default = 4)
+            Order of the Butterworth filter (default = 4).
         remove_gibbs: str, the default is None.
-            Pads with zeros to remove the Gibbs filter effect
+            Pads with zeros to remove the Gibbs filter effect.
             if = 'start' then pads at start,
             if = 'end' then pads at end,
-            if = 'mid' then pads half at start and half at end
+            if = 'mid' then pads half at start and half at end.
         gibbs_extra: int, the default is 1
             Each increment of the value doubles the record length using zero padding.
         gibbs_range: int, the default is 50
-            gibbs index range
+            gibbs index range.
     Returns
     -------
     values_filtered: numpy.array
-        Filtered signal
+        Filtered signal.
     """
 
     if isinstance(cut_off, list) or isinstance(cut_off, tuple):
@@ -158,7 +157,7 @@ def sdof_ltha(Ag, dt, T, xi, m = 1):
     Details
     -------
     This script will carry out linear time history analysis for SDOF system
-    It currently uses Newmark Beta Method
+    It currently uses Newmark Beta Method.
     
     References
     ---------- 
@@ -178,26 +177,26 @@ def sdof_ltha(Ag, dt, T, xi, m = 1):
     Parameters
     ----------
     Ag: numpy.array    
-        Acceleration values
+        Acceleration values.
     dt: float
         Time step [sec]
-    T:  float, numpy.array
-        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+    T:  float, numpy.array.
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
     xi: float
-        Damping ratio, e.g. 0.05 for 5%
+        Damping ratio, e.g. 0.05 for 5%.
     m:  float
-        Mass of SDOF system
+        Mass of SDOF system.
         
     Returns
     -------
     u: numpy.array       
-        Relative displacement response history
+        Relative displacement response history.
     v: numpy.array   
-        Relative velocity response history
+        Relative velocity response history.
     ac: numpy.array 
-        Relative acceleration response history
+        Relative acceleration response history.
     ac_tot: numpy.array 
-        Total acceleration response history
+        Total acceleration response history.
     """
 
     if isinstance(T, (int, float)):
@@ -271,7 +270,7 @@ def get_parameters(Ag, dt, T, xi):
     """
     Details
     -------
-    This script will return various ground motion parameters for a given record
+    This script will return various ground motion parameters for a given record.
         
     References
     ---------- 
@@ -282,102 +281,95 @@ def get_parameters(Ag, dt, T, xi):
     Parameters
     ----------
     Ag: numpy.array    
-        Acceleration values [m/s2]
+        Acceleration values [m/s2].
     dt: float
         Time step [sec]
-    T:  float, numpy.array
-        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+    T:  float, numpy.array.
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
     xi: float
-        Damping ratio, e.g. 0.05 for 5%
+        Damping ratio, e.g. 0.05 for 5%.
         
     Returns
     -------
     param: dictionary
         Contains the following intensity measures:
-    PSa(T): numpy.array       
-        Elastic pseudo-acceleration response spectrum [m/s2]
-    PSv(T): numpy.array   
-        Elastic pseudo-velocity response spectrum [m/s]
-    Sd(T): numpy.array 
-        Elastic displacement response spectrum  - relative displacement [m]
-    Sv(T): numpy.array 
-        Elastic velocity response spectrum - relative velocity at [m/s]
-    Sa(T): numpy.array 
-        Elastic accleration response spectrum - total accelaration [m/s2]
-    Ei_r(T): numpy.array 
-        Relative input energy spectrum for elastic system [N.m]
-    Ei_a(T): numpy.array 
-        Absolute input energy spectrum for elastic system [N.m]
-    Periods: numpy.array 
-        Periods where spectral values are calculated [sec]
-    FAS: numpy.array 
-        Fourier amplitude spectra
-    PAS: numpy.array 
-        Power amplitude spectra
-    PGA: float
-        Peak ground acceleration [m/s2]
-    PGV: float
-        Peak ground velocity [m/s]
-    PGD: float
-        Peak ground displacement [m]
-    Aint: numpy.array 
-        Arias intensity ratio vector with time [m/s]
-    Arias: float 
-        Maximum value of arias intensity ratio [m/s]
-    HI: float
-        Housner intensity ratio [m]
-        Requires T to be defined between (0.1-2.5 sec)
-        Otherwise not applicable, and equal to 'N.A'
-    CAV: float
-        Cumulative absolute velocity [m/s]        
-    t_5_75: list
-        Significant duration time vector between 5% and 75% of energy release (from Aint)
-    D_5_75: float
-        Significant duration between 5% and 75% of energy release (from Aint)
-    t_5_95: list    
-        Significant duration time vector between 5% and 95% of energy release (from Aint)
-    D_5_95: float
-        Significant duration between 5% and 95% of energy release (from Aint)
-    t_bracketed: list 
-        Bracketed duration time vector (acc>0.05g)
-        Not applicable, in case of low intensity records, 
-        Thus, equal to 'N.A'
-    D_bracketed: float
-        Bracketed duration (acc>0.05g)
-        Not applicable, in case of low intensity records, 
-        Thus, equal to 'N.A'
-    t_uniform: list 
-        Uniform duration time vector (acc>0.05g)
-        Not applicable, in case of low intensity records, 
-        Thus, equal to 'N.A'
-    D_uniform: float 
-        Uniform duration (acc>0.05g)
-        Not applicable, in case of low intensity records, 
-        Thus, equal to 'N.A'
-    Tm: float
-        Mean period
-    Tp: float             
-        Predominant Period
-    aRMS: float 
-        Root mean square root of acceleration [m/s2]
-    vRMS: float
-        Root mean square root of velocity [m/s]
-    dRMS: float  
-        Root mean square root of displacement [m]
-    Ic: float     
-        End time might which is used herein, is not always a good choice
-    ASI: float   
-        Acceleration spectrum intensity [m/s]
-        Requires T to be defined between (0.1-0.5 sec)
-        Otherwise not applicable, and equal to 'N.A'
-    MASI: float [m]
-        Modified acceleration spectrum intensity
-        Requires T to be defined between (0.1-2.5 sec)
-        Otherwise not applicable, and equal to 'N.A'
-    VSI: float [m]
-        Velocity spectrum intensity
-        Requires T to be defined between (0.1-2.5 sec)
-        Otherwise not applicable, and equal to 'N.A'
+        PSa(T): numpy.array       
+            Elastic pseudo-acceleration response spectrum [m/s2].
+        PSv(T): numpy.array   
+            Elastic pseudo-velocity response spectrum [m/s].
+        Sd(T): numpy.array 
+            Elastic displacement response spectrum  - relative displacement [m].
+        Sv(T): numpy.array 
+            Elastic velocity response spectrum - relative velocity at [m/s].
+        Sa(T): numpy.array 
+            Elastic accleration response spectrum - total accelaration [m/s2].
+        Ei_r(T): numpy.array 
+            Relative input energy spectrum for elastic system [N.m].
+        Ei_a(T): numpy.array 
+            Absolute input energy spectrum for elastic system [N.m].
+        Periods: numpy.array 
+            Periods where spectral values are calculated [sec].
+        FAS: numpy.array 
+            Fourier amplitude spectra.
+        PAS: numpy.array 
+            Power amplitude spectra.
+        PGA: float
+            Peak ground acceleration [m/s2].
+        PGV: float
+            Peak ground velocity [m/s].
+        PGD: float
+            Peak ground displacement [m].
+        Aint: numpy.array 
+            Arias intensity ratio vector with time [m/s].
+        Arias: float 
+            Maximum value of arias intensity ratio [m/s].
+        HI: float
+            Housner intensity ratio [m].
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
+        CAV: float
+            Cumulative absolute velocity [m/s]        
+        t_5_75: list
+            Significant duration time vector between 5% and 75% of energy release (from Aint).
+        D_5_75: float
+            Significant duration between 5% and 75% of energy release (from Aint).
+        t_5_95: list    
+            Significant duration time vector between 5% and 95% of energy release (from Aint).
+        D_5_95: float
+            Significant duration between 5% and 95% of energy release (from Aint).
+        t_bracketed: list 
+            Bracketed duration time vector (acc>0.05g).
+            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+        D_bracketed: float
+            Bracketed duration (acc>0.05g)
+            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+        t_uniform: list 
+            Uniform duration time vector (acc>0.05g)
+            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+        D_uniform: float 
+            Uniform duration (acc>0.05g)
+            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+        Tm: float
+            Mean period.
+        Tp: float             
+            Predominant Period.
+        aRMS: float 
+            Root mean square root of acceleration [m/s2].
+        vRMS: float
+            Root mean square root of velocity [m/s].
+        dRMS: float  
+            Root mean square root of displacement [m].
+        Ic: float
+            Characteristic intensity.
+            End time might which is used herein, is not always a good choice.
+        ASI: float   
+            Acceleration spectrum intensity [m/s].
+            Requires T to be defined between (0.1-0.5 sec), otherwise not applicable, and equal to 'N.A'.
+        MASI: float [m]
+            Modified acceleration spectrum intensity.
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
+        VSI: float [m]
+            Velocity spectrum intensity.
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
     """
 
     if isinstance(T, (int, float)):
@@ -540,8 +532,7 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     """
     Details
     -------
-    This script will return RotDxx spectrum
-    It currently uses Newmark Beta Method
+    This script will return RotDxx spectrum. It currently uses Newmark Beta Method.
     
     References
     ---------- 
@@ -562,22 +553,22 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     Parameters
     ----------
     Ag1 : numpy.array    
-        Acceleration values of 1st horizontal ground motion component
+        Acceleration values of 1st horizontal ground motion component.
     Ag2 : numpy.array    
-        Acceleration values of 2nd horizontal ground motion component
+        Acceleration values of 2nd horizontal ground motion component.
     dt: float
-        Time step [sec]
+        Time step [sec].
     T:  float, numpy.array
-        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
     xi: float
-        Damping ratio, e.g. 0.05 for 5%
+        Damping ratio, e.g. 0.05 for 5%.
     xx: int, list
-        Percentile to calculate, e.g. 50 for RotD50
+        Percentile to calculate, e.g. 50 for RotD50.
         
     Returns
     -------
     Sa_RotDxx: numpy.array 
-        RotDxx Spectra
+        RotDxx Spectra.
     """
 
     if isinstance(T, (int, float)):

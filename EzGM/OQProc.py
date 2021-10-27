@@ -17,24 +17,24 @@ def get_iml(poes, apoe_data, iml_data, inv_t):
     Details
     -------
     This script will take results of PSHA analysis, and return
-    the intensity measure levels for desired probability of exceedance values
+    the intensity measure levels for desired probability of exceedance values.
 
     Parameters
     ----------
     poes: list
         desired probability of exceedance values to calculate their
-        corresponding intensity measure levels
+        corresponding intensity measure levels.
     apoe_data: list
-        annual probability of exceedance values
+        annual probability of exceedance values.
     iml_data: list
-        intensity measure levels
+        intensity measure levels.
     inv_t: int
-        investigation time
+        investigation time.
 
     Returns
     -------
     iml: list
-        intensity measure levels corresponding to poes
+        intensity measure levels corresponding to poes.
     """
 
     infs = np.isinf(apoe_data)
@@ -70,16 +70,15 @@ def hazard(poes, path_hazard_results, output_dir='Post_Outputs', rlz='hazard_cur
     poes : list
         Probabilities of exceedance in tw years for which im levels will be obtained.
     path_hazard_results: str
-        Path to the hazard results
+        Path to the hazard results.
     output_dir: str, optional
-        Save outputs to a pickle file
+        Save outputs to a pickle file.
     rlz : str, optional
         realization name to plot.
 
     Returns
     -------
     None.
-
     """
     
     # Initialise some lists
@@ -174,8 +173,7 @@ def disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outp
     """
     Details
     -------
-    This script will save disaggregation plots
-    including M and R.
+    This script will save disaggregation plots including M and R.
 
     Parameters
     ----------
@@ -184,21 +182,20 @@ def disagg_MR(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_Outp
     dbin : int, float
         distance bin used in disaggregation.
     poe_disagg : list
-        disaggregation probability of exceedances
+        disaggregation probability of exceedances.
     path_disagg_results: str
-        Path to the disaggregation results
+        Path to the disaggregation results.
     output_dir: str, optional
-        Save outputs to a pickle file
+        Save outputs to a pickle file.
     n_rows : int, optional
         total number of rows for subplots.
 
     Returns
     -------
     None.
-
     """
-    # lets add the plotting options to make everything clearer
 
+    # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
     lon = []
@@ -348,10 +345,9 @@ def disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_O
     Returns
     -------
     None.
-
     """
-    # lets add the plotting options to make everything clearer
 
+    # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap
     lat = []
     lon = []

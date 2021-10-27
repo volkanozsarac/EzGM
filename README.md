@@ -4,6 +4,13 @@ Toolbox for ground motion record selection and processing.
 [![DOI](https://zenodo.org/badge/291944652.svg)](https://zenodo.org/badge/latestdoi/291944652) 
 ***
 
+- Upon performing ground motion record selection/scaling if user desires to get formatted records, for the given metadata, s/he should place the available records from metadata file into the Records.zip with the name of database, 
+e.g. *EXSIM_Duzce.zip* for database *EXSIM_Duzce*. In case of publicly available databases, the user can also download the records directly by using the associated methods since the records are not generally available beforehand.
+- All the flat-files are stored as .mat files in path/to/EzGM/Meta_Data. Currently, there are two publicly available databases: *NGA_W2* and *ESM_2018*. 
+The original flat-files are modified by discarding the records which are not possible to download.
+- To use *ESM_2018* database, the user must have access token (path/to/current/directory/token.txt) from https://esm-db.eu. The token
+can be retrieved using built-in methods (see Example 1). In order to use *NGA_W2* database, user must have account obtained from https://ngawest2.berkeley.edu.
+
 Tutorial
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/HEAD?filepath=Examples%2Fbinder%2FTutorial.ipynb)
@@ -14,11 +21,8 @@ import EzGM
 ```
 ***
 
-- EzGM.Selection.conditional_spectrum is used to perform record selection based on CS(AvgSa) and CS(Sa) for the given metadata. The tool makes use of Openquake hazardlib, thus any available gmpe available can directly be used.
-- If user desires to get formatted records, for the given metadata, s/he should place the available records from metadata file into the Records.zip with the name of database.
-e.g. EXSIM for metadata EXSIM.mat. In case of NGA_W2, user can also download the records directly by inserting account username and password into the associated method. 
-
-- See https://docs.openquake.org/oq-engine/master/openquake.hazardlib.gsim.html for available ground motion prediction equations.
+- *EzGM.Selection.conditional_spectrum* is used to perform record selection based on *CS(AvgSa)* and *CS(Sa)* for the given metadata. The tool makes use of openquake.hazardlib, thus any available gmpe available can directly be used.
+See https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models for available ground motion prediction equations.
 
 Example 1
 
@@ -70,13 +74,13 @@ conda install shapely
 ***
 
 ## Reference
-- If you are going to use the code presented herein for any official study, please refer to:
+- If you are going to use the code presented herein for any academic study, please refer to:
 Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2021). Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
+- Other references associated with each method are provided as the docstring.
 ***
 
 ## Potential Improvements
 - Computation of the exact CS
-- Selection from ESM database
 - Addition of spectral matching methods
 - Addition of generalized conditional intensity measure approach (GCIM)
 - Addition of other code-based scaling methods (e.g. ASCE 7-16)

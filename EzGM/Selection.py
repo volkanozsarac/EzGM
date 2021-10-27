@@ -4,7 +4,6 @@ Record Selection ToolBox
 
 # Import python libraries
 import os
-import sys
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -16,9 +15,10 @@ from scipy import interpolate
 from scipy.io import loadmat
 from scipy.stats import skew
 from time import gmtime
-from .Utility import downloader, file_manager
+from .Utility import downloader, file_manager, database_manager
 
-class conditional_spectrum(downloader, file_manager):
+
+class conditional_spectrum(downloader, file_manager, database_manager):
     """
     This class is used to
         1) Create target spectrum
@@ -65,7 +65,7 @@ class conditional_spectrum(downloader, file_manager):
             self.Tstar = Tstar
 
         # Add the input the ground motion database to use
-        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', database)
+        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
 
@@ -83,7 +83,7 @@ class conditional_spectrum(downloader, file_manager):
             Periods = np.append(self.database['Periods'], self.Tstar[0])
             self.database['Sa_1'] = Sa[:, np.argsort(Periods)]
 
-            if database.startswith("NGA"):
+            if not database.startswith("EXSIM"):
                 f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'], axis=1)
                 Sa_int = f(self.Tstar[0])
                 Sa_int.shape = (len(Sa_int), 1)
@@ -97,11 +97,11 @@ class conditional_spectrum(downloader, file_manager):
                 self.database['Sa_RotD50'] = Sa[:, np.argsort(Periods)]
 
             self.database['Periods'] = Periods[np.argsort(Periods)]
-            
-        try: # this is smth like self.bgmpe = gsim.boore_2014.BooreEtAl2014()
+
+        try:  # this is smth like self.bgmpe = gsim.boore_2014.BooreEtAl2014()
             self.bgmpe = gsim.get_available_gsims()[gmpe]()
-            
-        except: 
+
+        except:
             raise KeyError('Not a valid gmpe')
 
         if pInfo == 1:  # print the selected gmpe info
@@ -210,7 +210,8 @@ class conditional_spectrum(downloader, file_manager):
         if T1 == T2:
             rho = 1.0
         else:
-            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', 'akkar_coeff_table.npy'), 'rb') as f:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', 'akkar_coeff_table.npy'),
+                      'rb') as f:
                 coeff_table = np.load(f)
             rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
 
@@ -458,7 +459,7 @@ class conditional_spectrum(downloader, file_manager):
 
             # TODO: it could be better to calculate some parameters automatically elsewhere
             # Set the contexts for the scenario
-            site_param['sids'] = [0] # This is required in OQ version 3.12.0
+            site_param['sids'] = [0]  # This is required in OQ version 3.12.0
             sites = gsim.base.SitesContext()
             for key in site_param.keys():
                 if key == 'rake':
@@ -627,149 +628,6 @@ class conditional_spectrum(downloader, file_manager):
         recUse = np.argmin(np.abs(devTotalSim))  # find the simulated spectra that best match the targets
         self.sim_spec = np.log(specDict[recUse])  # return the best set of simulations
 
-    def search_database(self):
-        """
-        Details
-        -------
-        Search the database and does the filtering.
-        
-        Parameters
-        ----------
-        None.
-        
-        Returns
-        -------
-        sampleBig : numpy.array
-            An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.array
-            An array which contains the Vs30s from filtered database.
-        magnitude : numpy.array
-            An array which contains the magnitudes from filtered database.
-        Rjb : numpy.array
-            An array which contains the Rjbs from filtered database.
-        mechanism : numpy.array
-            An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.array
-            An array which contains the filename of 1st gm component from filtered database.
-            If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.array
-            An array which contains the filenameof 2nd gm component filtered database.
-            If selection is set to 1, it will be None value.
-        NGA_num : numpy.array
-            If NGA_W2 is used as record database, record sequence numbers from filtered
-            database will be saved, for other databases this variable is None.
-        """
-
-        if self.selection == 1:  # SaKnown = Sa_arb
-
-            if self.database['Name'] == "NGA_W2":
-                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-                soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-                Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
-                Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
-                fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
-                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
-                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
-
-            elif self.database['Name'].startswith("EXSIM"):
-                SaKnown = self.database['Sa_1']
-                soil_Vs30 = self.database['soil_Vs30']
-                Mw = self.database['magnitude']
-                Rjb = self.database['Rjb']
-                fault = self.database['mechanism']
-                Filename_1 = self.database['Filename_1']
-                eq_ID = self.database['EQID']
-
-        elif self.selection == 2:  # SaKnown = Sa_g.m. or RotD50
-            if self.Sa_def == 'GeoMean':
-                SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
-            elif self.Sa_def == 'RotD50':  # SaKnown = Sa_RotD50.
-                SaKnown = self.database['Sa_RotD50']
-            else:
-                raise ValueError('Unexpected Sa definition, exiting...')
-
-            soil_Vs30 = self.database['soil_Vs30']
-            Mw = self.database['magnitude']
-            Rjb = self.database['Rjb']
-            fault = self.database['mechanism']
-            Filename_1 = self.database['Filename_1']
-            Filename_2 = self.database['Filename_2']
-            NGA_num = self.database['NGA_num']
-            eq_ID = self.database['EQID']
-
-        else:
-            raise ValueError('Selection can only be performed for one or two components at the moment, exiting...')
-
-        perKnown = self.database['Periods']
-
-        # Limiting the records to be considered using the `notAllowed' variable
-        # Sa cannot be negative or zero, remove these.
-        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-
-        if self.Vs30_lim is not None:  # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.Mw_lim is not None:  # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.Rjb_lim is not None:  # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.fault_lim is not None:  # limiting values on mechanism exist
-            mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        # get the unique values
-        notAllowed = (list(set(notAllowed)))
-        Allowed = [i for i in range(SaKnown.shape[0])]
-        for i in notAllowed:
-            Allowed.remove(i)
-
-        # Use only allowed records
-        SaKnown = SaKnown[Allowed, :]
-        soil_Vs30 = soil_Vs30[Allowed]
-        Mw = Mw[Allowed]
-        Rjb = Rjb[Allowed]
-        fault = fault[Allowed]
-        eq_ID = eq_ID[Allowed]
-        Filename_1 = Filename_1[Allowed]
-
-        if self.selection == 1:
-            Filename_2 = None
-        else:
-            Filename_2 = Filename_2[Allowed]
-
-        if self.database['Name'] == "NGA_W2":
-            NGA_num = NGA_num[Allowed]
-        else:
-            NGA_num = None
-
-        # Arrange the available spectra in a usable format and check for invalid input
-        # Match periods (known periods and periods for error computations)
-        recPer = []
-        for i in range(len(self.T)):
-            recPer.append(np.where(perKnown == self.T[i])[0][0])
-
-        # Check for invalid input
-        sampleBig = SaKnown[:, recPer]
-        if np.any(np.isnan(sampleBig)):
-            raise ValueError('NaNs found in input response spectra')
-
-        if self.nGM > len(NGA_num):
-            raise ValueError('There are not enough records which satisfy',
-                             'the given record selection criteria...',
-                             'Please use broaden your selection criteria...')
-
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID
-
     def select(self, nGM=30, selection=1, Sa_def='RotD50', isScaled=1, maxScale=4,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
                nTrials=20, weights=[1, 2, 0.3], seedValue=0,
@@ -808,12 +666,21 @@ class conditional_spectrum(downloader, file_manager):
             The limiting values on Vs30. 
         Rjb_lim : list, optional, the default is None.
             The limiting values on Rjb. 
-        fault_lim : int, optional, the default is None.
-            The limiting fault mechanism. 
-            0 for unspecified fault 
-            1 for strike-slip fault
-            2 for normal fault
-            3 for reverse fault
+        fault_lim : list, optional, the default is None.
+            The limiting fault mechanisms.
+            For NGA_W2 database:
+                0 for unspecified fault
+                1 for strike-slip fault
+                2 for normal fault
+                3 for reverse fault
+            For ESM_2018 database:
+                'NF' for normal faulting
+                'NS' for predominately normal with strike-slip component
+                'O' for oblique
+                'SS' for strike-slip faulting
+                'TF' for thrust faulting
+                'TS' for predominately thrust with strike-slip component
+                'U' for unknown
         seedValue  : int, optional, the default is 0.
             For repeatability. For a particular seedValue not equal to
             zero, the code will output the same set of ground motions.
@@ -869,7 +736,7 @@ class conditional_spectrum(downloader, file_manager):
         self.simulate_spectra()
 
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID = self.search_database()
+        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code = self.search_database()
 
         # Processing available spectra
         sampleBig = np.log(sampleBig)
@@ -1033,18 +900,17 @@ class conditional_spectrum(downloader, file_manager):
         self.rec_Rjb = Rjb[recID]
         self.rec_Mw = Mw[recID]
         self.rec_fault = fault[recID]
-        self.eq_ID = eq_ID[recID]
+        self.rec_eqID = eq_ID[recID]
         self.rec_h1 = Filename_1[recID]
 
-        if self.selection == 1:
-            self.rec_h2 = None
-        elif self.selection == 2:
+        if self.selection == 2:
             self.rec_h2 = Filename_2[recID]
 
         if self.database['Name'] == 'NGA_W2':
             self.rec_rsn = NGA_num[recID]
-        else:
-            self.rec_rsn = None
+
+        if self.database['Name'] == 'ESM_2018':
+            self.rec_station_code = station_code[recID]
 
     def plot(self, tgt=0, sim=0, rec=1, save=0, show=1):
         """
@@ -1265,7 +1131,7 @@ class conditional_spectrum(downloader, file_manager):
 #############################################################################################
 #############################################################################################
 
-class tbdy_2018(downloader, file_manager):
+class tbdy_2018(downloader, file_manager, database_manager):
     """
     This class is used to
         1) Create target spectrum based on TBDY2018
@@ -1294,7 +1160,7 @@ class tbdy_2018(downloader, file_manager):
         """
 
         # Add the input the ground motion database to use
-        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', database)
+        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
         # create the output directory and add the path to self
@@ -1308,7 +1174,7 @@ class tbdy_2018(downloader, file_manager):
         file_manager.__init__(self)
 
     @staticmethod
-    def get_Sae(T, Lat, Long, DD, Soil):
+    def get_Sae_tbdy2018(T, Lat, Long, DD, Soil):
         """
         Details
         -------
@@ -1339,114 +1205,118 @@ class tbdy_2018(downloader, file_manager):
             Elastic acceleration response spectrum
         """
         csv_file = 'Parameters_TBDY2018.csv'
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', csv_file)
-        data = pd.read_csv(file_path) 
-        
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', csv_file)
+        data = pd.read_csv(file_path)
+
         # Check if the coordinates are within the limits
         if Long > np.max(data['Longitude']) or Long < np.min(data['Longitude']):
             raise ValueError('Longitude value must be within the limits: [24.55,45.95]')
         if Lat > np.max(data['Latitude']) or Lat < np.min(data['Latitude']):
             raise ValueError('Latitude value must be within the limits: [34.25,42.95]')
-            
-        # Targeted probability of exceedance in 50 years
-        if DD == 1: PoE = '2'
-        elif DD == 2: PoE = '10'
-        elif DD == 3: PoE = '50'
-        elif DD == 4: PoE = '68'
-        
-        # Determine Peak Ground Acceleration PGA [g]
-        PGA_col = 'PGA (g) - %'+PoE
-        data_pga = np.array([data['Longitude'], data['Latitude'],data[PGA_col]]).T
-        PGA = interpolate.griddata(data_pga[:,0:2], data_pga[:,2], [(Long, Lat)], method='linear')
-        
-        # Short period map spectral acceleration coefficient [dimensionless]
-        SS_col = 'SS (g) - %'+PoE
-        data_ss = np.array([data['Longitude'], data['Latitude'],data[SS_col]]).T
-        SS = interpolate.griddata(data_ss[:,0:2], data_ss[:,2], [(Long, Lat)], method='linear')
-        
-        # Map spectral acceleration coefficient for a 1.0 second period [dimensionless]
-        S1_col = 'S1 (g) - %'+PoE        
-        data_s1 = np.array([data['Longitude'], data['Latitude'],data[S1_col]]).T
-        S1 = interpolate.griddata(data_s1[:,0:2], data_s1[:,2], [(Long, Lat)], method='linear')
 
-        SoilParam={
-            'FS' : {
-               'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
-               'ZB': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
-               'ZC': [1.3, 1.3, 1.2, 1.2, 1.2, 1.2],
-               'ZD': [1.6, 1.4, 1.2, 1.1, 1.0, 1.0],
-               'ZE': [2.4, 1.7, 1.3, 1.1, 0.9, 0.8]
-               },
-        
-            'SS' : [0.25, 0.5, 0.75, 1.0, 1.25, 1.5],
-        
-            'F1' : {
-               'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
-               'ZB': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
-               'ZC': [1.5, 1.5, 1.5, 1.5, 1.5, 1.4],
-               'ZD': [2.4, 2.2, 2.0, 1.9, 1.8, 1.7],
-               'ZE': [4.2, 3.3, 2.8, 2.4, 2.2, 2.0]
-               },
-        
-            'S1' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-        
-            }
-        
+        # Targeted probability of exceedance in 50 years
+        if DD == 1:
+            PoE = '2'
+        elif DD == 2:
+            PoE = '10'
+        elif DD == 3:
+            PoE = '50'
+        elif DD == 4:
+            PoE = '68'
+
+        # Determine Peak Ground Acceleration PGA [g]
+        PGA_col = 'PGA (g) - %' + PoE
+        data_pga = np.array([data['Longitude'], data['Latitude'], data[PGA_col]]).T
+        PGA = interpolate.griddata(data_pga[:, 0:2], data_pga[:, 2], [(Long, Lat)], method='linear')
+
+        # Short period map spectral acceleration coefficient [dimensionless]
+        SS_col = 'SS (g) - %' + PoE
+        data_ss = np.array([data['Longitude'], data['Latitude'], data[SS_col]]).T
+        SS = interpolate.griddata(data_ss[:, 0:2], data_ss[:, 2], [(Long, Lat)], method='linear')
+
+        # Map spectral acceleration coefficient for a 1.0 second period [dimensionless]
+        S1_col = 'S1 (g) - %' + PoE
+        data_s1 = np.array([data['Longitude'], data['Latitude'], data[S1_col]]).T
+        S1 = interpolate.griddata(data_s1[:, 0:2], data_s1[:, 2], [(Long, Lat)], method='linear')
+
+        SoilParam = {
+            'FS': {
+                'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+                'ZB': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
+                'ZC': [1.3, 1.3, 1.2, 1.2, 1.2, 1.2],
+                'ZD': [1.6, 1.4, 1.2, 1.1, 1.0, 1.0],
+                'ZE': [2.4, 1.7, 1.3, 1.1, 0.9, 0.8]
+            },
+
+            'SS': [0.25, 0.5, 0.75, 1.0, 1.25, 1.5],
+
+            'F1': {
+                'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+                'ZB': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+                'ZC': [1.5, 1.5, 1.5, 1.5, 1.5, 1.4],
+                'ZD': [2.4, 2.2, 2.0, 1.9, 1.8, 1.7],
+                'ZE': [4.2, 3.3, 2.8, 2.4, 2.2, 2.0]
+            },
+
+            'S1': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+
+        }
+
         # Local soil response coefficient for the short period region
         if SS <= SoilParam['SS'][0]:
             FS = SoilParam['FS'][Soil][0]
         elif SS > SoilParam['SS'][0] and SS <= SoilParam['SS'][1]:
-            FS=(SoilParam['FS'][Soil][1]-SoilParam['FS'][Soil][0]) \
-            *(SS-SoilParam['SS'][0])/(SoilParam['SS'][1]-SoilParam['SS'][0]) \
-            +SoilParam['FS'][Soil][0]
+            FS = (SoilParam['FS'][Soil][1] - SoilParam['FS'][Soil][0]) \
+                 * (SS - SoilParam['SS'][0]) / (SoilParam['SS'][1] - SoilParam['SS'][0]) \
+                 + SoilParam['FS'][Soil][0]
         elif SS > SoilParam['SS'][1] and SS <= SoilParam['SS'][2]:
-            FS=(SoilParam['FS'][Soil][2]-SoilParam['FS'][Soil][1]) \
-            *(SS-SoilParam['SS'][1])/(SoilParam['SS'][2]-SoilParam['SS'][1]) \
-            +SoilParam['FS'][Soil][1]
+            FS = (SoilParam['FS'][Soil][2] - SoilParam['FS'][Soil][1]) \
+                 * (SS - SoilParam['SS'][1]) / (SoilParam['SS'][2] - SoilParam['SS'][1]) \
+                 + SoilParam['FS'][Soil][1]
         elif SS > SoilParam['SS'][2] and SS <= SoilParam['SS'][3]:
-            FS=(SoilParam['FS'][Soil][3]-SoilParam['FS'][Soil][2]) \
-            *(SS-SoilParam['SS'][2])/(SoilParam['SS'][3]-SoilParam['SS'][2]) \
-            +SoilParam['FS'][Soil][2]
+            FS = (SoilParam['FS'][Soil][3] - SoilParam['FS'][Soil][2]) \
+                 * (SS - SoilParam['SS'][2]) / (SoilParam['SS'][3] - SoilParam['SS'][2]) \
+                 + SoilParam['FS'][Soil][2]
         elif SS > SoilParam['SS'][3] and SS <= SoilParam['SS'][4]:
-            FS=(SoilParam['FS'][Soil][4]-SoilParam['FS'][Soil][3]) \
-            *(SS-SoilParam['SS'][3])/(SoilParam['SS'][4]-SoilParam['SS'][3]) \
-            +SoilParam['FS'][Soil][3]
+            FS = (SoilParam['FS'][Soil][4] - SoilParam['FS'][Soil][3]) \
+                 * (SS - SoilParam['SS'][3]) / (SoilParam['SS'][4] - SoilParam['SS'][3]) \
+                 + SoilParam['FS'][Soil][3]
         elif SS > SoilParam['SS'][4] and SS <= SoilParam['SS'][5]:
-            FS=(SoilParam['FS'][Soil][5]-SoilParam['FS'][Soil][4]) \
-            *(SS-SoilParam['SS'][4])/(SoilParam['SS'][5]-SoilParam['SS'][4]) \
-            +SoilParam['FS'][Soil][4]
+            FS = (SoilParam['FS'][Soil][5] - SoilParam['FS'][Soil][4]) \
+                 * (SS - SoilParam['SS'][4]) / (SoilParam['SS'][5] - SoilParam['SS'][4]) \
+                 + SoilParam['FS'][Soil][4]
         elif SS >= SoilParam['SS'][5]:
             FS = SoilParam['FS'][Soil][5]
-        
+
         # Local soil response coefficient for 1.0 second period
         if S1 <= SoilParam['S1'][0]:
             F1 = SoilParam['F1'][Soil][0]
         elif S1 > SoilParam['S1'][0] and S1 <= SoilParam['S1'][1]:
-            F1=(SoilParam['F1'][Soil][1]-SoilParam['F1'][Soil][0]) \
-            *(S1-SoilParam['S1'][0])/(SoilParam['S1'][1]-SoilParam['S1'][0]) \
-            +SoilParam['F1'][Soil][0]
+            F1 = (SoilParam['F1'][Soil][1] - SoilParam['F1'][Soil][0]) \
+                 * (S1 - SoilParam['S1'][0]) / (SoilParam['S1'][1] - SoilParam['S1'][0]) \
+                 + SoilParam['F1'][Soil][0]
         elif S1 > SoilParam['S1'][1] and S1 <= SoilParam['S1'][2]:
-            F1=(SoilParam['F1'][Soil][2]-SoilParam['F1'][Soil][1]) \
-            *(S1-SoilParam['S1'][1])/(SoilParam['S1'][2]-SoilParam['S1'][1]) \
-            +SoilParam['F1'][Soil][1]
+            F1 = (SoilParam['F1'][Soil][2] - SoilParam['F1'][Soil][1]) \
+                 * (S1 - SoilParam['S1'][1]) / (SoilParam['S1'][2] - SoilParam['S1'][1]) \
+                 + SoilParam['F1'][Soil][1]
         elif S1 > SoilParam['S1'][2] and S1 <= SoilParam['S1'][3]:
-            F1=(SoilParam['F1'][Soil][3]-SoilParam['F1'][Soil][2]) \
-            *(S1-SoilParam['S1'][2])/(SoilParam['S1'][3]-SoilParam['S1'][2]) \
-            +SoilParam['F1'][Soil][2]
+            F1 = (SoilParam['F1'][Soil][3] - SoilParam['F1'][Soil][2]) \
+                 * (S1 - SoilParam['S1'][2]) / (SoilParam['S1'][3] - SoilParam['S1'][2]) \
+                 + SoilParam['F1'][Soil][2]
         elif S1 > SoilParam['S1'][3] and S1 <= SoilParam['S1'][4]:
-            F1=(SoilParam['F1'][Soil][4]-SoilParam['F1'][Soil][3]) \
-            *(S1-SoilParam['S1'][3])/(SoilParam['S1'][4]-SoilParam['S1'][3]) \
-            +SoilParam['F1'][Soil][3]
+            F1 = (SoilParam['F1'][Soil][4] - SoilParam['F1'][Soil][3]) \
+                 * (S1 - SoilParam['S1'][3]) / (SoilParam['S1'][4] - SoilParam['S1'][3]) \
+                 + SoilParam['F1'][Soil][3]
         elif S1 > SoilParam['S1'][4] and S1 <= SoilParam['S1'][5]:
-            F1=(SoilParam['F1'][Soil][5]-SoilParam['F1'][Soil][4]) \
-            *(S1-SoilParam['S1'][4])/(SoilParam['S1'][5]-SoilParam['S1'][4]) \
-            +SoilParam['F1'][Soil][4]
+            F1 = (SoilParam['F1'][Soil][5] - SoilParam['F1'][Soil][4]) \
+                 * (S1 - SoilParam['S1'][4]) / (SoilParam['S1'][5] - SoilParam['S1'][4]) \
+                 + SoilParam['F1'][Soil][4]
         elif S1 >= SoilParam['S1'][5]:
             F1 = SoilParam['F1'][Soil][5]
-        
-        SDS = SS*FS # short period spectral acceleration coefficient
-        SD1 = S1*F1 # spectral acceleration coefficient for 1.0
-        
+
+        SDS = SS * FS  # short period spectral acceleration coefficient
+        SD1 = S1 * F1  # spectral acceleration coefficient for 1.0
+
         Sae = np.zeros(len(T))
 
         TA = 0.2 * SD1 / SDS
@@ -1466,141 +1336,6 @@ class tbdy_2018(downloader, file_manager):
                 Sae[i] = SD1 * TL / T[i] ** 2
 
         return Sae
-
-    def search_database(self):
-        """
-        Details
-        -------
-        Searches the record database and does the filtering.
-
-        Parameters
-        ----------
-        None.
-
-        Returns
-        -------
-        sampleBig : numpy.array
-            An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.array
-            An array which contains the Vs30s from filtered database.
-        magnitude : numpy.array
-            An array which contains the magnitudes from filtered database.
-        Rjb : numpy.array
-            An array which contains the Rjbs from filtered database.
-        mechanism : numpy.array
-            An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.array
-            An array which contains the filename of 1st gm component from filtered database.
-            If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.array
-            An array which contains the filenameof 2nd gm component filtered database.
-            If selection is set to 1, it will be None value.
-        NGA_num : numpy.array
-            If NGA_W2 is used as record database, record sequence numbers from filtered
-            database will be saved, for other databases this variable is None.
-        """
-
-        if self.database['Name'] == "NGA_W2":
-
-            if self.selection == 1:  # SaKnown = Sa_arb
-                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-                soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-                Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
-                Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
-                fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
-                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
-                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
-
-            elif self.selection == 2:  # SaKnown = (Sa_1**2+Sa_2**2)**0.5
-                SaKnown = np.sqrt(self.database['Sa_1'] ** 2 + self.database['Sa_2'] ** 2)
-                soil_Vs30 = self.database['soil_Vs30']
-                Mw = self.database['magnitude']
-                Rjb = self.database['Rjb']
-                fault = self.database['mechanism']
-                Filename_1 = self.database['Filename_1']
-                Filename_2 = self.database['Filename_2']
-                NGA_num = self.database['NGA_num']
-                eq_ID = self.database['EQID']
-
-            else:
-                raise ValueError('Selection can only be performed for one or two components at the moment, exiting...')
-
-        else:
-            raise ValueError('Selection can only be performed using NGA_W2 database at the moment, exiting...')
-
-        perKnown = self.database['Periods']
-
-        # Limiting the records to be considered using the `notAllowed' variable
-        # Sa cannot be negative or zero, remove these.
-        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-
-        if self.Vs30_lim is not None:  # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.Mw_lim is not None:  # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.Rjb_lim is not None:  # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if self.fault_lim is not None:  # limiting values on mechanism exist
-            mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        # get the unique values
-        notAllowed = (list(set(notAllowed)))
-        Allowed = [i for i in range(SaKnown.shape[0])]
-        for i in notAllowed:
-            Allowed.remove(i)
-
-        # Use only allowed records
-        SaKnown = SaKnown[Allowed, :]
-        soil_Vs30 = soil_Vs30[Allowed]
-        Mw = Mw[Allowed]
-        Rjb = Rjb[Allowed]
-        fault = fault[Allowed]
-        eq_ID = eq_ID[Allowed]
-        Filename_1 = Filename_1[Allowed]
-
-        if self.selection == 1:
-            Filename_2 = None
-        else:
-            Filename_2 = Filename_2[Allowed]
-
-        if self.database['Name'] == "NGA_W2":
-            NGA_num = NGA_num[Allowed]
-        else:
-            NGA_num = None
-
-        # Match periods (known periods and periods for error computations)
-        self.T = perKnown[(perKnown >= 0.2 * self.Tp) * (perKnown <= 1.5 * self.Tp)]
-
-        # Arrange the available spectra for error computations
-        recPer = []
-        for i in range(len(self.T)):
-            recPer.append(np.where(perKnown == self.T[i])[0][0])
-        sampleBig = SaKnown[:, recPer]
-
-        # Check for invalid input
-        if np.any(np.isnan(sampleBig)):
-            raise Warning('NaNs found in input response spectra.',
-                          'Fix the response spectra of database.')
-
-        # Check if enough records are available
-        if self.nGM > len(NGA_num):
-            raise Warning('There are not enough records which satisfy',
-                          'the given record selection criteria...',
-                          'Please use broaden your selection criteria...')
-
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
 
     def select(self, Lat=41.0582, Long=29.00951, DD=2, Soil='ZC', nGM=11, selection=1, Tp=1,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,
@@ -1644,12 +1379,21 @@ class tbdy_2018(downloader, file_manager):
             The limiting values on Vs30. 
         Rjb_lim : list, optional, the default is None.
             The limiting values on Rjb. 
-        fault_lim : int, optional, the default is None.
-            The limiting fault mechanism. 
-            0 for unspecified fault 
-            1 for strike-slip fault
-            2 for normal fault
-            3 for reverse fault
+        fault_lim : list, optional, the default is None.
+            The limiting fault mechanisms.
+            For NGA_W2 database:
+                0 for unspecified fault
+                1 for strike-slip fault
+                2 for normal fault
+                3 for reverse fault
+            For ESM_2018 database:
+                'NF' for normal faulting
+                'NS' for predominately normal with strike-slip component
+                'O' for oblique
+                'SS' for strike-slip faulting
+                'TF' for thrust faulting
+                'TS' for predominately thrust with strike-slip component
+                'U' for unknown
         opt : int, optional, the default is 1.
             If equal to 0, the record set is selected using
             method of “least squares”.
@@ -1680,23 +1424,41 @@ class tbdy_2018(downloader, file_manager):
         self.DD = DD
         self.Soil = Soil
 
+        # Exsim provides a single gm component
+        if self.database['Name'].startswith("EXSIM"):
+            print('Warning! Selection = 1 for this database')
+            self.selection = 1
+
+        # convert to array with floats
         weights = np.array(weights, dtype=float)
 
-        # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
+        # Match periods (known periods and periods for error computations)
+        perKnown = self.database['Periods']
+        self.T = perKnown[(perKnown >= 0.2 * self.Tp) * (perKnown <= 1.5 * self.Tp)]
 
         # Determine the lower bound spectra
-        target_spec = self.get_Sae(self.T, Lat, Long, DD, Soil)
-        if selection == 1:
+        target_spec = self.get_Sae_tbdy2018(self.T, Lat, Long, DD, Soil)
+        if self.selection == 1:
             target_spec = 1.0 * target_spec
-        elif selection == 2:
+        elif self.selection == 2:
             target_spec = 1.3 * target_spec
+            self.Sa_def = 'SRSS'
+
+        # Search the database and filter
+        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID_, station_code = self.search_database()
 
         # Sample size of the filtered database
         nBig = sampleBig.shape[0]
 
         # Find best matches to the target spectrum from ground-motion database
-        mse = ((np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2).mean(axis=1)
+        temp = (np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2
+        mse = temp.mean(axis=1)
+
+        if self.database['Name'].startswith('ESM'):
+            d = {ni: indi for indi, ni in enumerate(set(eq_ID_.tolist()))}
+            eq_ID = np.asarray([d[ni] for ni in eq_ID_.tolist()])
+        else:
+            eq_ID = eq_ID_.copy()
 
         recID_sorted = np.argsort(mse)
         recIDs = np.ones(self.nGM, dtype=int) * (-1)
@@ -1781,11 +1543,11 @@ class tbdy_2018(downloader, file_manager):
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    tempSig = std_numba(tempSample*tempScale) # Compute standard deviation
-                    tempMean = mean_numba(tempSample*tempScale) # Compute mean
-                    devSig = np.max(tempSig) # Compute maximum standard deviation
-                    devMean = np.max(np.abs(target_spec - tempMean)) # Compute maximum difference in mean
-                    tempDevTot = devMean*weights[0] + devSig*weights[1]
+                    tempSig = std_numba(tempSample * tempScale)  # Compute standard deviation
+                    tempMean = mean_numba(tempSample * tempScale)  # Compute mean
+                    devSig = np.max(tempSig)  # Compute maximum standard deviation
+                    devMean = np.max(np.abs(target_spec - tempMean))  # Compute maximum difference in mean
+                    tempDevTot = devMean * weights[0] + devSig * weights[1]
 
                     # Should cause improvement
                     if maxScale > tempScale > 1 / maxScale and tempDevTot <= DevTot:
@@ -1827,23 +1589,26 @@ class tbdy_2018(downloader, file_manager):
         self.rec_Rjb = Rjb[recIDs]
         self.rec_Mw = Mw[recIDs]
         self.rec_fault = fault[recIDs]
-        self.rec_eqID = eq_ID[recIDs]
+        self.rec_eqID = eq_ID_[recIDs]
         self.rec_h1 = Filename_1[recIDs]
 
-        if self.selection == 1:
-            self.rec_h2 = None
-        elif self.selection == 2:
+        if self.selection == 2:
             self.rec_h2 = Filename_2[recIDs]
 
         if self.database['Name'] == 'NGA_W2':
             self.rec_rsn = NGA_num[recIDs]
-        else:
-            self.rec_rsn = None
+
+        if self.database['Name'] == 'ESM_2018':
+            self.rec_station_code = station_code[recIDs]
 
         rec_idxs = []
         if self.selection == 1:
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            if self.database['Name'].startswith("EXSIM"):
+                SaKnown = self.database['Sa_1']
+                Filename_1 = self.database['Filename_1']
+            else:
+                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
             for rec in self.rec_h1:
                 rec_idxs.append(np.where(Filename_1 == rec)[0][0])
             rec_spec = SaKnown[rec_idxs, :]
@@ -1857,10 +1622,10 @@ class tbdy_2018(downloader, file_manager):
         # Save the results for whole spectral range
         self.rec_spec = rec_spec
         self.T = self.database['Periods']
-        if selection == 1:
-            self.target = self.get_Sae(self.T, Lat, Long, DD, Soil)
-        elif selection == 2:
-            self.target = self.get_Sae(self.T, Lat, Long, DD, Soil) * 1.3
+        if self.selection == 1:
+            self.target = self.get_Sae_tbdy2018(self.T, Lat, Long, DD, Soil)
+        elif self.selection == 2:
+            self.target = self.get_Sae_tbdy2018(self.T, Lat, Long, DD, Soil) * 1.3
 
         print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
 
@@ -1932,7 +1697,7 @@ class tbdy_2018(downloader, file_manager):
 #############################################################################################
 
 
-class ec8_part1(downloader, file_manager):
+class ec8_part1(downloader, file_manager, database_manager):
     """
     This class is used to
         1) Create target spectrum based on EC8 - Part 1
@@ -1965,7 +1730,7 @@ class ec8_part1(downloader, file_manager):
         file_manager.__init__(self)
 
         # Add the input the ground motion database to use
-        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)),'Meta_Data', database)
+        matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
         # create the output directory and add the path to self
@@ -1973,9 +1738,9 @@ class ec8_part1(downloader, file_manager):
         outdir_path = os.path.join(cwd, outdir)
         self.outdir = outdir_path
         self.create_dir(self.outdir)
-        
+
     @staticmethod
-    def get_EC804_spectrum_Sa_el(ag,xi,T,I,Type,Soil):
+    def get_Sae_EC8(ag, xi, T, I, Type, Soil):
         """
         Details:
         Get the elastic response spectrum for EN 1998-1:2004
@@ -2000,194 +1765,53 @@ class ec8_part1(downloader, file_manager):
         Sa: Spectral acceleration
     
         """
-        SpecProp={
-            'Type1' : {
-               'A': {'S':  1.00, 'Tb': 0.15, 'Tc': 0.4, 'Td': 2.0},
-               'B': {'S':  1.20, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
-               'C': {'S':  1.15, 'Tb': 0.20, 'Tc': 0.6, 'Td': 2.0},
-               'D': {'S':  1.35, 'Tb': 0.20, 'Tc': 0.8, 'Td': 2.0},
-               'E': {'S':  1.40, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
-               },
-    
-            'Type2' : {
-               'A': {'S':  1.00, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
-               'B': {'S':  1.35, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
-               'C': {'S':  1.50, 'Tb': 0.10, 'Tc': 0.25, 'Td': 1.2},
-               'D': {'S':  1.80, 'Tb': 0.10, 'Tc': 0.30, 'Td': 1.2},
-               'E': {'S':  1.60, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+        SpecProp = {
+            'Type1': {
+                'A': {'S': 1.00, 'Tb': 0.15, 'Tc': 0.4, 'Td': 2.0},
+                'B': {'S': 1.20, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
+                'C': {'S': 1.15, 'Tb': 0.20, 'Tc': 0.6, 'Td': 2.0},
+                'D': {'S': 1.35, 'Tb': 0.20, 'Tc': 0.8, 'Td': 2.0},
+                'E': {'S': 1.40, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
+            },
+
+            'Type2': {
+                'A': {'S': 1.00, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+                'B': {'S': 1.35, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
+                'C': {'S': 1.50, 'Tb': 0.10, 'Tc': 0.25, 'Td': 1.2},
+                'D': {'S': 1.80, 'Tb': 0.10, 'Tc': 0.30, 'Td': 1.2},
+                'E': {'S': 1.60, 'Tb': 0.05, 'Tc': 0.25, 'Td': 1.2},
             }
         }
-    
-        S=SpecProp[Type][Soil]['S']
-        Tb=SpecProp[Type][Soil]['Tb']
-        Tc=SpecProp[Type][Soil]['Tc']
-        Td=SpecProp[Type][Soil]['Td']
-    
-        eta=max(np.sqrt(0.10/(0.05+xi)),0.55)
 
-        ag = ag*I
+        S = SpecProp[Type][Soil]['S']
+        Tb = SpecProp[Type][Soil]['Tb']
+        Tc = SpecProp[Type][Soil]['Tc']
+        Td = SpecProp[Type][Soil]['Td']
+
+        eta = max(np.sqrt(0.10 / (0.05 + xi)), 0.55)
+
+        ag = ag * I
 
         Sa = []
         for i in range(len(T)):
             if T[i] >= 0 and T[i] <= Tb:
-                Sa_el=ag*S*(1.0+T[i]/Tb*(2.5*eta-1.0))
+                Sa_el = ag * S * (1.0 + T[i] / Tb * (2.5 * eta - 1.0))
             elif T[i] >= Tb and T[i] <= Tc:
-                Sa_el=ag*S*2.5*eta
+                Sa_el = ag * S * 2.5 * eta
             elif T[i] >= Tc and T[i] <= Td:
-                Sa_el=ag*S*2.5*eta*(Tc/T[i])
+                Sa_el = ag * S * 2.5 * eta * (Tc / T[i])
             elif T[i] >= Td:
-                Sa_el=ag*S*2.5*eta*(Tc*Td/T[i]/T[i])
+                Sa_el = ag * S * 2.5 * eta * (Tc * Td / T[i] / T[i])
             else:
                 print('Error! Cannot compute a value of Sa_el')
-            
+
             Sa.append(Sa_el)
-            
+
         return np.array(Sa)
 
-
-    def search_database(self):
-        """
-        Details
-        -------
-        Searches the record database and does the filtering.
-
-        Parameters
-        ----------
-        None.
-
-        Returns
-        -------
-        sampleBig : numpy.ndarray
-            An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.ndarray
-            An array which contains the Vs30s from filtered database.
-        magnitude : numpy.ndarray
-            An array which contains the magnitudes from filtered database.
-        Rjb : numpy.ndarray
-            An array which contains the Rjbs from filtered database.
-        mechanism : numpy.ndarray
-            An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.ndarray
-            An array which contains the filename of 1st gm component from filtered database.
-            If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.ndarray
-            An array which contains the filenameof 2nd gm component filtered database.
-            If selection is set to 1, it will be None value.
-        NGA_num : numpy.ndarray
-            If NGA_W2 is used as record database, record sequence numbers from filtered
-            database will be saved, for other databases this variable is None.
-        """
-
-        if self.database['Name'] == "NGA_W2":
-
-            if self.selection == 1:  # SaKnown = Sa_arb
-                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-                soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-                Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
-                Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
-                fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
-                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
-                eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
-
-            elif self.selection == 2:  # SaKnown = (Sa_1**2+Sa_2**2)**0.5
-                SaKnown = (self.database['Sa_1'] + self.database['Sa_2'])/2
-                soil_Vs30 = self.database['soil_Vs30']
-                Mw = self.database['magnitude']
-                Rjb = self.database['Rjb']
-                fault = self.database['mechanism']
-                Filename_1 = self.database['Filename_1']
-                Filename_2 = self.database['Filename_2']
-                NGA_num = self.database['NGA_num']
-                eq_ID = self.database['EQID']
-
-            else:
-                print('Selection can only be performed for one or two components at the moment, exiting...')
-                sys.exit()
-
-        else:
-            print('Selection can only be performed using NGA_W2 database at the moment, exiting...')
-            sys.exit()
-
-        perKnown = self.database['Periods']
-
-        # Limiting the records to be considered using the `notAllowed' variable
-        # Sa cannot be negative or zero, remove these.
-        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
-
-        if not self.Vs30_lim is None:  # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim) * np.invert(np.isnan(soil_Vs30)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if not self.Mw_lim is None:  # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim) * np.invert(np.isnan(Mw)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if not self.Rjb_lim is None:  # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim) * np.invert(np.isnan(Rjb)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        if not self.fault_lim is None:  # limiting values on mechanism exist
-            mask = (fault == self.fault_lim * np.invert(np.isnan(fault)))
-            temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
-
-        # get the unique values
-        notAllowed = (list(set(notAllowed)))
-        Allowed = [i for i in range(SaKnown.shape[0])]
-        for i in notAllowed:
-            Allowed.remove(i)
-
-        # Use only allowed records
-        SaKnown = SaKnown[Allowed, :]
-        soil_Vs30 = soil_Vs30[Allowed]
-        Mw = Mw[Allowed]
-        Rjb = Rjb[Allowed]
-        fault = fault[Allowed]
-        eq_ID = eq_ID[Allowed]
-        Filename_1 = Filename_1[Allowed]
-
-        if self.selection == 1:
-            Filename_2 = None
-        else:
-            Filename_2 = Filename_2[Allowed]
-
-        if self.database['Name'] == "NGA_W2":
-            NGA_num = NGA_num[Allowed]
-        else:
-            NGA_num = None
-
-        # Match periods (known periods and periods for error computations)
-        # Add Sa(T=0) or PGA, approximated as Sa(T=0.01)
-        self.T = np.append(perKnown[0],perKnown[(perKnown >= 0.2 * self.Tp) * (perKnown <= 2.0 * self.Tp)])
-
-        # Arrange the available spectra for error computations
-        recPer = []
-        for i in range(len(self.T)):
-            recPer.append(np.where(perKnown == self.T[i])[0][0])
-        sampleBig = SaKnown[:, recPer]
-
-        # Check for invalid input
-        if np.any(np.isnan(sampleBig)):
-            print('NaNs found in input response spectra.',
-                  'Fix the response spectra of database.')
-            sys.exit()
-
-        # Check if enough records are available
-        if self.nGM > len(NGA_num):
-            print('There are not enough records which satisfy',
-                  'the given record selection criteria...',
-                  'Please use broaden your selection criteria...')
-            sys.exit()
-
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num
-
-    def select(self, ag=0.2,xi=0.05, I=1.0, Type='Type1',Soil='A', nGM=3, selection=1, Tp=1,
-               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, 
-               maxScale=2, weights = [1,1]):
+    def select(self, ag=0.2, xi=0.05, I=1.0, Type='Type1', Soil='A', nGM=3, selection=1, Tp=1,
+               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1,
+               maxScale=2, weights=[1, 1]):
         """
         Details
         -------
@@ -2195,8 +1819,8 @@ class ec8_part1(downloader, file_manager):
         in accordance with EC8 - PART 1
         
         Mean of selected records should remain above the lower bound target spectra.
-            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * SaTarget(0.2Tp-1.5Tp) 
-            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 0.9 * SaTarget(0.2Tp-1.5Tp) 
+            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
+            For Selection = 2: Sa_rec = (Sa_1+Sa_2)*0.5 - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
             Always Sa(T=0) > Sa(T=0)_target
             
         Parameters
@@ -2223,12 +1847,21 @@ class ec8_part1(downloader, file_manager):
             The limiting values on Vs30. 
         Rjb_lim : list, optional, the default is None.
             The limiting values on Rjb. 
-        fault_lim : int, optional, the default is None.
-            The limiting fault mechanism. 
-            0 for unspecified fault 
-            1 for strike-slip fault
-            2 for normal fault
-            3 for reverse fault
+        fault_lim : list, optional, the default is None.
+            The limiting fault mechanisms.
+            For NGA_W2 database:
+                0 for unspecified fault
+                1 for strike-slip fault
+                2 for normal fault
+                3 for reverse fault
+            For ESM_2018 database:
+                'NF' for normal faulting
+                'NS' for predominately normal with strike-slip component
+                'O' for oblique
+                'SS' for strike-slip faulting
+                'TF' for thrust faulting
+                'TS' for predominately thrust with strike-slip component
+                'U' for unknown
         opt : int, optional, the default is 1.
             If equal to 0, the record set is selected using
             method of “least squares”.
@@ -2259,13 +1892,27 @@ class ec8_part1(downloader, file_manager):
         self.Type = Type
         self.Soil = Soil
 
+        # Exsim provides a single gm component
+        if self.database['Name'].startswith("EXSIM"):
+            print('Warning! Selection = 1 for this database')
+            self.selection = 1
+
+        # convert to array with floats
         weights = np.array(weights, dtype=float)
-        # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, eq_ID, Filename_1, Filename_2, NGA_num = self.search_database()
+
+        # Match periods (known periods and periods for error computations)
+        # Add Sa(T=0) or PGA, approximated as Sa(T=0.01)
+        self.T = np.append(self.database['Periods'][0], self.database['Periods'][(self.database['Periods'] >= 0.2 * self.Tp) * (self.database['Periods'] <= 2.0 * self.Tp)])
 
         # Determine the lower bound spectra
-        target_spec = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,I,Type,Soil)
-        target_spec[1:] = 0.9 * target_spec[1:] # lower bound spectra except PGA
+        target_spec = self.get_Sae_EC8(ag, xi, self.T, I, Type, Soil)
+        target_spec[1:] = 0.9 * target_spec[1:]  # lower bound spectra except PGA
+
+        if self.selection == 2:
+            self.Sa_def = 'ArithmeticMean'
+
+        # Search the database and filter
+        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code = self.search_database()
 
         # Sample size of the filtered database
         nBig = sampleBig.shape[0]
@@ -2317,7 +1964,7 @@ class ec8_part1(downloader, file_manager):
                     res.append(a[:, i].mean())
 
                 return np.array(res)
-            
+
             def std_numba(a):
 
                 res = []
@@ -2327,7 +1974,7 @@ class ec8_part1(downloader, file_manager):
                 return np.array(res)
 
             for j in range(nBig):
-                
+
                 # record should not be repeated
                 if not np.any(recIDs == j):
                     # Add to the sample the scaled spectra
@@ -2335,35 +1982,35 @@ class ec8_part1(downloader, file_manager):
                     temp[:, :] = sampleBig[j, :]  # get the trial spectra
                     tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
                     tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
-                    tempSig = std_numba(tempSample*tempScale) # Compute standard deviation
-                    tempMean = mean_numba(tempSample*tempScale) # Compute mean
-                    devSig = np.max(tempSig) # Compute maximum standard deviation
-                    devMean = np.max(np.abs(target_spec - tempMean)) # Compute maximum difference in mean
-                    tempDevTot = devMean*weights[0] + devSig*weights[1]
-                    
+                    tempSig = std_numba(tempSample * tempScale)  # Compute standard deviation
+                    tempMean = mean_numba(tempSample * tempScale)  # Compute mean
+                    devSig = np.max(tempSig)  # Compute maximum standard deviation
+                    devMean = np.max(np.abs(target_spec - tempMean))  # Compute maximum difference in mean
+                    tempDevTot = devMean * weights[0] + devSig * weights[1]
+
                     # Should cause improvement
-                    if tempScale<maxScale and tempScale>1/maxScale and tempDevTot <= DevTot:
+                    if tempScale < maxScale and tempScale > 1 / maxScale and tempDevTot <= DevTot:
                         minID = j
                         scaleFac = tempScale
                         DevTot = tempDevTot
 
             return minID, scaleFac
-        
+
         # Apply Greedy subset modification procedure to improve selection
         # Use njit to speed up the optimization algorithm
         if opt != 0:
             for i in range(self.nGM):  # Loop for nGM
                 minID = recIDs[i]
-                devSig = np.max(np.std(sampleSmall*scaleFac,axis=0)) # Compute standard deviation
-                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall,axis=0))*scaleFac)
-                DevTot = devMean*weights[0] + devSig*weights[1]
+                devSig = np.max(np.std(sampleSmall * scaleFac, axis=0))  # Compute standard deviation
+                devMean = np.max(np.abs(target_spec - np.mean(sampleSmall, axis=0)) * scaleFac)
+                DevTot = devMean * weights[0] + devSig * weights[1]
                 sampleSmall = np.delete(sampleSmall, i, 0)
                 recIDs = np.delete(recIDs, i)
-                
+
                 # Try to add a new spectra to the subset list
-                if opt == 1: # try to optimize scaling factor only (closest to 1)
+                if opt == 1:  # try to optimize scaling factor only (closest to 1)
                     minID, scaleFac = opt_method1(sampleSmall, scaleFac, target_spec, recIDs, minID)
-                if opt == 2: # try to optimize the error (max(mean-target) + max(std))
+                if opt == 2:  # try to optimize the error (max(mean-target) + max(std))
                     minID, scaleFac = opt_method2(sampleSmall, scaleFac, target_spec, recIDs, minID, DevTot)
 
                 # Add new element in the right slot
@@ -2382,24 +2029,27 @@ class ec8_part1(downloader, file_manager):
         self.rec_eqID = eq_ID[recIDs]
         self.rec_h1 = Filename_1[recIDs]
 
-        if self.selection == 1:
-            self.rec_h2 = None
-        elif self.selection == 2:
+        if self.selection == 2:
             self.rec_h2 = Filename_2[recIDs]
 
         if self.database['Name'] == 'NGA_W2':
             self.rec_rsn = NGA_num[recIDs]
-        else:
-            self.rec_rsn = None
+
+        if self.database['Name'] == 'ESM_2018':
+            self.rec_station_code = station_code[recIDs]
 
         rec_idxs = []
         if self.selection == 1:
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            if self.database['Name'].startswith("EXSIM"):
+                SaKnown = self.database['Sa_1']
+                Filename_1 = self.database['Filename_1']
+            else:
+                SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+                Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
             for rec in self.rec_h1:
                 rec_idxs.append(np.where(Filename_1 == rec)[0][0])
             self.rec_spec = SaKnown[rec_idxs, :]
-            
+
         elif self.selection == 2:
             for rec in self.rec_h1:
                 rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
@@ -2408,8 +2058,8 @@ class ec8_part1(downloader, file_manager):
 
         # Save the results for whole spectral range
         self.T = self.database['Periods']
-        self.design_spectrum = self.get_EC804_spectrum_Sa_el(ag,xi,self.T,I,Type,Soil)
-            
+        self.design_spectrum = self.get_Sae_EC8(ag, xi, self.T, I, Type, Soil)
+
         print('Ground motion selection is finished scaling factor is %.3f' % self.rec_scale)
 
     def plot(self, save=0, show=1):
@@ -2462,9 +2112,10 @@ class ec8_part1(downloader, file_manager):
             for i in range(self.rec_spec1.shape[0]):
                 ax.plot(self.T, self.rec_spec1[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
                 ax.plot(self.T, self.rec_spec2[i, :] * self.rec_scale, color='gray', lw=1, label='Selected')
-            ax.plot(self.T, np.mean((self.rec_spec1+self.rec_spec2)/2, axis=0) * self.rec_scale, color='black', lw=2, label='Selected Mean')
+            ax.plot(self.T, np.mean((self.rec_spec1 + self.rec_spec2) / 2, axis=0) * self.rec_scale, color='black',
+                    lw=2, label='Selected Mean')
         ax.plot(self.T, self.design_spectrum, color='blue', lw=2, label='Design Spectrum')
-        ax.plot(self.T, 0.9*self.design_spectrum, color='blue', lw=2, ls='--', label='0.9 x Design Spectrum')
+        ax.plot(self.T, 0.9 * self.design_spectrum, color='blue', lw=2, ls='--', label='0.9 x Design Spectrum')
         ax.axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
         ax.set_xlabel('Period [sec]')
         ax.set_ylabel('Spectral Acceleration [g]')

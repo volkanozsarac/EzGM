@@ -21,7 +21,7 @@ import EzGM
 ```
 ***
 
-- *EzGM.Selection.conditional_spectrum* is used to perform record selection based on *CS(AvgSa)* and *CS(Sa)* for the given metadata. The tool makes use of openquake.hazardlib, thus any available gmpe available can directly be used.
+- **EzGM.Selection.conditional_spectrum** is used to perform record selection based on *CS(AvgSa)* and *CS(Sa)* for the given metadata. The tool makes use of openquake.hazardlib, thus any available gmpe available can directly be used.
 See https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models for available ground motion prediction equations.
 
 Example 1
@@ -33,21 +33,21 @@ Example 2
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample2.ipynb)
 ***
 
-- EzGM.Selection.tbdy_2018 is used to perform TBDY 2018 (Turkish Building Code) based record selection
+- **EzGM.Selection.tbdy_2018** is used to perform TBDY 2018 (Turkish Building Code) based record selection
 
 Example 3
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample3.ipynb)
 ***
 
-- EzGM.Selection.ec8_part1 is used to perform Eurocode 8 part 1 based record selection
+- **EzGM.Selection.ec8_part1** is used to perform Eurocode 8 part 1 based record selection
 
 Example 4
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample4.ipynb)
 ***
 
-- EzGM.OQProc can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple-stripe analysis (MSA)
+- **EzGM.OQProc** can be used along with EzGM.Selection.conditional_spectrum to perform conditional spectrum (CS) Based Record Selection for multiple-stripe analysis (MSA)
 upon carrying out probabilistic seismic hazard analysis (PSHA) via OpenQuake.Engine.
 
 Example 5
@@ -55,7 +55,7 @@ Example 5
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/master?filepath=Examples%2Fbinder%2FExample5.ipynb)
 ***
 
-- EzGM.GMProc can be used to process ground motion records (filtering, baseline corrections, IM calculations).
+- **EzGM.GMProc** can be used to process ground motion records (filtering, baseline corrections, IM calculations).
 
 Example 6
 

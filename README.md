@@ -22,7 +22,7 @@ import EzGM
 ***
 
 - **EzGM.Selection.conditional_spectrum** is used to perform record selection based on *CS(AvgSa)* and *CS(Sa)* for the given metadata. The tool makes use of openquake.hazardlib, thus any available gmpe available can directly be used.
-See https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models for available ground motion prediction equations.
+For available ground motion prediction equations, see https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models.
 
 Example 1
 

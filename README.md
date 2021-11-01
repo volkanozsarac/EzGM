@@ -63,6 +63,7 @@ Example 6
 ***
 
 ## Note
+- For compatibility python 3.8 is recommended in Windows machines.
 - EzGM downloads google-chrome or firefox webdriver while executing ngaw2_download method. Therefore, user-specified browser ('chrome' or 'firefox') must be readily available.
 - Installation of Openquake package in Linux and MACOS is straightforward. In case of windows the package may not be installed correctly if anaconda is used, in other words, geos_c.dll or similar .dll files could be mislocated). To fix this simply, on conda prompt window write:
 ```

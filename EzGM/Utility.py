@@ -635,7 +635,7 @@ class file_manager:
                     gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
                     if self.selection == 2:  # H2 component
                         _, _, _, _, inp_acc2 = self.ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file1 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
+                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
                     dts[i], _, _, _, inp_acc1 = self.ReadESM(inFilename=self.rec_h1[i], content=contents1[i])

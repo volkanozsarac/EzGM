@@ -4,10 +4,9 @@
 
 from EzGM.Selection import conditional_spectrum
 from time import time
-from EzGM.Utility import RunTime
 import numpy as np
 
-startTime = time()
+start_time = time()
 # 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
 cs = conditional_spectrum(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
@@ -38,4 +37,4 @@ cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_passwo
 cs.write(obj=1, recs=1, recs_f='')
 
 # Calculate the total time passed
-RunTime(startTime)
+cs.run_time(start_time)

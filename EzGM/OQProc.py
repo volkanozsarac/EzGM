@@ -376,7 +376,7 @@ def disagg_MReps(Mbin, dbin, poe_disagg, path_disagg_results, output_dir='Post_O
             try:  # for OQ version <3.11
                 inv_t = float(ff[9].replace(" investigation_time=", ""))
                 poe.append(float(ff[12].replace(" poe=", "").replace("'", "")))
-            except:  # TODO-1: verify this for OQ version 3.11
+            except:
                 inv_t = float(ff[6].replace(" investigation_time=", ""))
                 poe.append(float(ff[-1].replace(" poe=", "").replace("\"", "").replace("\n", "")))
             lon.append(float(ff[10].replace(" lon=", "")))

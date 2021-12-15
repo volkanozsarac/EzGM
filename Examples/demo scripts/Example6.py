@@ -1,19 +1,19 @@
 from EzGM import GMProc
-from EzGM.Utility import file_manager, RunTime
+from EzGM.Selection import utility
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 
 # Acquire the run start time
-startTime = time()
+start_time = time()
 
 # Read records
 parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 gm_path1 = os.path.join(parent_path, 'input files', 'RSN1158_KOCAELI_DZC180.AT2')
 gm_path2 = os.path.join(parent_path, 'input files', 'RSN1158_KOCAELI_DZC270.AT2')
-dt, npts, desc, t, Ag1 = file_manager.ReadNGA(inFilename= gm_path1, content=None, outFilename=None)
-dt, npts, desc, t, Ag2 = file_manager.ReadNGA(inFilename= gm_path2, content=None, outFilename=None)
+dt, npts, desc, t, Ag1 = utility.ReadNGA(inFilename= gm_path1, content=None, outFilename=None)
+dt, npts, desc, t, Ag2 = utility.ReadNGA(inFilename= gm_path2, content=None, outFilename=None)
 
 # Apply baseline correction
 Ag_corrected = GMProc.baseline_correction(Ag1, dt, polynomial_type='Linear')
@@ -40,6 +40,7 @@ plt.legend()
 plt.grid(True)
 plt.xlabel('Time [sec]')
 plt.ylabel('Acceleration [g]')
+plt.show()
 
 plt.figure()
 plt.plot(param1['Periods'], param1['PSa'], label='Sa1')
@@ -51,6 +52,7 @@ plt.legend()
 plt.grid(True)
 plt.xlabel('Period [sec]')
 plt.ylabel('Sa [g]')
+plt.show()
 
 # Calculate the total time passed
-RunTime(startTime)
+utility.run_time(start_time)

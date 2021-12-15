@@ -5,13 +5,12 @@
 
 from EzGM.Selection import conditional_spectrum
 from EzGM import OQProc
-from EzGM.Utility import file_manager, RunTime
 from time import time
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-startTime = time()
+start_time = time()
 
 # %% Hazard Analysis via OpenQuake
 # Set path to OpenQuake model .ini file path
@@ -43,10 +42,10 @@ with open(os.path.join(oq_model,oq_ini)) as f:
 
 
 # Create the export directory for analysis results
-file_manager.create_dir(results_dir)
+conditional_spectrum.create_dir(results_dir)
 
 # Create the directory for processed results
-file_manager.create_dir(post_dir)
+conditional_spectrum.create_dir(post_dir)
 
 # Run the analysis via system command
 cwd = os.getcwd() # Current working directory
@@ -104,4 +103,4 @@ for im in ims:  # for each im in the im list
         cs.write(obj=1, recs=0, recs_f='')
 
 # Calculate the total time passed
-RunTime(startTime)
+cs.run_time(start_time)

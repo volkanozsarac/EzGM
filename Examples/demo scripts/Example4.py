@@ -4,9 +4,8 @@
 
 from EzGM.Selection import ec8_part1
 from time import time
-from EzGM.Utility import RunTime
 
-startTime = time()
+start_time = time()
 # 1.) Initialize the tbdy_2018 object for record selection
 spec = ec8_part1(database='NGA_W2', outdir='Outputs')
 
@@ -28,4 +27,4 @@ spec.ngaw2_download(username = 'example_username@email.com', pwd = 'example_pass
 spec.write(obj=1, recs=1, recs_f='')
 
 # Calculate the total time passed
-RunTime(startTime)
+spec.run_time(start_time)

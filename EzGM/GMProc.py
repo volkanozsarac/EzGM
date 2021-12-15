@@ -8,6 +8,7 @@ from scipy.integrate import cumtrapz
 from scipy.fft import fft, fftfreq, fftshift
 from scipy.signal import butter, filtfilt
 
+
 def baseline_correction(values, dt, polynomial_type):
     """
     Details
@@ -152,7 +153,7 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), **kwargs):
     return values_filtered
 
 
-def sdof_ltha(Ag, dt, T, xi, m = 1):
+def sdof_ltha(Ag, dt, T, xi, m=1):
     """
     Details
     -------
@@ -202,7 +203,7 @@ def sdof_ltha(Ag, dt, T, xi, m = 1):
     if isinstance(T, (int, float)):
         T = np.array([T])
     if isinstance(T, list):
-         T = np.array(T)
+        T = np.array(T)
     elif isinstance(T, numpy.ndarray):
         T = T
 
@@ -293,19 +294,19 @@ def get_parameters(Ag, dt, T, xi):
     -------
     param: dictionary
         Contains the following intensity measures:
-        PSa(T): numpy.array       
+        PSa: numpy.array
             Elastic pseudo-acceleration response spectrum [m/s2].
-        PSv(T): numpy.array   
+        PSv: numpy.array
             Elastic pseudo-velocity response spectrum [m/s].
-        Sd(T): numpy.array 
+        Sd: numpy.array
             Elastic displacement response spectrum  - relative displacement [m].
-        Sv(T): numpy.array 
+        Sv: numpy.array
             Elastic velocity response spectrum - relative velocity at [m/s].
-        Sa(T): numpy.array 
-            Elastic accleration response spectrum - total accelaration [m/s2].
-        Ei_r(T): numpy.array 
+        Sa: numpy.array
+            Elastic accleration response spectrum - total acceleration [m/s2].
+        Ei_r: numpy.array
             Relative input energy spectrum for elastic system [N.m].
-        Ei_a(T): numpy.array 
+        Ei_a: numpy.array
             Absolute input energy spectrum for elastic system [N.m].
         Periods: numpy.array 
             Periods where spectral values are calculated [sec].
@@ -325,7 +326,7 @@ def get_parameters(Ag, dt, T, xi):
             Maximum value of arias intensity ratio [m/s].
         HI: float
             Housner intensity ratio [m].
-            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
         CAV: float
             Cumulative absolute velocity [m/s]        
         t_5_75: list
@@ -338,16 +339,14 @@ def get_parameters(Ag, dt, T, xi):
             Significant duration between 5% and 95% of energy release (from Aint).
         t_bracketed: list 
             Bracketed duration time vector (acc>0.05g).
-            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+            Not applicable, in case of low intensity records, thus, equal to '-1.
         D_bracketed: float
             Bracketed duration (acc>0.05g)
-            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
         t_uniform: list 
             Uniform duration time vector (acc>0.05g)
-            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
+            Not applicable, in case of low intensity records, thus, equal to -1.
         D_uniform: float 
             Uniform duration (acc>0.05g)
-            Not applicable, in case of low intensity records, thus, equal to 'N.A'.
         Tm: float
             Mean period.
         Tp: float             
@@ -363,19 +362,19 @@ def get_parameters(Ag, dt, T, xi):
             End time might which is used herein, is not always a good choice.
         ASI: float   
             Acceleration spectrum intensity [m/s].
-            Requires T to be defined between (0.1-0.5 sec), otherwise not applicable, and equal to 'N.A'.
+            Requires T to be defined between (0.1-0.5 sec), otherwise not applicable, and equal to -1.
         MASI: float [m]
             Modified acceleration spectrum intensity.
-            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
         VSI: float [m]
             Velocity spectrum intensity.
-            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to 'N.A'.
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
     """
 
     if isinstance(T, (int, float)):
         T = np.array([T])
     if isinstance(T, list):
-         T = np.array(T)
+        T = np.array(T)
     elif isinstance(T, numpy.ndarray):
         T = T
 
@@ -427,7 +426,7 @@ def get_parameters(Ag, dt, T, xi):
         index2 = np.where(T == 2.5)[0][0]
         param['HI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
     except:
-        param['HI'] = 'N.A.'
+        param['HI'] = -1
 
     # SIGNIFICANT DURATION (5%-75% Ia)
     mask = (Aint >= 0.05 * Aint[-1]) * (Aint <= 0.75 * Aint[-1])
@@ -455,8 +454,8 @@ def get_parameters(Ag, dt, T, xi):
         param['t_bracketed'] = [t1, t2]
         param['D_bracketed'] = round(t2 - t1, 3)
     except:  # in case of ground motions with low intensities
-        param['t_bracketed'] = 'N.A.'
-        param['D_bracketed'] = 'N.A.'
+        param['t_bracketed'] = -1
+        param['D_bracketed'] = 0
 
     # UNIFORM DURATION (0.05g)
     try:
@@ -468,8 +467,8 @@ def get_parameters(Ag, dt, T, xi):
         temp = np.round(np.diff(t_treshold), 8)
         param['D_uniform'] = round(np.sum(temp[temp == dt]), 3)
     except:  # in case of ground motions with low intensities
-        param['t_uniform'] = 'N.A.'
-        param['D_uniform'] = 'N.A.'
+        param['t_uniform'] = -1
+        param['D_uniform'] = 0
 
     # CUMULATVE ABSOLUTE VELOCITY
     param['CAV'] = np.trapz(np.abs(Ag), t)
@@ -486,13 +485,13 @@ def get_parameters(Ag, dt, T, xi):
         index3 = np.where(T == 0.5)[0][0]
         param['ASI'] = np.trapz(param['Sa'][index1:index3], T[index1:index3])
     except:
-        param['ASI'] = 'N.A.'
+        param['ASI'] = -1
     try:
         param['MASI'] = np.trapz(param['Sa'][index1:index2], T[index1:index2])
         param['VSI'] = np.trapz(param['Sv'][index1:index2], T[index1:index2])
     except:
-        param['MASI'] = 'N.A.'
-        param['VSI'] = 'N.A.'
+        param['MASI'] = -1
+        param['VSI'] = -1
 
     # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
     # Number of sample points, add zeropads
@@ -574,7 +573,7 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     if isinstance(T, (int, float)):
         T = np.array([T])
     if isinstance(T, list):
-         T = np.array(T)
+        T = np.array(T)
     elif isinstance(T, numpy.ndarray):
         T = T
 
@@ -602,9 +601,9 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     Rot_Disp = np.zeros((180, n2))
     for theta in range(0, 180, 1):
         Rot_Disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
-   
+
     Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
-    if isinstance(xx,list):
+    if isinstance(xx, list):
         Sa_RotDxx = [np.percentile(Rot_Acc, value, axis=0) for value in xx]
     else:
         Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)

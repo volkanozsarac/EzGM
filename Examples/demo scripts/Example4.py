@@ -2,7 +2,7 @@
 # EC8 Part 1 Based Record Selection #
 #####################################
 
-from EzGM.Selection import ec8_part1
+from EzGM.select_gm import ec8_part1
 from time import time
 
 start_time = time()

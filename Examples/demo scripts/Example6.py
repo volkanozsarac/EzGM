@@ -1,5 +1,5 @@
-from EzGM import GMProc
-from EzGM.Selection import utility
+from EzGM import process_gm
+from EzGM.select_gm import utility
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,20 +16,20 @@ dt, npts, desc, t, Ag1 = utility.ReadNGA(inFilename= gm_path1, content=None, out
 dt, npts, desc, t, Ag2 = utility.ReadNGA(inFilename= gm_path2, content=None, outFilename=None)
 
 # Apply baseline correction
-Ag_corrected = GMProc.baseline_correction(Ag1, dt, polynomial_type='Linear')
+Ag_corrected = process_gm.baseline_correction(Ag1, dt, polynomial_type='Linear')
 
 # Apply band-pass filtering
-Ag_filtered = GMProc.butterworth_filter(Ag1, dt, cut_off=(0.1, 25))
+Ag_filtered = process_gm.butterworth_filter(Ag1, dt, cut_off=(0.1, 25))
 
 # Linear elastic analysis of a single degree of freedom system
-u, v, ac, ac_tot = GMProc.sdof_ltha(Ag1, dt, T = 1.0, xi = 0.05, m = 1)
+u, v, ac, ac_tot = process_gm.sdof_ltha(Ag1, dt, T = 1.0, xi = 0.05, m = 1)
 
 # Calculate ground motion parameters
-param1 = GMProc.get_parameters(Ag1, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
-param2 = GMProc.get_parameters(Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
+param1 = process_gm.get_parameters(Ag1, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
+param2 = process_gm.get_parameters(Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05)
 
 # Obtain RotDxx Spectrum
-Periods, Sa_RotDxx = GMProc.RotDxx_spectrum(Ag1, Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05, xx = [0, 50, 100])
+Periods, Sa_RotDxx = process_gm.RotDxx_spectrum(Ag1, Ag2, dt, T = np.arange(0,4.05,0.05), xi = 0.05, xx = [0, 50, 100])
 
 # Since the NGAW2 records are already processed we will not see any difference.
 plt.figure()

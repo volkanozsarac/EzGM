@@ -3,8 +3,8 @@
 # Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
 ##################################################################################
 
-from EzGM.Selection import conditional_spectrum
-from EzGM import OQProc
+from EzGM.select_gm import conditional_spectrum
+from EzGM import post_oq
 from time import time
 import os
 import numpy as np
@@ -54,13 +54,13 @@ os.system(oq + ' engine --run ' + oq_ini + ' --exports csv')
 os.chdir(cwd) # go back to the previous working directory
 
 # Extract and plot hazard curves in a reasonable format
-OQProc.hazard(poes, results_dir, post_dir)
+post_oq.hazard(poes, results_dir, post_dir)
 
 # Extract and plot disaggregation results by M and R
-OQProc.disagg_MR(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
+post_oq.disagg_MR(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
 
 # Extract and plot disaggregation results by M, R and epsilon
-OQProc.disagg_MReps(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
+post_oq.disagg_MReps(mag_bin_width, distance_bin_width, poes, results_dir, post_dir, n_rows=3)
 
 # %% Record Selection
 ims = []
@@ -79,7 +79,7 @@ for im in ims:  # for each im in the im list
 
     for i in range(len(poes)):
         # 2.) Create target spectrum
-        cs.create(site_param={'vs30': reference_vs30_value}, rup_param={'rake': 0.0, 'mag': [mean_mags[i]]},
+        cs.create(site_param={'vs30': reference_vs30_value}, rup_param={'rake': [0.0], 'mag': [mean_mags[i]]},
                   dist_param={'rjb': [mean_dists[i]]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
                   im_Tstar=imls[i], epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram',
                   outdir=os.path.join('EzGM_Outputs_' + im, 'POE-' + str(poes[i]) + '-in-50-years'))
@@ -95,7 +95,7 @@ for im in ims:  # for each im in the im list
 
         # 4.) If database == 'NGA_W2' you can first download the records via nga_download method
         # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method
-        # cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456', sleeptime = 3, browser = 'chrome')
+        cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456', sleeptime = 3, browser = 'chrome')
 
         # 5.) If you have records already inside recs_f\database.zip\database or
         # downloaded records for database = NGA_W2 case, write whatever you want,

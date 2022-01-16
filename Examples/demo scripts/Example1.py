@@ -1,7 +1,7 @@
 #####################################################################
 # Conditional Spectrum (CS) Based Record Selection - IM = Sa(Tstar) #
 #####################################################################
-from EzGM.Selection import conditional_spectrum
+from EzGM.select_gm import conditional_spectrum
 from time import time
 
 # Using NGA_W2 Database
@@ -12,7 +12,7 @@ start_time = time()
 cs = conditional_spectrum(Tstar=1.0, gmpe='AkkarEtAlRjb2014', database='NGA_W2', pInfo=1)
 
 # 2.) Create target spectrum
-cs.create(site_param={'vs30': 500}, rup_param={'rake': 0.0, 'mag': [7.5]},
+cs.create(site_param={'vs30': 500}, rup_param={'rake': [0.0], 'mag': [7.5]},
           dist_param={'rjb': [10]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
           im_Tstar=1.5, epsilon=None, cond=1, useVar=1, corr_func='akkar',
           outdir='Outputs_NGA')
@@ -48,7 +48,7 @@ start_time = time()
 cs = conditional_spectrum(Tstar=0.5, gmpe='AkkarEtAlRjb2014', database='ESM_2018', pInfo=1)
 
 # 2.) Create target spectrum
-cs.create(site_param={'vs30': 500}, rup_param={'rake': 0.0, 'mag': [7.5]},
+cs.create(site_param={'vs30': 500}, rup_param={'rake': [0.0], 'mag': [7.5]},
           dist_param={'rjb': [10]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
           im_Tstar=1.5, epsilon=None, cond=1, useVar=1, corr_func='akkar',
           outdir='Outputs_ESM')

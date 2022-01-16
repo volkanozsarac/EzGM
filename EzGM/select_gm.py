@@ -58,6 +58,65 @@ class utility:
         print("Run time: %d hours: %d minutes: %.2f seconds" % (time_hours, time_minutes, time_seconds))
 
     #############################################################################################
+    ################# Methods for OpenQuake Hazard Library Manipulation #########################
+    #############################################################################################
+
+    @staticmethod
+    def get_available_gmpes():
+        """
+        Details
+        -------
+        Retrieves available ground motion prediction equations (gmpe) in OpenQuake.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        gmpes : dict
+            Dictionary which contains available gmpes in openquake.
+        """
+
+        gmpes = {}
+        for name, gmpe in gsim.get_available_gsims().items():
+            gmpes[name] = gmpe
+
+        return gmpes
+
+    @staticmethod
+    def check_gmpe_attributes(gmpe):
+        """
+        Details
+        -------
+        Checks the attributes for ke.
+
+        Parameters
+        ----------
+        gmpe : str
+            gmpe name for which attributes going to be checked
+
+        Returns
+        -------
+        None.
+        """
+
+        bgmpe = gsim.get_available_gsims()[gmpe]()
+        print('GMPE name: %s' % gmpe)
+        print('Supported tectonic region: %s' % bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
+        print('Supported standard deviation: %s' % ', '.join([std for std in bgmpe.DEFINED_FOR_STANDARD_DEVIATION_TYPES]))
+        print('Supported intensity measure: %s' % ', '.join([imt.__name__ for imt in bgmpe.DEFINED_FOR_INTENSITY_MEASURE_TYPES]))
+        print('Supported intensity measure component: %s' % bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
+        try:
+            sa_keys = list(bgmpe.COEFFS.sa_coeffs.keys())
+            print('Supported SA period range: %s' % ' - '.join([str(sa_keys[0].period), str(sa_keys[-1].period)]))
+        except:
+            pass
+        print('Required distance parameters: %s' % ', '.join([dist for dist in bgmpe.REQUIRES_DISTANCES]))
+        print('Required rupture parameters: %s' % ', '.join([rup for rup in bgmpe.REQUIRES_RUPTURE_PARAMETERS]))
+        print('Required site parameters: %s'  % ', '.join([site for site in bgmpe.REQUIRES_SITES_PARAMETERS]))
+
+    #############################################################################################
     ######################## Methods to manipulate used databases ###############################
     #############################################################################################
 
@@ -907,32 +966,42 @@ class utility:
                     gmr_file1 = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
 
                 elif self.database['Name'].startswith('NGA'):  # NGA
-                    dts[i], _, _, _, inp_acc1 = self.ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
+                    dts[i], npts1, _, _, inp_acc1 = self.ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
                     gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
                     if self.selection == 2:  # H2 component
-                        _, _, _, _, inp_acc2 = self.ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
+                        _, npts2, _, _, inp_acc2 = self.ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
                         gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
-                    dts[i], _, _, _, inp_acc1 = self.ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
+                    dts[i], npts1, _, _, inp_acc1 = self.ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
                     gmr_file1 = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
                     if self.selection == 2:  # H2 component
-                        _, _, _, _, inp_acc2 = self.ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
+                        _, npts2, _, _, inp_acc2 = self.ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
                         gmr_file2 = self.rec_h2[i][:-4] + '_SF_' + "{:.3f}".format(SF) + '.txt'
 
-                # Write the record files - H1 component
-                path = os.path.join(self.outdir, gmr_file1)
-                acc_Sc = SF * inp_acc1
-                np.savetxt(path, acc_Sc, fmt='%1.4e')
-                h1s.write(gmr_file1 + '\n')
+                # Write the record files
+                if self.selection == 2: 
+                    # ensure that two acceleration signals have the same length, if not add zeros.
+                    npts = max(npts1,npts2)
+                    temp1 = np.zeros(npts)
+                    temp1[:npts1] = inp_acc1
+                    inp_acc1=temp1.copy()
+                    temp2 = np.zeros(npts)
+                    temp2[:npts1] = inp_acc2
+                    inp_acc2=temp2.copy()
 
-                # Write the record files - H2 component
-                if self.selection == 2:
+                    # Accelerations for H2 component
                     path = os.path.join(self.outdir, gmr_file2)
                     acc_Sc = SF * inp_acc2
                     np.savetxt(path, acc_Sc, fmt='%1.4e')
                     h2s.write(gmr_file2 + '\n')
 
+                # Accelerations for H1 component
+                path = os.path.join(self.outdir, gmr_file1)
+                acc_Sc = SF * inp_acc1
+                np.savetxt(path, acc_Sc, fmt='%1.4e')
+                h1s.write(gmr_file1 + '\n')
+            # Time steps
             np.savetxt(path_dts, dts, fmt='%.5f')
             h1s.close()
             if self.selection == 2:
@@ -946,7 +1015,6 @@ class utility:
             del obj['outdir']
 
             if 'bgmpe' in obj:
-                obj['gmpe'] = str(obj['bgmpe']).replace('[', '', ).replace(']', '')
                 del obj['bgmpe']
 
             with open(path_obj, 'wb') as file:
@@ -1415,12 +1483,6 @@ class conditional_spectrum(utility):
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
 
-        # initialize the objects being used
-        # downloader.__init__(self)
-        # file_manager.__init__(self)
-        # database_manager.__init__(self)
-        # plotter.__init__(self)
-
         # check if AvgSa or Sa is used as IM, 
         # then in case of Sa(T*) add T* and Sa(T*) if not present
         if not self.Tstar[0] in self.database['Periods'] and len(self.Tstar) == 1:
@@ -1448,17 +1510,13 @@ class conditional_spectrum(utility):
 
         try:  # this is smth like self.bgmpe = gsim.boore_2014.BooreEtAl2014()
             self.bgmpe = gsim.get_available_gsims()[gmpe]()
+            self.gmpe = gmpe
 
         except:
             raise KeyError('Not a valid gmpe')
 
         if pInfo == 1:  # print the selected gmpe info
-            print('For the selected gmpe;')
-            print('The mandatory input distance parameters are %s' % list(self.bgmpe.REQUIRES_DISTANCES))
-            print('The mandatory input rupture parameters are %s' % list(self.bgmpe.REQUIRES_RUPTURE_PARAMETERS))
-            print('The mandatory input site parameters are %s' % list(self.bgmpe.REQUIRES_SITES_PARAMETERS))
-            print('The defined intensity measure component is %s' % self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT)
-            print('The defined tectonic region type is %s\n' % self.bgmpe.DEFINED_FOR_TECTONIC_REGION_TYPE)
+            self.check_gmpe_attributes(gmpe)
 
     @staticmethod
     def BakerJayaramCorrelationModel(T1, T2, orth=0):
@@ -1698,7 +1756,7 @@ class conditional_spectrum(utility):
         rho = rho / (len(Tstar) * Avg_sig)
         return rho
 
-    def create(self, site_param={'vs30': 520}, rup_param={'rake': 0.0, 'mag': [7.2, 6.5]},
+    def create(self, site_param={'vs30': 520}, rup_param={'rake': [0.0, 45.0], 'mag': [7.2, 6.5]},
                dist_param={'rjb': [20, 5]}, Hcont=[0.6, 0.4], T_Tgt_range=[0.01, 4],
                im_Tstar=1.0, epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram',
                outdir='Outputs'):
@@ -1764,13 +1822,15 @@ class conditional_spectrum(utility):
         self.cond = cond
         self.useVar = useVar
         self.corr_func = corr_func
+        self.site_param = site_param
+        self.rup_param = rup_param
+        self.dist_param = dist_param
 
         if cond == 0:  # there is no conditioning period
             del self.Tstar
 
-        # Get number of scenarios, and their contribution
-        nScenarios = len(rup_param['mag'])
-        if Hcont is None:
+        nScenarios = len(rup_param['mag']) # number of scenarios
+        if Hcont is None: # equal for all
             self.Hcont = [1 / nScenarios for _ in range(nScenarios)]
         else:
             self.Hcont = Hcont
@@ -1805,29 +1865,20 @@ class conditional_spectrum(utility):
 
             # TODO: it could be better to calculate some parameters automatically elsewhere
             # Set the contexts for the scenario
-            site_param['sids'] = [0]  # This is required in OQ version 3.12.0
+            # site_param['sids'] = [0]  # This is required in OQ version 3.12.0
             sites = gsim.base.SitesContext()
-            for key in site_param.keys():
-                if key == 'rake':
-                    site_param[key] = float(site_param[key])
+            for key in site_param.keys(): # Site parameters are constant for each scenario
                 temp = np.array([site_param[key]])
                 setattr(sites, key, temp)
 
             rup = gsim.base.RuptureContext()
             for key in rup_param.keys():
-                if key == 'mag':
-                    temp = np.array([rup_param[key][n]])
-                else:
-                    # temp = np.array([rup_param[key]])
-                    temp = rup_param[key]
+                temp = np.array([rup_param[key][n]])
                 setattr(rup, key, temp)
 
             dists = gsim.base.DistancesContext()
             for key in dist_param.keys():
-                if key == 'rjb':
-                    temp = np.array([dist_param[key][n]])
-                else:
-                    temp = np.array([dist_param[key]])
+                temp = np.array([dist_param[key][n]])
                 setattr(dists, key, temp)
 
             scenario = [sites, rup, dists]
@@ -1836,8 +1887,8 @@ class conditional_spectrum(utility):
                 # Get the GMPE ouput for a rupture scenario
                 mu0, sigma0 = self.bgmpe.get_mean_and_stddevs(sites, rup, dists, imt.SA(period=T_Tgt[i]),
                                                               [const.StdDev.TOTAL])
-                mu_lnSaT[i] = mu0[0]
-                sigma_lnSaT[i] = sigma0[0][0]
+                mu_lnSaT[i] = mu0
+                sigma_lnSaT[i] = sigma0[0]
 
                 if self.cond == 1:
                     # Compute the correlations between each T and Tstar
@@ -2296,10 +2347,6 @@ class tbdy_2018(utility):
         outdir_path = os.path.join(cwd, outdir)
         self.outdir = outdir_path
         self.create_dir(self.outdir)
-
-        # initialize the objects being used
-        # downloader.__init__(self)
-        # file_manager.__init__(self)
 
     @staticmethod
     def get_Sae_tbdy2018(T, Lat, Long, DD, Soil):
@@ -2786,10 +2833,6 @@ class ec8_part1(utility):
         -------
         None.
         """
-
-        # initialize the objects being used
-        # downloader.__init__(self)
-        # file_manager.__init__(self)
 
         # Add the input the ground motion database to use
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)

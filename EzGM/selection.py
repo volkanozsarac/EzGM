@@ -1865,20 +1865,20 @@ class conditional_spectrum(utility):
 
             # TODO: it could be better to calculate some parameters automatically elsewhere
             # Set the contexts for the scenario
-            # site_param['sids'] = [0]  # This is required in OQ version 3.12.0
+            # site_param['sids'] = [0]  # This might required in OQ version 3.12.0
             sites = gsim.base.SitesContext()
             for key in site_param.keys(): # Site parameters are constant for each scenario
-                temp = np.array([site_param[key]])
+                temp = np.array([site_param[key]], dtype='float64')
                 setattr(sites, key, temp)
 
             rup = gsim.base.RuptureContext()
             for key in rup_param.keys():
-                temp = np.array([rup_param[key][n]])
+                temp = np.array([rup_param[key][n]], dtype='float64')
                 setattr(rup, key, temp)
 
             dists = gsim.base.DistancesContext()
             for key in dist_param.keys():
-                temp = np.array([dist_param[key][n]])
+                temp = np.array([dist_param[key][n]], dtype='float64')
                 setattr(dists, key, temp)
 
             scenario = [sites, rup, dists]

@@ -2,7 +2,7 @@
 # TBDY 2018 (Turkish Building Code) Based Record Selection #
 ############################################################
 
-from EzGM.select_gm import tbdy_2018
+from EzGM.selection import tbdy_2018
 from time import time
 
 start_time = time()

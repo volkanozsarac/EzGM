@@ -1,5 +1,5 @@
 """
-OpenQuake PSHA Post-Processing ToolBox
+Post-Processing ToolBox for OpenQuake PSHA Results
 """
 
 import os

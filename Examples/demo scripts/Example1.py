@@ -1,7 +1,8 @@
 #####################################################################
 # Conditional Spectrum (CS) Based Record Selection - IM = Sa(Tstar) #
 #####################################################################
-from EzGM.select_gm import conditional_spectrum
+
+from EzGM.selection import conditional_spectrum
 from time import time
 
 # Using NGA_W2 Database

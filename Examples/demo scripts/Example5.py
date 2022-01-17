@@ -3,7 +3,7 @@
 # Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
 ##################################################################################
 
-from EzGM.select_gm import conditional_spectrum
+from EzGM.selection import conditional_spectrum
 from EzGM import post_oq
 from time import time
 import os
@@ -39,7 +39,6 @@ with open(os.path.join(oq_model,oq_ini)) as f:
             exec(line.strip())
         if line.startswith('reference_vs30_value'):
             exec(line.strip())
-
 
 # Create the export directory for analysis results
 conditional_spectrum.create_dir(results_dir)

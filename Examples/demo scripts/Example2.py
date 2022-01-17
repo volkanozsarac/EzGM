@@ -2,7 +2,7 @@
 # Conditional Spectrum (CS) Based Record Selection - IM = AvgSa(Tstar) #
 ########################################################################
 
-from EzGM.select_gm import conditional_spectrum
+from EzGM.selection import conditional_spectrum
 from time import time
 import numpy as np
 

@@ -1774,6 +1774,13 @@ class conditional_spectrum(utility):
         Baker JW. Conditional Mean Spectrum: Tool for Ground-Motion Selection.
         Journal of Structural Engineering 2011; 137(3): 322–331.
         DOI: 10.1061/(ASCE)ST.1943-541X.0000215.
+
+        Lin, T., Harmsen, S. C., Baker, J. W., & Luco, N. (2013). 
+        Conditional Spectrum Computation Incorporating Multiple Causal Earthquakes 
+        and Ground-Motion Prediction Models. In Bulletin of the Seismological Society 
+        of America (Vol. 103, Issue 2A, pp. 1103–1116). Seismological Society of 
+        America (SSA). https://doi.org/10.1785/0120110293
+
         Kohrangi, M., Bazzurro, P., Vamvatsikos, D., and Spillatura, A.
         Conditional spectrum-based ground motion record selection using average 
         spectral acceleration. Earthquake Engineering & Structural Dynamics, 

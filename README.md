@@ -9,19 +9,20 @@ Toolbox for ground motion record selection and processing.
 import EzGM
 ```
 It has three different modules: 
-1. **EzGM.selection** is used to perform record selection for the given metadata.
-   - **EzGM.selection.conditional_spectrum** performs the selection based on *CS(Sa)* and *CS(AvgSa)* (see Examples 1 and 2). The tool makes use of openquake.hazardlib, thus any available gmpe available can directly be used.
-     For available ground motion prediction equations, see https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models.
-   - **EzGM.selection.tbec_2018** performs the selection based on Turkish Building Earthquake Code (TBEC-2018) (see Example 3).
-   - **EzGM.selection.ec8_part1** performs the selection based on Eurocode 8 Part 1 (see Example 4).
-   - The database files which include features to perform record selection are stored as .mat files in path/to/EzGM/Meta_Data. 
-   If the user desires to use/add another database such as EXSIM_Duzce, s/he must stick to the same format in publicly available databases.
-   At the moment, there are two publicly available databases: *NGA_W2* and *ESM_2018*. 
-   The original flat-files were modified by discarding the records which are not possible to download.
-   - Upon performing ground motion record selection/scaling if user desires to get formatted records, for the given metadata, s/he should place the available records from metadata file into the Records.zip with the name of database, 
-     e.g. *EXSIM_Duzce.zip* for database *EXSIM_Duzce*. In case of publicly available databases, the user can also download the records directly by using the associated methods since the records are not generally available beforehand.
-   - To use *ESM_2018* database, the user must have access token (path/to/current/directory/token.txt) from https://esm-db.eu. The token
-     can be retrieved using built-in methods. In order to use *NGA_W2* database, user must have account obtained from https://ngawest2.berkeley.edu.
+1. **EzGM.selection** deals with the record selection. 
+   It can be used to perform unconditional or conditional spectrum based selection in which intensity measure can be chosen as Sa(T*) or AvgSa(T*). The tool makes use of 
+   [OpenQuake hazard library](https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models) and 
+   thus any available ground motion prediction equation available can directly be used (see Examples 1 and 2). <br />
+   It can also be used to perform the selection based on Turkish Building Earthquake Code, TBEC-2018 (see Example 3), and Eurocode 8 Part 1 (see Example 4). <br />
+   Currently, the records can be selected from the two publicly available databases: *NGA_W2* and *ESM_2018*. 
+   The original flat-files for these databases were modified by discarding the records which are not possible to download. <br />
+   The database files which include features to perform record selection are stored as .mat files in path/to/EzGM/Meta_Data.
+   If the user desires to use/add another database such as EXSIM_Duzce, s/he must stick to the same format in publicly available databases. <br />
+   Upon performing ground motion record selection/scaling if user desires to get formatted records, for the given metadata, s/he should place the available records from metadata file into the Records.zip with the name of database, 
+   e.g. *EXSIM_Duzce.zip* for database *EXSIM_Duzce*. 
+   <br /> In case of publicly available databases, the user can also download the records directly by using the associated methods since the records are not generally available beforehand.
+   To use *ESM_2018* database, the user must have access token (path/to/current/directory/token.txt) from https://esm-db.eu. The token
+   can be retrieved using EzGM as well (see Example 1). In order to use *NGA_W2* database, user must have account obtained from https://ngawest2.berkeley.edu.
 2. **EzGM.post_oq** can be used along to post-process results of probabilistic seismic hazard analysis (PSHA) from OpenQuake.Engine. Its methods can be used to read and visualize seismic hazard curves and seismic disaggregation results. The module can be particularly useful
 while performing conditional spectrum (CS) based record selection for multiple-stripe analysis (MSA) (See Example 5).
 3. **EzGM.processing** can be used to process ground motion records. It contains methods for filtering,  baseline, and intensity measure calculations. (see Example 6).

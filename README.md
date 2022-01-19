@@ -8,7 +8,7 @@ Toolbox for ground motion record selection and processing.
 ```
 import EzGM
 ```
-It has three different modules: 
+The package has three different modules: 
 1. **EzGM.selection** deals with the record selection. 
    It can be used to perform unconditional or conditional spectrum based selection in which intensity measure can be chosen as Sa(T*) or AvgSa(T*). The tool makes use of 
    [OpenQuake hazard library](https://docs.openquake.org/oq-engine/3.11/openquake.hazardlib.gsim.html#ground-shaking-intensity-models) and 
@@ -34,7 +34,7 @@ For EzGM examples, see:
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/volkanozsarac/EzGM/HEAD?filepath=Examples%2Fbinder)
 ***
 ## Installation
-- EzGM requires several other packages: openquake.engine==3.11.4; selenium==3.141.0; webdriverdownloader==1.1.0.3; numba==0.54.0
+- EzGM requires several other packages: <br /> openquake.engine==3.11.4; selenium==3.141.0; webdriverdownloader==1.1.0.3; numba==0.54.0
 - The package management system *pip* can be used to install EzGM. Yet, before the installation is recommended in a clean python 3.8 environment to avoid compatibility issues.
 ```
 pip install EzGM
@@ -50,7 +50,7 @@ Special thanks to Besim Yukselen for his help in the development of ngaw2_downlo
 ***
 ## References
 The references associated with each method are provided as the docstring.
-If you are going to use the code presented herein for any official study, please refer to: 
+If you are going to use the code presented herein for any official study, please refer to: <br /> 
 Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2021). Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
 ***
 ## Potential Improvements

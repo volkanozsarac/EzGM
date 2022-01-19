@@ -1,13 +1,13 @@
-############################################################
-# TBDY 2018 (Turkish Building Code) Based Record Selection #
-############################################################
+#######################################################################
+# TBEC 2018 (Turkish Building Earthquake Code) Based Record Selection #
+#######################################################################
 
-from EzGM.selection import tbdy_2018
+from EzGM.selection import tbec_2018
 from time import time
 
 start_time = time()
-# 1.) Initialize the tbdy_2018 object for record selection
-spec = tbdy_2018(database='NGA_W2', outdir='Outputs')
+# 1.) Initialize the tbec_2018 object for record selection
+spec = tbec_2018(database='NGA_W2', outdir='Outputs')
 
 # 2.) Select the ground motions
 spec.select(Lat=41.0582, Long=29.00951, DD=2, Soil='ZC', nGM=11, selection=1, Tp=1,

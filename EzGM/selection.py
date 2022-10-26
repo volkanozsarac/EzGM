@@ -1924,7 +1924,7 @@ class conditional_spectrum(_subclass_):
 
         # Set initial seed for simulation
         if self.seedValue != 0:
-            np.random.seed(0)
+            np.random.seed(self.seedValue)
         else:
             np.random.seed(sum(gmtime()[:6]))
 

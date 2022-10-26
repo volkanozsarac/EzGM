@@ -1418,7 +1418,7 @@ class conditional_spectrum(_subclass_):
 
         # Fault dip
         if 'dip' in self.rup_param.keys():
-            dip = self.rup_param['hypo_depth'][index]
+            dip = self.rup_param['dip'][index]
         else:
             if (-45 <= rake <= 45) or (rake >= 135) or (rake <= -135):
                 dip = 90

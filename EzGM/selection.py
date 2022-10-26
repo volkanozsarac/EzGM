@@ -1923,7 +1923,7 @@ class conditional_spectrum(_subclass_):
         """
 
         # Set initial seed for simulation
-        if self.seedValue != 0:
+        if self.seedValue:
             np.random.seed(self.seedValue)
         else:
             np.random.seed(sum(gmtime()[:6]))
@@ -1959,7 +1959,7 @@ class conditional_spectrum(_subclass_):
 
     def select(self, nGM=30, isScaled=1, maxScale=4,
                Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
-               nTrials=20, seedValue=0, weights=[1, 2, 0.3], nLoop=2, penalty=0, tol=10):
+               nTrials=20, seedValue=None, weights=[1, 2, 0.3], nLoop=2, penalty=0, tol=10):
         """
         Details
         -------
@@ -2009,7 +2009,7 @@ class conditional_spectrum(_subclass_):
             proceed with the rest of the algorithm. It is to be noted, however, that
             the greedy improvement technique significantly improves the match between
             the means and the variances subsequently.
-        seedValue  : int, optional, the default is 0.
+        seedValue  : int, optional, the default is None.
             For repeatability. For a particular seedValue not equal to
             zero, the code will output the same set of ground motions.
             The set will change when the seedValue changes. If set to

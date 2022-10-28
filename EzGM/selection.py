@@ -24,7 +24,7 @@ from numba import njit
 from openquake.hazardlib import gsim, imt, const
 from .utility import create_dir, ContentFromZip, ReadNGA, ReadESM
 from .utility import SiteParam_tbec2018, Sae_tbec2018, SiteParam_asce7_16, Sae_asce7_16, Sae_ec8_part1
-from .utility import multivariate_random_normal
+from .utility import random_multivariate_normal
 
 
 class _subclass_:
@@ -1940,7 +1940,7 @@ class conditional_spectrum(_subclass_):
         specDict = {}
         # Generate simulated response spectra with best matches to the target values
         for j in range(self.nTrials):
-            specDict[j] = np.exp(multivariate_random_normal(self.mu_ln, cov, self.nGM, 'LHS'))
+            specDict[j] = np.exp(random_multivariate_normal(self.mu_ln, cov, self.nGM, 'LHS'))
             # specDict[j] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov, size=self.nGM))
 
             # how close is the mean of the spectra to the target

@@ -1409,7 +1409,7 @@ def random_uniform(num_variables, num_realizations, sampling_option):
     return X.T
 
 
-def multivariate_random_normal(mu, cov, num_realizations, sampling_option):
+def random_multivariate_normal(mu, cov, num_realizations, sampling_option):
     """
     Details
     -------

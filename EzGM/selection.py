@@ -281,6 +281,36 @@ class _subclass_:
         -------
         None.
         """
+        def rename_nga(filename, hist):
+            # modify the NGA acceleration file name (acceleration, velocity or displacement)
+            # filename  : string, file name for the acceleration history
+            # hist      : string, type of time history
+            if hist == 'vel':
+                new_name = filename.replace('.txt', '_VEL.txt')
+
+            elif hist == 'disp':
+                new_name = filename.replace('.txt', '_DISP.txt')
+
+            else:
+                new_name = filename
+
+            return new_name
+
+        def rename_esm(filename, hist):
+            # modify the ESM acceleration file name (acceleration, velocity or displacement)
+            # filename  : string, file name for the acceleration history
+            # hist      : string, type of time history
+            if hist == 'vel':
+                new_name = filename.replace('ACC', 'VEL')
+
+            elif hist == 'disp':
+                new_name = filename.replace('ACC', 'DISP')
+
+            else:
+                new_name = filename
+
+            return new_name
+
         def get_history(acc_history, dt, hist):
             # return the desired time history vector (acceleration, velocity or displacement)
             # acc_history   : numpy vector
@@ -336,17 +366,21 @@ class _subclass_:
                     dts[i], npts1, _, _, inp_acc1 = ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
                     gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
                         self.rec_scale[i]) + '.txt'
+                    gmr_file1 = rename_nga(gmr_file1, rtype)
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
                         gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
                             self.rec_scale[i]) + '.txt'
+                        gmr_file2 = rename_nga(gmr_file2, rtype)
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
                     dts[i], npts1, _, _, inp_acc1 = ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
                     gmr_file1 = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
+                    gmr_file1 = rename_esm(gmr_file1, rtype)
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
                         gmr_file2 = self.rec_h2[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
+                        gmr_file2 = rename_esm(gmr_file2, rtype)
 
                 # Write the record files
                 if self.selection == 2:

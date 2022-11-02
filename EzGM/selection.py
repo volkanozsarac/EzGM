@@ -12,7 +12,7 @@ import zipfile
 from time import gmtime, sleep
 import numpy as np
 import numpy.matlib
-from scipy import interpolate
+from scipy import interpolate, integrate
 from scipy.io import loadmat
 from scipy.stats import skew
 import matplotlib
@@ -247,7 +247,7 @@ class _subclass_:
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code
 
-    def write(self, obj=0, recs=1, recs_f=''):
+    def write(self, obj=0, recs=1, rtype='acc', recs_f=''):
         """
         Details
         -------
@@ -261,6 +261,11 @@ class _subclass_:
         recs : int, optional
             flag to write the selected and scaled time histories.
             The default is 1.
+        rtype : str, optional
+            option to choose the type of time history to be written.
+            'acc' : for the acceleration series
+            'vel' : for the velocity series
+            'disp': for the displacement series
         recs_f : str, optional
             This is option could be used if the user already has all the
             records in database. This is the folder path which contains
@@ -276,6 +281,21 @@ class _subclass_:
         -------
         None.
         """
+        def get_history(acc_history, dt, hist):
+            # return the desired time history vector (acceleration, velocity or displacement)
+            # acc_history   : numpy vector
+            # dt            : float
+            # hist          : string
+            if hist == 'vel':  # integrate once if velocity
+                history = integrate.cumtrapz(acc_history, dx=dt, initial=0)
+
+            elif hist == 'disp':  # integrate twice if displacement
+                history = integrate.cumtrapz(integrate.cumtrapz(acc_history, dx=dt, initial=0), dx=dt, initial=0)
+
+            else:
+                history = acc_history
+
+            return history
 
         if recs == 1:
             # set the directories and file names
@@ -341,15 +361,18 @@ class _subclass_:
 
                     # Accelerations for H2 component
                     path = os.path.join(self.outdir, gmr_file2)
-                    acc_Sc = self.rec_scale[i] * inp_acc2
-                    np.savetxt(path, acc_Sc, fmt='%1.4e')
+                    hist_Sc = self.rec_scale[i] * inp_acc2  # acceleration
+                    hist_Sc = get_history(hist_Sc, dts[i], rtype)
+                    np.savetxt(path, hist_Sc, fmt='%1.4e')
                     h2s.write(gmr_file2 + '\n')
 
                 # Accelerations for H1 component
                 path = os.path.join(self.outdir, gmr_file1)
-                acc_Sc = self.rec_scale[i] * inp_acc1
-                np.savetxt(path, acc_Sc, fmt='%1.4e')
+                hist_Sc = self.rec_scale[i] * inp_acc1  # acceleration
+                hist_Sc = get_history(hist_Sc, dts[i], rtype)
+                np.savetxt(path, hist_Sc, fmt='%1.4e')
                 h1s.write(gmr_file1 + '\n')
+
             # Time steps
             np.savetxt(path_dts, dts, fmt='%.5f')
             h1s.close()

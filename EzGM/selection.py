@@ -263,9 +263,9 @@ class _subclass_:
             The default is 1.
         rtype : str, optional
             option to choose the type of time history to be written.
-            'acc' : for the acceleration series
-            'vel' : for the velocity series
-            'disp': for the displacement series
+            'acc' : for the acceleration series, units: g
+            'vel' : for the velocity series, units: g * sec
+            'disp': for the displacement series: units: g * sec2
         recs_f : str, optional
             This is option could be used if the user already has all the
             records in database. This is the folder path which contains
@@ -281,7 +281,7 @@ class _subclass_:
         -------
         None.
         """
-        def save_signal(path, acc, sf, dt):
+        def save_signal(path, uns_acc, sf, dt):
             """
             Details
             -------
@@ -320,6 +320,8 @@ class _subclass_:
                 zipName = self.Unscaled_rec_file
             except AttributeError:
                 zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
+            path_sf = os.path.join(self.outdir, 'GMR_sf_used')
+            np.savetxt(path_sf, np.array([self.rec_scale]).T, fmt='%1.5f')
             n = len(self.rec_h1)
             path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
             dts = np.zeros(n)
@@ -376,11 +378,11 @@ class _subclass_:
                     inp_acc2 = temp2.copy()
 
                     # H2 component
-                    save_signal(path=os.path.join(self.outdir, gmr_file2), inp_acc2, self.rec_scale[i], dts[i])
+                    save_signal(os.path.join(self.outdir, gmr_file2), inp_acc2, self.rec_scale[i], dts[i])
                     h2s.write(gmr_file2 + '\n')
 
                 # H1 component
-                save_signal(path=os.path.join(self.outdir, gmr_file1), inp_acc1, self.rec_scale[i], dts[i])
+                save_signal(os.path.join(self.outdir, gmr_file1), inp_acc1, self.rec_scale[i], dts[i])
                 h1s.write(gmr_file1 + '\n')
 
             # Time steps

@@ -281,51 +281,38 @@ class _subclass_:
         -------
         None.
         """
-        def rename_nga(filename, hist):
-            # modify the NGA acceleration file name (acceleration, velocity or displacement)
-            # filename  : string, file name for the acceleration history
-            # hist      : string, type of time history
-            if hist == 'vel':
-                new_name = filename.replace('.txt', '_VEL.txt')
+        def save_signal(path, acc, sf, dt):
+            """
+            Details
+            -------
+            Saves the final signal to the specified path.
 
-            elif hist == 'disp':
-                new_name = filename.replace('.txt', '_DISP.txt')
+            Parameters
+            ----------
+            path : str
+                path of the file to save
+            uns_acc : numpy.ndarray
+                unscaled acceleration series
+            sf : float
+                scaling factor
+            dt : float
+                time step 
 
-            else:
-                new_name = filename
+            Returns
+            -------
+            None.
+            """
 
-            return new_name
+            if rtype == 'vel':  # integrate once if velocity
+                signal = integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0)
 
-        def rename_esm(filename, hist):
-            # modify the ESM acceleration file name (acceleration, velocity or displacement)
-            # filename  : string, file name for the acceleration history
-            # hist      : string, type of time history
-            if hist == 'vel':
-                new_name = filename.replace('ACC', 'VEL')
-
-            elif hist == 'disp':
-                new_name = filename.replace('ACC', 'DISP')
-
-            else:
-                new_name = filename
-
-            return new_name
-
-        def get_history(acc_history, dt, hist):
-            # return the desired time history vector (acceleration, velocity or displacement)
-            # acc_history   : numpy vector
-            # dt            : float
-            # hist          : string
-            if hist == 'vel':  # integrate once if velocity
-                history = integrate.cumtrapz(acc_history, dx=dt, initial=0)
-
-            elif hist == 'disp':  # integrate twice if displacement
-                history = integrate.cumtrapz(integrate.cumtrapz(acc_history, dx=dt, initial=0), dx=dt, initial=0)
+            elif rtype == 'disp':  # integrate twice if displacement
+                signal = integrate.cumtrapz(integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0), dx=dt, initial=0)
 
             else:
-                history = acc_history
+                signal = uns_acc * sf
 
-            return history
+            np.savetxt(path, signal, fmt='%1.5e')
 
         if recs == 1:
             # set the directories and file names
@@ -364,23 +351,18 @@ class _subclass_:
                 # Read the record files
                 if self.database['Name'].startswith('NGA'):  # NGA
                     dts[i], npts1, _, _, inp_acc1 = ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
-                        self.rec_scale[i]) + '.txt'
-                    gmr_file1 = rename_nga(gmr_file1, rtype)
+                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
+
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
-                            self.rec_scale[i]) + '.txt'
-                        gmr_file2 = rename_nga(gmr_file2, rtype)
+                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
                     dts[i], npts1, _, _, inp_acc1 = ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
-                    gmr_file1 = rename_esm(gmr_file1, rtype)
+                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
-                        gmr_file2 = rename_esm(gmr_file2, rtype)
+                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
 
                 # Write the record files
                 if self.selection == 2:
@@ -393,18 +375,12 @@ class _subclass_:
                     temp2[:npts2] = inp_acc2
                     inp_acc2 = temp2.copy()
 
-                    # Accelerations for H2 component
-                    path = os.path.join(self.outdir, gmr_file2)
-                    hist_Sc = self.rec_scale[i] * inp_acc2  # acceleration
-                    hist_Sc = get_history(hist_Sc, dts[i], rtype)
-                    np.savetxt(path, hist_Sc, fmt='%1.4e')
+                    # H2 component
+                    save_signal(path=os.path.join(self.outdir, gmr_file2), inp_acc2, self.rec_scale[i], dts[i])
                     h2s.write(gmr_file2 + '\n')
 
-                # Accelerations for H1 component
-                path = os.path.join(self.outdir, gmr_file1)
-                hist_Sc = self.rec_scale[i] * inp_acc1  # acceleration
-                hist_Sc = get_history(hist_Sc, dts[i], rtype)
-                np.savetxt(path, hist_Sc, fmt='%1.4e')
+                # H1 component
+                save_signal(path=os.path.join(self.outdir, gmr_file1), inp_acc1, self.rec_scale[i], dts[i])
                 h1s.write(gmr_file1 + '\n')
 
             # Time steps

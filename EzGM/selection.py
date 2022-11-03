@@ -12,7 +12,7 @@ import zipfile
 from time import gmtime, sleep
 import numpy as np
 import numpy.matlib
-from scipy import interpolate
+from scipy import interpolate, integrate
 from scipy.io import loadmat
 from scipy.stats import skew
 import matplotlib
@@ -247,7 +247,7 @@ class _subclass_:
 
         return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code
 
-    def write(self, obj=0, recs=1, recs_f=''):
+    def write(self, obj=0, recs=1, rtype='acc', recs_f=''):
         """
         Details
         -------
@@ -261,6 +261,11 @@ class _subclass_:
         recs : int, optional
             flag to write the selected and scaled time histories.
             The default is 1.
+        rtype : str, optional
+            option to choose the type of time history to be written.
+            'acc' : for the acceleration series, units: g
+            'vel' : for the velocity series, units: g * sec
+            'disp': for the displacement series: units: g * sec2
         recs_f : str, optional
             This is option could be used if the user already has all the
             records in database. This is the folder path which contains
@@ -276,6 +281,38 @@ class _subclass_:
         -------
         None.
         """
+        def save_signal(path, uns_acc, sf, dt):
+            """
+            Details
+            -------
+            Saves the final signal to the specified path.
+
+            Parameters
+            ----------
+            path : str
+                path of the file to save
+            uns_acc : numpy.ndarray
+                unscaled acceleration series
+            sf : float
+                scaling factor
+            dt : float
+                time step 
+
+            Returns
+            -------
+            None.
+            """
+
+            if rtype == 'vel':  # integrate once if velocity
+                signal = integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0)
+
+            elif rtype == 'disp':  # integrate twice if displacement
+                signal = integrate.cumtrapz(integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0), dx=dt, initial=0)
+
+            else:
+                signal = uns_acc * sf
+
+            np.savetxt(path, signal, fmt='%1.5e')
 
         if recs == 1:
             # set the directories and file names
@@ -284,7 +321,6 @@ class _subclass_:
             except AttributeError:
                 zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
             n = len(self.rec_h1)
-            path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
             dts = np.zeros(n)
             path_H1 = os.path.join(self.outdir, 'GMR_names.txt')
             if self.selection == 2:
@@ -314,19 +350,18 @@ class _subclass_:
                 # Read the record files
                 if self.database['Name'].startswith('NGA'):  # NGA
                     dts[i], npts1, _, _, inp_acc1 = ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
-                        self.rec_scale[i]) + '.txt'
+                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
+
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_SF_' + "{:.3f}".format(
-                            self.rec_scale[i]) + '.txt'
+                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
                     dts[i], npts1, _, _, inp_acc1 = ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
+                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
                     if self.selection == 2:  # H2 component
                         _, npts2, _, _, inp_acc2 = ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i][:-4] + '_SF_' + "{:.3f}".format(self.rec_scale[i]) + '.txt'
+                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
 
                 # Write the record files
                 if self.selection == 2:
@@ -339,26 +374,25 @@ class _subclass_:
                     temp2[:npts2] = inp_acc2
                     inp_acc2 = temp2.copy()
 
-                    # Accelerations for H2 component
-                    path = os.path.join(self.outdir, gmr_file2)
-                    acc_Sc = self.rec_scale[i] * inp_acc2
-                    np.savetxt(path, acc_Sc, fmt='%1.4e')
+                    # H2 component
+                    save_signal(os.path.join(self.outdir, gmr_file2), inp_acc2, self.rec_scale[i], dts[i])
                     h2s.write(gmr_file2 + '\n')
 
-                # Accelerations for H1 component
-                path = os.path.join(self.outdir, gmr_file1)
-                acc_Sc = self.rec_scale[i] * inp_acc1
-                np.savetxt(path, acc_Sc, fmt='%1.4e')
+                # H1 component
+                save_signal(os.path.join(self.outdir, gmr_file1), inp_acc1, self.rec_scale[i], dts[i])
                 h1s.write(gmr_file1 + '\n')
+
             # Time steps
-            np.savetxt(path_dts, dts, fmt='%.5f')
+            np.savetxt(os.path.join(self.outdir, 'GMR_dts.txt'), dts, fmt='%.5f')
+            # Scale factors
+            np.savetxt(os.path.join(self.outdir, 'GMR_sf_used'), np.array([self.rec_scale]).T, fmt='%1.5f')
+            # Close the files
             h1s.close()
             if self.selection == 2:
                 h2s.close()
 
         if obj == 1:
             # save some info as pickle obj
-            path_obj = os.path.join(self.outdir, 'obj.pkl')
             obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             obj['database'] = self.database['Name']
             del obj['outdir']
@@ -366,7 +400,7 @@ class _subclass_:
             if 'bgmpe' in obj:
                 del obj['bgmpe']
 
-            with open(path_obj, 'wb') as file:
+            with open(os.path.join(self.outdir, 'obj.pkl'), 'wb') as file:
                 pickle.dump(obj, file)
 
         print(f"Finished writing process, the files are located in\n{self.outdir}")

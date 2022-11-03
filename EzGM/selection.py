@@ -320,10 +320,7 @@ class _subclass_:
                 zipName = self.Unscaled_rec_file
             except AttributeError:
                 zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
-            path_sf = os.path.join(self.outdir, 'GMR_sf_used')
-            np.savetxt(path_sf, np.array([self.rec_scale]).T, fmt='%1.5f')
             n = len(self.rec_h1)
-            path_dts = os.path.join(self.outdir, 'GMR_dts.txt')
             dts = np.zeros(n)
             path_H1 = os.path.join(self.outdir, 'GMR_names.txt')
             if self.selection == 2:
@@ -386,14 +383,16 @@ class _subclass_:
                 h1s.write(gmr_file1 + '\n')
 
             # Time steps
-            np.savetxt(path_dts, dts, fmt='%.5f')
+            np.savetxt(os.path.join(self.outdir, 'GMR_dts.txt'), dts, fmt='%.5f')
+            # Scale factors
+            np.savetxt(os.path.join(self.outdir, 'GMR_sf_used'), np.array([self.rec_scale]).T, fmt='%1.5f')
+            # Close the files
             h1s.close()
             if self.selection == 2:
                 h2s.close()
 
         if obj == 1:
             # save some info as pickle obj
-            path_obj = os.path.join(self.outdir, 'obj.pkl')
             obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
             obj['database'] = self.database['Name']
             del obj['outdir']
@@ -401,7 +400,7 @@ class _subclass_:
             if 'bgmpe' in obj:
                 del obj['bgmpe']
 
-            with open(path_obj, 'wb') as file:
+            with open(os.path.join(self.outdir, 'obj.pkl'), 'wb') as file:
                 pickle.dump(obj, file)
 
         print(f"Finished writing process, the files are located in\n{self.outdir}")

@@ -17,7 +17,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from scipy import interpolate
-from scipy.stats import norm
+from scipy.stats import norm, qmc
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib import cm
@@ -1364,52 +1364,48 @@ def run_time(start_time):
     print(f"Run time: {time_hours:.0f} hours: {time_minutes:.0f} minutes: {time_seconds:.2f} seconds")
 
 
-def random_uniform(num_variables, num_realizations, sampling_option):
+def random_uniform(num_dimensions, num_samples, sampling_type):
     """
     Details
     -------
-    Used to perform sampling based on Monte Carlo Simulation or Latin Hypercube Sampling
+    Used to perform sampling based on Monte Carlo Simulation or Latin Hypecube Sampling
 
     References
     ----------
-    Olsson, A., Sandberg, G., & Dahlblom, O. (2003). On Latin hypercube sampling for structural reliability analysis.
-    In Structural Safety (Vol. 25, Issue 1, pp. 47–68). Elsevier BV. https://doi.org/10.1016/s0167-4730(02)00039-5
-    Olsson, A. M. J., & Sandberg, G. E. (2002). Latin Hypercube Sampling for Stochastic Finite Element Analysis.
-    In Journal of Engineering Mechanics (Vol. 128, Issue 1, pp. 121–125).
-    American Society of Civil Engineers (ASCE). https://doi.org/10.1061/(asce)0733-9399(2002)128:1(121)
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.qmc.LatinHypercube.html#scipy.stats.qmc.LatinHypercube
 
     Parameters
     ----------
-    num_variables: int
-        number of variables
-    num_realizations: int
-        number of realizations
-    sampling_option: str
+    num_dimensions: int
+        number of dimensions
+    num_samples: int
+        number of samples
+    sampling_type: str
+        type of sampling.
         Monte Carlo Sampling: 'MCS'
         Latin Hypercube Sampling: 'LHS'
 
     Returns
     -------
-    X.T: numpy.ndarray (num_realizations x num_variables)
+    sample: numpy.ndarray (num_samples x num_dimensions)
         Array which contains randomly generated numbers between 0 and 1
     """
-
-    if sampling_option == 'MCS':
+    # Not really required, but will ensure different realizations each time
+    seed = int(datetime.today().strftime("%H%M%S"))
+    if sampling_type == 'MCS':
         # Do Monte Carlo Sampling without any grid
-        X = np.random.uniform(size=[num_variables, num_realizations])
-    elif sampling_option == 'LHS':
-        # Limits of each grid
-        lower_limits = np.arange(0, num_realizations) / num_realizations
-        upper_limits = np.arange(1, num_realizations + 1) / num_realizations
-        # Do Monte Carlo Sampling with predefined grids based on number of realizations
-        X = np.random.uniform(low=lower_limits, high=upper_limits, size=[num_variables, num_realizations])
-        # Shuffle each row separately to remove unwanted correlation of sampling plan
-        [np.random.shuffle(x) for x in X]
+        np.random.seed(seed)
+        sample = np.random.uniform(size=[num_dimensions, num_samples]).T
+    elif sampling_type == 'LHS':
+        # A Latin hypercube sample generates n points in [0, 1)^d. 
+        # Each univariate marginal distribution is stratified, placing exactly one point in each possible grid.
+        sampler = qmc.LatinHypercube(d=num_dimensions, seed=seed)
+        sample = sampler.random(n=num_samples)
 
-    return X.T
+    return sample
 
 
-def random_multivariate_normal(mu, cov, num_realizations, sampling_option):
+def random_multivariate_normal(mu, cov, num_samples, sampling_option):
     """
     Details
     -------
@@ -1428,36 +1424,36 @@ def random_multivariate_normal(mu, cov, num_realizations, sampling_option):
         Mean value vector
     cov: numpy.ndarray (2-D)
         Covariance matrix
-    num_realizations: int
-        number of realizations
+    num_samples: int
+        number of samples
     sampling_option: str
         Monte Carlo Sampling: 'MCS'
         Latin Hypercube Sampling: 'LHS'
 
     Returns
     -------
-    z.T : numpy.ndarray (num_realizations x num_variables)
+    z.T : numpy.ndarray (num_samples x num_dimensions)
         Array which contains randomly generated numbers between 0 and 1
     """
-    num_variables = len(mu)
+    num_dimensions = len(mu)
     if mu.size == mu.shape[0]:
         mu = mu.reshape(-1, 1)
-    my = mu @ np.ones([1, num_realizations])
+    my = mu @ np.ones([1, num_samples])
     cov_rank = np.linalg.matrix_rank(cov)
     eigen_values, eigen_vectors = np.linalg.eigh(cov)
 
-    if cov_rank >= num_variables:
+    if cov_rank >= num_dimensions:
         ly = eigen_vectors
         dy = np.diag(eigen_values ** 0.5)
     else:
-        ly = eigen_vectors[:, num_variables - cov_rank:]
-        dy = np.diag(eigen_values[num_variables - cov_rank:] ** 0.5)
+        ly = eigen_vectors[:, num_dimensions - cov_rank:]
+        dy = np.diag(eigen_values[num_dimensions - cov_rank:] ** 0.5)
 
     # Generate uniformly distributed between 0 and 1
-    if cov_rank >= num_variables:
-        u = random_uniform(num_variables, num_realizations, sampling_option)
+    if cov_rank >= num_dimensions:
+        u = random_uniform(num_dimensions, num_samples, sampling_option)
     else:
-        u = random_uniform(cov_rank, num_realizations, sampling_option)
+        u = random_uniform(cov_rank, num_samples, sampling_option)
 
     # Compute standard random numbers
     u = norm(loc=0, scale=1).ppf(u)

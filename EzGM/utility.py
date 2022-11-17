@@ -505,6 +505,7 @@ def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
     -------
     None.
     """
+    # TODO: modify the method for single AvgSA case, apparently there is no way to run PSHA for multiple AvgSA
 
     def replace_text_str(input_str):
         """

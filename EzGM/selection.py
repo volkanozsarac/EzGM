@@ -1,6 +1,12 @@
 """
 Ground motion record selection toolbox
 """
+# Possible future developments
+# TODO: Seems that exact CS computation via OpenQuake engine is possible. Add separate class for exact CS, and name
+#  the previous one as approximate. Nonetheless, what need to be figured out is how to get correlation matrix directly.
+# TODO: Add 3 component selection: https://github.com/bakerjw/CS_Selection
+# TODO: Add spectral matching methods for record selection (e.g., REQPY, https://github.com/LuisMontejo/REQPY)
+# TODO: Add generalized conditional intensity measure approach (GCIM) to select ground motion records
 
 # Import python libraries
 import copy
@@ -919,9 +925,10 @@ class _subclass_:
                 Driver object used to download NGA_W2 records.
 
             """
-            # TODO: Selenium 4.3.0
+            # TODO: For Selenium >= 4.3.0
             #  Deprecated find_element_by_* and find_elements_by_* are now removed (#10712)
-            #  See: https://stackoverflow.com/questions/72773206/selenium-python-attributeerror-webdriver-object-has-no-attribute-find-el
+            #  https://stackoverflow.com/questions/72773206/selenium-python-attributeerror-webdriver-object-has-no-attribute-find-el
+            #  Modify the ngaw2_download method to use greater versions of Selenium than 4.2.0
             print("Signing in with credentials...")
             driver.get('https://ngawest2.berkeley.edu/users/sign_in')
             driver.find_element_by_id('user_email').send_keys(USERNAME)
@@ -1049,6 +1056,25 @@ class conditional_spectrum(_subclass_):
             with and without considering variance
         2) Selecting suitable ground motion sets for target spectrum
         3) Scaling and processing of selected ground motion records
+
+    Kohrangi et al. 2017 verified that the mean and standard deviation of AvgSA estimates
+    based on the indirect method are indeed robust and can be used in real life applications.
+    However, pairing GMPE-SAs and SA correlation models based
+    on different ground motion databases should be avoided because it may result in standard
+    deviations of AvgSA that are biased compared to those of the direct method.
+    Reference:
+    Kohrangi, M., Kotha, S. R., & Bazzurro, P. (2017). Ground-motion models for average spectral acceleration in a
+    period range: direct and indirect methods. In Bulletin of Earthquake Engineering, 16(1): 45–65.
+    Springer Science and Business Media LLC. https://doi.org/10.1007/s10518-017-0216-5
+
+    Baker and Bradley 2017 described that IM correlations they have studied are stable across a range of conditions,
+    and as a result, that existing correlation models are generally appropriate for continued use
+    in engineering calculations. The results they present is based on NGA-West2 ground motion record database.
+    Reference:
+    Baker, J. W., & Bradley, B. A. (2017). Intensity Measure Correlations Observed in the NGA-West2 Database,
+    and Dependence of Correlations on Rupture and Site Parameters. In Earthquake Spectra, 33(1): 145–156.
+    SAGE Publications. https://doi.org/10.1193/060716eqs095m
+
     """
 
     def __init__(self, database='NGA_W2', outdir='Outputs'):
@@ -1263,6 +1289,7 @@ class conditional_spectrum(_subclass_):
         rho: float
              Predicted correlation coefficient
         """
+        # TODO: Add alternative correlation models: https://github.com/bakerjw/NGAW2_correlations
 
         correlation_function_handles = {
             'baker_jayaram': self._BakerJayaramCorrelationModel,
@@ -1756,8 +1783,10 @@ class conditional_spectrum(_subclass_):
         None.                    
         """
         # TODO: gsim.get_mean_and_stddevs is deprecated, use ContextMaker.get_mean_stds in the future.
-        # see https://docs.openquake.org/oq-engine/advanced/developing.html#working-with-gmpes-directly-the-contextmaker
-        # TODO: make the step size equal in period array. This will result in more realistic matching
+        # https://docs.openquake.org/oq-engine/advanced/developing.html#working-with-gmpes-directly-the-contextmaker
+
+        # TODO:  Make the step size equal in period array. This will result in more realistic matching.
+        #  However, this is not essential. Moreover, this will require generation of new meta_data files
 
         if cond == 1:
 
@@ -1851,7 +1880,7 @@ class conditional_spectrum(_subclass_):
             # Set the contexts for the scenario
             sctx, rctx, dctx = self._set_contexts(n)
 
-            # TODO: Should try to use array operations instead
+            # TODO: Combine all metadata into single sql file. Not essential, but makes the code more elegant.
             for i in range(len(self.T)):
                 # Get the GMPE output for a rupture scenario
                 mu, sigma = self.bgmpe.get_mean_and_stddevs(sctx, rctx, dctx, imt.SA(period=self.T[i]),

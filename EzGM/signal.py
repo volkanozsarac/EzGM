@@ -326,6 +326,7 @@ def get_parameters(Ag, dt, T, xi):
             Velocity spectrum intensity.
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
     """
+    # TODO: there are bunch of other IMs which can be computed. Add them here.
 
     if isinstance(T, (int, float)):
         T = np.array([T])

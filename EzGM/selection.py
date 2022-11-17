@@ -21,7 +21,7 @@ import numpy.matlib
 from scipy import interpolate, integrate
 from scipy.io import loadmat
 from scipy.stats import skew
-import matplotlib
+from matplotlib.ticker import ScalarFormatter, NullFormatter
 import matplotlib.pyplot as plt
 import requests
 from selenium import webdriver
@@ -446,10 +446,10 @@ class _subclass_:
         None.
         """
 
-        SMALL_SIZE = 10
-        MEDIUM_SIZE = 12
-        BIG_SIZE = 14
-        BIGGER_SIZE = 18
+        SMALL_SIZE = 15
+        MEDIUM_SIZE = 16
+        BIG_SIZE = 18
+        BIGGER_SIZE = 20
 
         plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
         plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
@@ -461,6 +461,13 @@ class _subclass_:
         plt.ioff()
 
         if type(self).__name__ == 'conditional_spectrum':
+
+            # xticks to use for plotting
+            xticks = [self.T[0]]
+            for x in [0.01, 0.05, 0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 10]:
+                if self.T[0] < x < self.T[-1]:
+                    xticks.append(x)
+            xticks.append(self.T[-1])
 
             if self.cond == 1:
                 if len(self.Tstar) == 1:
@@ -479,10 +486,13 @@ class _subclass_:
                     ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xticks(xticks)
+                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
                 ax[0].set_ylabel('Spectral Acceleration [g]')
                 ax[0].grid(True)
@@ -490,7 +500,6 @@ class _subclass_:
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                ax[0].set_xlim([self.T[0], self.T[-1]])
                 if self.cond == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -502,11 +511,13 @@ class _subclass_:
                     ax[1].set_ylabel('Dispersion')
                     ax[1].grid(True)
                     ax[1].legend(frameon=False)
-                    ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                    ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                    ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                    ax[0].set_xlim([self.T[0], self.T[-1]])
+                    ax[1].set_xlim([self.T[0], self.T[-1]])
+                    ax[1].set_xticks(xticks)
+                    ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
+                    ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                     ax[1].set_ylim(bottom=0)
+                    ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
+                    ax[1].get_yaxis().set_minor_formatter(NullFormatter())
                     if self.cond == 1:
                         ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -536,17 +547,19 @@ class _subclass_:
                     ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
                                  color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xticks(xticks)
+                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
                 ax[0].set_ylabel('Spectral Acceleration [g]')
                 ax[0].grid(True)
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                ax[0].set_xlim([self.T[0], self.T[-1]])
                 if self.cond == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -560,11 +573,13 @@ class _subclass_:
                     ax[1].set_ylabel('Dispersion')
                     ax[1].grid(True)
                     ax[1].legend(frameon=False)
-                    ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                    ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                    ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
                     ax[1].set_xlim([self.T[0], self.T[-1]])
+                    ax[1].set_xticks(xticks)
+                    ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
+                    ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                     ax[1].set_ylim(bottom=0)
+                    ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
+                    ax[1].get_yaxis().set_minor_formatter(NullFormatter())
                     if self.cond == 1:
                         ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -593,17 +608,19 @@ class _subclass_:
                 ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0) - 2 * np.std(self.rec_spec, axis=0)),
                              color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[0].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xticks(xticks)
+                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
                 ax[0].set_ylabel('Spectral Acceleration [g]')
                 ax[0].grid(True)
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                ax[0].set_xlim([self.T[0], self.T[-1]])
                 if self.cond == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -615,11 +632,13 @@ class _subclass_:
                 ax[1].set_ylabel('Dispersion')
                 ax[1].grid(True)
                 ax[1].legend(frameon=False)
-                ax[1].get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-                ax[1].set_xticks([0.1, 0.2, 0.5, 1, 2, 3, 4])
-                ax[0].set_xlim([self.T[0], self.T[-1]])
-                ax[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+                ax[1].set_xlim([self.T[0], self.T[-1]])
+                ax[1].set_xticks(xticks)
+                ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
+                ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                 ax[1].set_ylim(bottom=0)
+                ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
+                ax[1].get_yaxis().set_minor_formatter(NullFormatter())
                 if self.cond == 1:
                     ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
@@ -1077,7 +1096,7 @@ class conditional_spectrum(_subclass_):
 
     """
 
-    def __init__(self, database='NGA_W2', outdir='Outputs'):
+    def __init__(self, database='NGA_W2', outdir='Outputs', obj_pkl=None):
         # TODO: Combine all metadata into single sql file.
         """
         Details
@@ -1092,14 +1111,26 @@ class conditional_spectrum(_subclass_):
             The default is NGA_W2.
         outdir     : str, optional, the default is 'Outputs'.
             output directory to create.
-            
+        obj_pkl    : str, optional, the default is None.
+            This is the path to the previously saved obj.pkl file by EzGM.
+            One can use the previously saved instance and use rest of the methods.
+
         Returns
         -------
         None.
         """
 
-        # Add the input the ground motion database to use
+        # Inherit the subclass
         super().__init__()
+
+        # Read the old EzGM obj
+        if obj_pkl:
+            with open('obj.pkl', 'rb') as file:
+                obj = pickle.load(file)
+            self.__dict__.update(obj)
+            database = self.database
+
+        # Add the input the ground motion database to use
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
@@ -2297,8 +2328,8 @@ class code_spectrum(_subclass_):
         2) Selecting and scaling suitable ground motion sets for target spectrum in accordance with specified code
     """
 
-    def __init__(self, database='NGA_W2', outdir='Outputs', target_path=None, nGM=11, selection=1,
-                 Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, opt=1, maxScale=2, RecPerEvent=3):
+    def __init__(self, database='NGA_W2', outdir='Outputs', target_path=None, nGM=11, selection=1, opt=1,
+                 Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, maxScale=2, RecPerEvent=3, obj_pkl=None):
         """
         Details
         -------
@@ -2317,7 +2348,12 @@ class code_spectrum(_subclass_):
         nGM : int, optional, the default is 11.
             Number of records to be selected. 
         selection : int, optional, the default is 1.
-            Number of ground motion components to select. 
+            Number of ground motion components to select.
+        opt : int, optional, the default is 1.
+            If equal to 1, the record set is selected using
+            method of “least squares”, each record has individual scaling factor.
+            If equal to 2, the record set selected such that each record has
+            identical scale factor which is as close as possible to 1.
         Mw_lim : list, optional, the default is None.
             The limiting values on magnitude. 
         Vs30_lim : list, optional, the default is None.
@@ -2339,23 +2375,44 @@ class code_spectrum(_subclass_):
                 'TF' for thrust faulting
                 'TS' for predominately thrust with strike-slip component
                 'U' for unknown
-        opt : int, optional, the default is 1.
-            If equal to 1, the record set is selected using
-            method of “least squares”, each record has individual scaling factor.
-            If equal to 2, the record set selected such that each record has
-            identical scale factor which is as close as possible to 1.
         maxScale : float, optional, the default is 2.
             Maximum allowed scaling factor, used with opt=2 case.
         RecPerEvent: int, the default is 3.
             The limit for the maximum number of records belong to the same event
+        obj_pkl    : str, optional, the default is None.
+            This is the path to the previously saved obj.pkl file by EzGM.
+            One can use the previously saved instance and use rest of the methods.
 
         Returns
         -------
         None.
         """
 
-        # Add the input the ground motion database to use
+        # Inherit the subclass
         super().__init__()
+
+        # Read the old EzGM obj
+        if obj_pkl:
+            with open('obj.pkl', 'rb') as file:
+                obj = pickle.load(file)
+            self.__dict__.update(obj)
+            database = self.database
+
+        # Add new selection settings to self
+        else:
+            self.database['Name'] = database
+            self.nGM = nGM
+            self.selection = selection
+            self.Mw_lim = Mw_lim
+            self.Vs30_lim = Vs30_lim
+            self.Rjb_lim = Rjb_lim
+            self.fault_lim = fault_lim
+            self.opt = opt
+            self.maxScale = maxScale
+            self.target_path = target_path
+            self.RecPerEvent = RecPerEvent
+
+        # Add the input the ground motion database to use
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
 
@@ -2363,20 +2420,7 @@ class code_spectrum(_subclass_):
         cwd = os.getcwd()
         outdir_path = os.path.join(cwd, outdir)
         create_dir(outdir_path)
-
-        # Add selection settings to self
-        self.database['Name'] = database
         self.outdir = outdir_path
-        self.nGM = nGM
-        self.selection = selection
-        self.Mw_lim = Mw_lim
-        self.Vs30_lim = Vs30_lim
-        self.Rjb_lim = Rjb_lim
-        self.fault_lim = fault_lim
-        self.opt = opt
-        self.maxScale = maxScale
-        self.target_path = target_path
-        self.RecPerEvent = RecPerEvent
 
     @staticmethod
     @njit

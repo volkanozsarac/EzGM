@@ -1369,7 +1369,7 @@ def random_uniform(num_dimensions, num_samples, sampling_type):
     """
     Details
     -------
-    Used to perform sampling based on Monte Carlo Simulation or Latin Hypecube Sampling
+    Used to perform sampling based on Monte Carlo Simulation or Latin Hypercube Sampling
 
     References
     ----------

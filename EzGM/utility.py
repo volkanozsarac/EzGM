@@ -472,10 +472,10 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                 fname = os.path.join(output_dir, 'Disaggregation_MReps_' + imt + '.png')
                 plt.savefig(fname, format='png', dpi=220)
 
-                fname = os.path.join(output_dir, 'mean_mags_' + imt + '.out')
-                np.savetxt(fname, np.asarray(mags), fmt='%.2f')
-                fname = os.path.join(output_dir, 'mean_dists_' + imt + '.out')
-                np.savetxt(fname, np.asarray(dists), fmt='%.1f')
+                # fname = os.path.join(output_dir, 'mean_mags_' + imt + '.out')
+                # np.savetxt(fname, np.asarray(mags), fmt='%.2f')
+                # fname = os.path.join(output_dir, 'mean_dists_' + imt + '.out')
+                # np.savetxt(fname, np.asarray(dists), fmt='%.1f')
                 if show:
                     plt.show()
                 plt.close(fig)

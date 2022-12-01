@@ -462,12 +462,13 @@ class _subclass_:
 
         if type(self).__name__ == 'conditional_spectrum':
 
-            # xticks to use for plotting
+            # xticks and yticks to use for plotting
             xticks = [self.T[0]]
-            for x in [0.01, 0.05, 0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 10]:
+            for x in [0.01, 0.1, 0.2, 0.5, 1, 2, 4, 7, 10]:
                 if self.T[0] < x < self.T[-1]:
                     xticks.append(x)
             xticks.append(self.T[-1])
+            yticks = [0.01, 0.1, 0.2, 0.5, 1, 2, 3, 5]
 
             if self.cond == 1:
                 if len(self.Tstar) == 1:
@@ -490,7 +491,7 @@ class _subclass_:
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].set_yticks(yticks)
                 ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
@@ -551,7 +552,7 @@ class _subclass_:
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].set_yticks(yticks)
                 ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
@@ -612,7 +613,7 @@ class _subclass_:
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks([0.1, 0.2, 0.5, 1, 2, 3, 4, 5])
+                ax[0].set_yticks(yticks)
                 ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_yaxis().set_minor_formatter(NullFormatter())
                 ax[0].set_xlabel('Period [sec]')
@@ -1982,6 +1983,11 @@ class conditional_spectrum(_subclass_):
         # Compute the final covariance matrix
         cov_diag = np.sum(Cov_elms, 1)
         TgtCov_fin[np.eye(len(self.T)) == 1] = cov_diag
+        # Avoid positive semi-definite covariance matrix with several eigenvalues being exactly zero.
+        # See: https://stackoverflow.com/questions/41515522/numpy-positive-semi-definite-warning!
+        min_eig = np.min(np.real(np.linalg.eigvals(TgtCov_fin)))
+        if min_eig < 0:
+            TgtCov_fin -= 2 * min_eig * np.eye(*TgtCov_fin.shape)
         TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
 
         # Add target spectrum to self
@@ -2022,19 +2028,12 @@ class conditional_spectrum(_subclass_):
         else:
             np.random.seed(sum(gmtime()[:6]))
 
-        # Avoid positive semi-definite covariance matrix with several eigenvalues being exactly zero.
-        # See: https://stackoverflow.com/questions/41515522/numpy-positive-semi-definite-warning
-        # Covariance matrix is important and going to be used to perform the initial record selection!
-        cov = self.cov.copy()
-        min_eig = np.min(np.real(np.linalg.eigvals(cov)))
-        if min_eig < 0:
-            cov -= min_eig * np.eye(*self.cov.shape)
-
         devTotalSim = np.zeros((self.nTrials, 1))
         specDict = {}
         # Generate simulated response spectra with best matches to the target values
         for j in range(self.nTrials):
-            specDict[j] = np.exp(random_multivariate_normal(self.mu_ln, cov, self.nGM, 'LHS'))
+            # It might be better to use the second function if cov_rank = np.linalg.matrix_rank(self.cov) < len(mu_ln)
+            specDict[j] = np.exp(random_multivariate_normal(self.mu_ln, self.cov, self.nGM, 'LHS'))
             # specDict[j] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov, size=self.nGM))
 
             # how close is the mean of the spectra to the target

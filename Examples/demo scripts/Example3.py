@@ -53,13 +53,13 @@ os.system(oq + ' engine --run ' + oq_ini + ' --exports csv')
 os.chdir(cwd) # go back to the previous working directory
 
 # Extract and plot hazard curves in a reasonable format
-hazard_curve(poes, results_dir, post_dir)
+hazard_curve(poes, results_dir, post_dir, show=0)
 
 # Extract and plot disaggregation results by M and R
-disagg_MR(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3)
+disagg_MR(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3, show=0)
 
 # Extract and plot disaggregation results by M, R and epsilon
-disagg_MReps(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3)
+disagg_MReps(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3, show=0)
 
 # Get ESM token for ESM database.
 get_esm_token('example_username@email.com', pwd = 'example_password123456')
@@ -80,13 +80,26 @@ for im in ims:  # for each im in the im list
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
 
     for i in range(len(poes)):
+        # a) We can use mean magnitude and mean distance values to compute approximate CS.
+        mags = [mean_mags[i]]
+        dists = [mean_dists[i]]
+        hconts = [1.0]
+        rakes = [0.0]
+        
+        # b) We can also consider all contributing scenarios to compute exact CS.
+        disagg = np.loadtxt(os.path.join(post_dir,'MagDist_poe_' + str(poes[i]) + '_' + im + '.out'))
+        mags = disagg[:, 0].tolist()
+        dists = disagg[:, 1].tolist()
+        hconts = disagg[:, 2].tolist()
+        rakes = [0.0]*len(mags)
+        
         # 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
         cs = conditional_spectrum(database='NGA_W2', outdir=os.path.join('EzGM_Outputs_' + im, 'POE-' + str(poes[i]) + '-in-50-years'))
 
         # 2.) Create target spectrum
         cs.create(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', selection=1, Sa_def='RotD50', 
-                  site_param={'vs30': reference_vs30_value}, rup_param={'rake': [0.0], 'mag': [mean_mags[i]]},
-                  dist_param={'rjb': [mean_dists[i]]}, Hcont=None, T_Tgt_range=[0.05, 2.5],
+                  site_param={'vs30': reference_vs30_value}, rup_param={'rake': rakes, 'mag': mags},
+                  dist_param={'rjb': dists}, Hcont=hconts, T_Tgt_range=[0.05, 2.5],
                   im_Tstar=imls[i], epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram')
 
         # 3.) Select the ground motions
@@ -96,7 +109,6 @@ for im in ims:  # for each im in the im list
 
         # Plot the target spectrum, simulated spectra and spectra of selected records
         cs.plot(tgt=0, sim=0, rec=1, save=1, show=0)
-        plt.close('all')
 
         # 4.) If database == 'NGA_W2' you can first download the records via nga_download method
         # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method

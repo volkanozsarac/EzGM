@@ -472,10 +472,6 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                 fname = os.path.join(output_dir, 'Disaggregation_MReps_' + imt + '.png')
                 plt.savefig(fname, format='png', dpi=220)
 
-                # fname = os.path.join(output_dir, 'mean_mags_' + imt + '.out')
-                # np.savetxt(fname, np.asarray(mags), fmt='%.2f')
-                # fname = os.path.join(output_dir, 'mean_dists_' + imt + '.out')
-                # np.savetxt(fname, np.asarray(dists), fmt='%.1f')
                 if show:
                     plt.show()
                 plt.close(fig)
@@ -1398,7 +1394,7 @@ def random_uniform(num_dimensions, num_samples, sampling_type):
         np.random.seed(seed)
         sample = np.random.uniform(size=[num_dimensions, num_samples]).T
     elif sampling_type == 'LHS':
-        # A Latin hypercube sample generates n points in [0, 1)^d. 
+        # A Latin hypercube sample generates n points in [0, 1)^d.
         # Each univariate marginal distribution is stratified, placing exactly one point in each possible grid.
         sampler = qmc.LatinHypercube(d=num_dimensions, seed=seed)
         sample = sampler.random(n=num_samples)
@@ -1433,36 +1429,23 @@ def random_multivariate_normal(mu, cov, num_samples, sampling_option):
 
     Returns
     -------
-    z.T : numpy.ndarray (num_samples x num_dimensions)
+    z : numpy.ndarray (num_samples x num_dimensions)
         Array which contains randomly generated numbers between 0 and 1
     """
     num_dimensions = len(mu)
     if mu.size == mu.shape[0]:
         mu = mu.reshape(-1, 1)
     my = mu @ np.ones([1, num_samples])
-    cov_rank = np.linalg.matrix_rank(cov)
     eigen_values, eigen_vectors = np.linalg.eigh(cov)
-
-    if cov_rank >= num_dimensions:
-        ly = eigen_vectors
-        dy = np.diag(eigen_values ** 0.5)
-    else:
-        ly = eigen_vectors[:, num_dimensions - cov_rank:]
-        dy = np.diag(eigen_values[num_dimensions - cov_rank:] ** 0.5)
-
+    # The lower-triangular decomposition of the correlation matrix
+    ly = eigen_vectors
+    # Standard deviations
+    dy = np.diag(eigen_values ** 0.5)
     # Generate uniformly distributed between 0 and 1
-    if cov_rank >= num_dimensions:
-        u = random_uniform(num_dimensions, num_samples, sampling_option)
-    else:
-        u = random_uniform(cov_rank, num_samples, sampling_option)
-
+    u = random_uniform(num_dimensions, num_samples, sampling_option)
     # Compute standard random numbers
     u = norm(loc=0, scale=1).ppf(u)
     # Create realization matrix (Eqn. 4) - @ is the matrix multiplication
-    z = ly @ dy @ u.T + my
+    z = (ly @ dy @ u.T + my).T
 
-    # Sanity check for complex numbers
-    if not z.any():
-        z = np.real(z)
-
-    return z.T
+    return z

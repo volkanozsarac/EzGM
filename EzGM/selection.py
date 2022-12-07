@@ -755,7 +755,7 @@ class _subclass_:
             for i in range(1, len(time_tag)):
                 time_tag_str += f'_{time_tag[i]}'
             file_name = os.path.join(self.outdir, f'unscaled_records_{time_tag_str}.zip')
-            with zipfile.ZipFile(file_name, 'w') as zipObj:
+            with zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED) as zipObj:
                 len_dir_path = len(folder_temp)
                 for root, _, files in os.walk(folder_temp):
                     for file in files:

@@ -56,59 +56,12 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
     None.
     """
 
-    def get_iml(poes, apoe_data, iml_data, inv_t):
-        """
-        Details
-        -------
-        This script will take results of OpenQuake PSHA analysis, and return
-        the intensity measure levels for desired probability of exceedance values.
-
-        Parameters
-        ----------
-        poes: list
-            desired probability of exceedance values to calculate their
-            corresponding intensity measure levels.
-        apoe_data: list
-            annual probability of exceedance values.
-        iml_data: list
-            intensity measure levels.
-        inv_t: int
-            investigation time.
-
-        Returns
-        -------
-        iml: list
-            intensity measure levels corresponding to poes.
-        """
-
-        infs = np.isinf(apoe_data)
-        apoe_data = apoe_data[~infs]
-        iml_data = iml_data[~infs]
-        nans = np.isnan(apoe_data)
-        apoe_data = apoe_data[~nans]
-        iml_data = iml_data[~nans]
-
-        Ninterp = 1e5
-        iml_range = np.arange(min(iml_data), max(iml_data), (max(iml_data) - min(iml_data)) / Ninterp)
-        apoe_fit = interpolate.interp1d(iml_data, apoe_data, kind='quadratic')(iml_range)
-        poe = 1 - (1 - apoe_fit) ** inv_t
-
-        idxs = []
-        for i in range(len(poes)):
-            temp = abs(poe - poes[i]).tolist()
-            idxs.append(temp.index(min(temp)))
-            # These are actual points where the analysis are carried out and losses are calculated for
-        iml = iml_range[idxs]
-
-        return iml
-
     # Initialise some lists
     lat = []
     lon = []
     im = []
-    s = []
-    poe = []
-    apoe = []
+    iml_data = []
+    poe_data = []
     id_no = []
     imls = []
 
@@ -142,23 +95,27 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
                 lat.append([df.lat[site]][0])
                 lon.append([df.lon[site]][0])
                 im.append(im_type)
-                s.append(iml)
                 id_no.append(idn)
 
-                # Get the array of poe in inv_t
-                poe.append(df.iloc[site, 3:].values)
-
-                # For each array of poe, convert it to annual poe
-                temp = []
-                for i in np.arange(len(poe[-1])):
-                    temp.append(-np.log(1 - poe[-1][i]) / inv_t)
-                apoe.append(temp)
+                # Get the array of poe in inv_t and corresponding imls
+                tmp1 = np.array(df.iloc[site, 3:].values)
+                tmp2 = np.array(iml)
+                # get rid of any infinite or nan value
+                infs = np.isinf(tmp1)
+                tmp1 = tmp1[~infs]
+                tmp2 = tmp2[~infs]
+                nans = np.isnan(tmp1)
+                tmp1 = tmp1[~nans]
+                tmp2 = tmp2[~nans]
+                # append
+                poe_data.append(tmp1)
+                iml_data.append(tmp2)
 
     # Get intensity measure levels corresponding to poes
     fig = plt.figure()
-    for i in range(len(s)):
-        plt.loglog(s[i], apoe[i], label=im[i])
-        iml = get_iml(np.asarray(poes), np.asarray(apoe[i]), np.asarray(s[i]), inv_t)
+    for i in range(len(iml_data)):
+        plt.loglog(iml_data[i], poe_data[i], label=im[i])
+        iml = interpolate.interp1d(poe_data[i], iml_data[i], kind='linear')(poes)
         imls.append(iml)
         fname = os.path.join(output_dir, 'imls_' + im[i] + '.out')
         f = open(fname, 'w+')
@@ -173,21 +130,20 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
     f.close()
 
     plt.xlabel('IM [g]')
-    plt.ylabel('Annual Probability of Exceedance')
+    plt.ylabel(f'Probability of Exceedance in {inv_t:.0f} years')
     plt.legend()
     plt.grid(True)
     plt.title(f"Mean Hazard Curves for Lat:{lat[0]} Lon:{lon[0]}")
     plt.tight_layout()
     fname = os.path.join(output_dir, 'Hazard_Curves.png')
-    plt.savefig(fname, format='png', dpi=220)
+    plt.savefig(fname, format='png', dpi=300)
     if show:
         plt.show()
     plt.close(fig)
 
-    for i in range(len(apoe)):
-        poe = 1 - (1 - np.asarray(apoe[i])) ** inv_t
+    for i, poe in enumerate(poe_data):
         poe.shape = (len(poe), 1)
-        imls = np.asarray(s[i])
+        imls = np.asarray(iml_data[i])
         imls.shape = (len(imls), 1)
         haz_cur = np.concatenate([imls, poe], axis=1)
         fname = os.path.join(output_dir, 'HazardCurve_' + im[i] + '.out')
@@ -240,7 +196,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
             inv_t = float(ff[7].replace(" investigation_time=", ""))
             for imt in ims:
                 M, R = [], []
-                apoe_norm = []
+                hz_cont = []
                 Tr = []
                 modeLst, meanLst = [], []
                 for poe in poes:
@@ -248,17 +204,17 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                     data = {}
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
-                    data['apoe'] = -np.log(1 - df.iloc[:, 4][(df['poe'] == poe) & (df['imt'] == imt)]) / inv_t
-                    apoe_norm.append(data['apoe'] / data['apoe'].sum())
-                    data['apoe_norm'] = apoe_norm[-1]
+                    data['hz_cont'] = df.iloc[:, 4][(df['poe'] == poe) & (df['imt'] == imt)]
+                    hz_cont.append(data['hz_cont'] / data['hz_cont'].sum())
+                    data['hz_cont'] = hz_cont[-1]
                     data = pd.DataFrame(data)
-                    # Compute the modal value (highest apoe)
-                    mode = data.sort_values(by='apoe_norm', ascending=False)[0:1]
+                    # Compute the modal values (highest hazard contribution)
+                    mode = data.sort_values(by='hz_cont', ascending=False)[0:1]
                     modeLst.append([mode['mag'].values[0], mode['dist'].values[0]])
                     # Compute the mean value
-                    meanLst.append([np.sum(data['mag'] * data['apoe_norm']), np.sum(data['dist'] * data['apoe_norm'])])
+                    meanLst.append([np.sum(data['mag'] * data['hz_cont']), np.sum(data['dist'] * data['hz_cont'])])
 
-                    # Report the individual mangnitude and distance bins
+                    # Report the individual magnitude and distance bins
                     M.append(data['mag'])
                     R.append(data['dist'])
 
@@ -275,7 +231,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                 fig = plt.figure(figsize=(19.2, 10.8))
                 for i in range(n_Tr):
                     # Save disaggregation results
-                    disagg_results = np.array([M[i], R[i], apoe_norm[i]*1/sum(apoe_norm[i])]).T
+                    disagg_results = np.array([M[i], R[i], hz_cont[i]]).T
                     disagg_results = disagg_results[disagg_results[:,2] != 0]
                     fname = os.path.join(output_dir, 'MagDist_poe_' + str(poes[i]) + '_' + imt + '.out')
                     np.savetxt(fname, disagg_results)
@@ -288,7 +244,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
 
                     dx = np.ones(len(X)) * dbin / 2
                     dy = np.ones(len(X)) * Mbin / 2
-                    dz = apoe_norm[i] * 100
+                    dz = hz_cont[i] * 100
 
                     # here we may make the colormap based on epsilon instead of hazard contribution
                     max_height = np.max(dz)  # get range of color bars so we can normalize
@@ -321,7 +277,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
 
                 plt.tight_layout(rect=[0, 0.0, 1, 0.94])
                 fname = os.path.join(output_dir, 'Disaggregation_MR_' + imt + '.png')
-                plt.savefig(fname, format='png', dpi=220)
+                plt.savefig(fname, format='png', dpi=300)
 
                 fname = os.path.join(output_dir, 'mean_mags_' + imt + '.out')
                 np.savetxt(fname, np.asarray(mean_mags), fmt='%.2f')
@@ -387,7 +343,7 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
             for imt in ims:
                 modeLst, meanLst = [], []
                 Tr = []
-                apoe_norm = []
+                hz_cont = []
                 M, R, eps = [], [], []
                 for poe in poes:
                     Tr.append(round(-inv_t / np.log(1 - poe)))
@@ -395,23 +351,29 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['eps'] = df['eps'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
-                    data['apoe'] = -np.log(1 - df.iloc[:, 5][(df['poe'] == poe) & (df['imt'] == imt)]) / inv_t
-                    apoe_norm.append(np.array(data['apoe'] / data['apoe'].sum()))
-                    data['apoe_norm'] = apoe_norm[-1]
+                    data['hz_cont'] = df.iloc[:, 5][(df['poe'] == poe) & (df['imt'] == imt)]
+                    hz_cont.append(np.array(data['hz_cont'] / data['hz_cont'].sum()))
+                    data['hz_cont'] = hz_cont[-1]
                     data = pd.DataFrame(data)
-                    # Compute the modal value (highest apoe)
-                    mode = data.sort_values(by='apoe_norm', ascending=False)[0:1]
+                    # Compute the modal value (highest poe)
+                    mode = data.sort_values(by='hz_cont', ascending=False)[0:1]
                     modeLst.append([mode['mag'].values[0], mode['dist'].values[0], mode['eps'].values[0]])
                     # Compute the mean value
-                    meanLst.append([np.sum(data['mag'] * data['apoe_norm']), np.sum(data['dist'] * data['apoe_norm']),
-                                    np.sum(data['eps'] * data['apoe_norm'])])
+                    meanLst.append([np.sum(data['mag'] * data['hz_cont']), np.sum(data['dist'] * data['hz_cont']),
+                                    np.sum(data['eps'] * data['hz_cont'])])
 
-                    # Report the individual mangnitude and distance bins
+                    # Report the individual magnitude and distance bins
                     M.append(np.array(data['mag']))
                     R.append(np.array(data['dist']))
                     eps.append(np.array(data['eps']))
 
                 n_Tr = len(Tr)
+                mean_mags = []
+                mean_dists = []
+                mean_eps = []
+                mod_mags = []
+                mod_dists = []
+                mod_eps = []
                 n_eps = len(np.unique(np.asarray(eps)))
                 min_eps = np.min(np.unique(np.asarray(eps)))  # get range of colorbars so we can normalize
                 max_eps = np.max(np.unique(np.asarray(eps)))
@@ -423,6 +385,17 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                 fig = plt.figure(figsize=(19.2, 10.8))
                 for i in range(n_Tr):
                     ax1 = fig.add_subplot(n_rows, n_cols, i + 1, projection='3d')
+                    # Save disaggregation results
+                    disagg_results = np.array([M[i], R[i], eps[i], hz_cont[i]]).T
+                    disagg_results = disagg_results[disagg_results[:, 3] != 0]
+                    fname = os.path.join(output_dir, 'MagDistEps_poe_' + str(poes[i]) + '_' + imt + '.out')
+                    np.savetxt(fname, disagg_results)
+                    mean_mags.append(meanLst[i][0])
+                    mean_dists.append(meanLst[i][1])
+                    mean_eps.append(meanLst[i][2])
+                    mod_mags.append(modeLst[i][0])
+                    mod_dists.append(modeLst[i][1])
+                    mod_eps.append(modeLst[i][2])
 
                     # scale each eps to [0,1], and get their rgb values
                     rgba = [cmap((k - min_eps) / max_eps / 2) for k in (np.unique(np.asarray(eps)))]
@@ -435,7 +408,7 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
 
                         dx = np.ones(int(num_triads_M_R_eps / n_eps)) * dbin / 2
                         dy = np.ones(int(num_triads_M_R_eps / n_eps)) * Mbin / 2
-                        dz = np.array(apoe_norm[i][np.arange(l, num_triads_M_R_eps, n_eps)]) * 100
+                        dz = np.array(hz_cont[i][np.arange(l, num_triads_M_R_eps, n_eps)]) * 100
 
                         ax1.bar3d(X, Y, Z, dx, dy, dz, color=rgba[l], zsort='average', alpha=0.7, shade=True)
                         Z += dz  # add the height of each bar to know where to start the next
@@ -470,8 +443,20 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                              f"{lat:.4f}, Longitude: {lon:.4f}", fontsize=14, weight='bold', ha='left', x=0.0, y=1.0)
                 plt.tight_layout(rect=[0, 0.03, 1, 0.94])
                 fname = os.path.join(output_dir, 'Disaggregation_MReps_' + imt + '.png')
-                plt.savefig(fname, format='png', dpi=220)
+                plt.savefig(fname, format='png', dpi=300)
 
+                fname = os.path.join(output_dir, 'mean_mags_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mean_mags), fmt='%.2f')
+                fname = os.path.join(output_dir, 'mean_dists_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mean_dists), fmt='%.1f')
+                fname = os.path.join(output_dir, 'mean_eps_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mean_eps), fmt='%.1f')
+                fname = os.path.join(output_dir, 'mod_mags_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mod_mags), fmt='%.2f')
+                fname = os.path.join(output_dir, 'mod_dists_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mod_dists), fmt='%.1f')
+                fname = os.path.join(output_dir, 'mod_eps_' + imt + '.out')
+                np.savetxt(fname, np.asarray(mod_eps), fmt='%.1f')
                 if show:
                     plt.show()
                 plt.close(fig)

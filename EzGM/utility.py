@@ -296,8 +296,7 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
     """
     Details
     -------
-    This script will save disaggregation plots
-    including M and R.
+    This script will save disaggregation plots including M, R and eps.
 
     Parameters
     ----------
@@ -349,18 +348,18 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                     Tr.append(round(-inv_t / np.log(1 - poe)))
                     data = {}
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
-                    data['eps'] = df['eps'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
+                    data['eps'] = df['eps'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['hz_cont'] = df.iloc[:, 5][(df['poe'] == poe) & (df['imt'] == imt)]
                     hz_cont.append(np.array(data['hz_cont'] / data['hz_cont'].sum()))
                     data['hz_cont'] = hz_cont[-1]
                     data = pd.DataFrame(data)
+                    data_reduced = data.groupby(['mag', 'dist']).agg(['sum'])[('hz_cont', 'sum')].reset_index().droplevel(1, axis=1)
                     # Compute the modal value (highest poe)
-                    mode = data.sort_values(by='hz_cont', ascending=False)[0:1]
-                    modeLst.append([mode['mag'].values[0], mode['dist'].values[0], mode['eps'].values[0]])
+                    mode = data_reduced.sort_values(by='hz_cont', ascending=False)[0:1]
+                    modeLst.append([mode['mag'].values[0], mode['dist'].values[0]])
                     # Compute the mean value
-                    meanLst.append([np.sum(data['mag'] * data['hz_cont']), np.sum(data['dist'] * data['hz_cont']),
-                                    np.sum(data['eps'] * data['hz_cont'])])
+                    meanLst.append([np.sum(data_reduced['mag'] * data_reduced['hz_cont']), np.sum(data_reduced['dist'] * data_reduced['hz_cont'])])
 
                     # Report the individual magnitude and distance bins
                     M.append(np.array(data['mag']))
@@ -370,10 +369,8 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                 n_Tr = len(Tr)
                 mean_mags = []
                 mean_dists = []
-                mean_eps = []
                 mod_mags = []
                 mod_dists = []
-                mod_eps = []
                 n_eps = len(np.unique(np.asarray(eps)))
                 min_eps = np.min(np.unique(np.asarray(eps)))  # get range of colorbars so we can normalize
                 max_eps = np.max(np.unique(np.asarray(eps)))
@@ -392,10 +389,8 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                     np.savetxt(fname, disagg_results)
                     mean_mags.append(meanLst[i][0])
                     mean_dists.append(meanLst[i][1])
-                    mean_eps.append(meanLst[i][2])
                     mod_mags.append(modeLst[i][0])
                     mod_dists.append(modeLst[i][1])
-                    mod_eps.append(modeLst[i][2])
 
                     # scale each eps to [0,1], and get their rgb values
                     rgba = [cmap((k - min_eps) / max_eps / 2) for k in (np.unique(np.asarray(eps)))]
@@ -421,13 +416,10 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                         ax1.set_zlabel('Hazard Contribution [%]', rotation=90)
                     ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
-                    plt.title("$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km, $\epsilon_{mod}$=%s"
-                              "\n$M_{mean}$=%s, $R_{mean}$=%s km, $\epsilon_{mean}$=%s"
+                    plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km'
                               % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
-                                 "{:.1f}".format(modeLst[i][2]),
-                                 "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1]),
-                                 "{:.1f}".format(meanLst[i][2])),
-                              fontsize=11, loc='right', va='top', y=0.95)
+                                 "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
+                              fontsize=11, loc='right', verticalalignment='top', y=0.95)
 
                     mags.append(meanLst[i][0])
                     dists.append(meanLst[i][1])
@@ -449,14 +441,10 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                 np.savetxt(fname, np.asarray(mean_mags), fmt='%.2f')
                 fname = os.path.join(output_dir, 'mean_dists_' + imt + '.out')
                 np.savetxt(fname, np.asarray(mean_dists), fmt='%.1f')
-                fname = os.path.join(output_dir, 'mean_eps_' + imt + '.out')
-                np.savetxt(fname, np.asarray(mean_eps), fmt='%.1f')
                 fname = os.path.join(output_dir, 'mod_mags_' + imt + '.out')
                 np.savetxt(fname, np.asarray(mod_mags), fmt='%.2f')
                 fname = os.path.join(output_dir, 'mod_dists_' + imt + '.out')
                 np.savetxt(fname, np.asarray(mod_dists), fmt='%.1f')
-                fname = os.path.join(output_dir, 'mod_eps_' + imt + '.out')
-                np.savetxt(fname, np.asarray(mod_eps), fmt='%.1f')
                 if show:
                     plt.show()
                 plt.close(fig)

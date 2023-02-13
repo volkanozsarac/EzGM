@@ -772,7 +772,7 @@ def Sae_ec8_part1(ag, xi, T, ImpClass, Type, SiteClass):
     xi: float
         Damping ratio
     T: list or numpy.array
-        Period array to get Sa values
+        Period array for which elastic response spectrum is calculated
     ImpClass: str
         Importance class ('I','II','III','IV')
     Type: str
@@ -861,6 +861,8 @@ def Sae_asce7_16(T, SDS, SD1, TL):
 
     Parameters
     ----------
+    T:  numpy.array
+        Period array for which elastic response spectrum is calculated
     SDS: float
         Numeric seismic design value (0.2 sec)
     SD1: float
@@ -1125,7 +1127,7 @@ def Sae_tbec2018(T, PGA, SDS, SD1, TL):
     Parameters
     ----------
     T:  numpy.array
-        period array in which target spectrum is calculated
+        Period array for which elastic response spectrum is calculated
     PGA: float
         Peak ground acceleration
     SDS: float
@@ -1157,6 +1159,76 @@ def Sae_tbec2018(T, PGA, SDS, SD1, TL):
         elif T[i] > TL:
             Sae[i] = SD1 * TL / T[i] ** 2
 
+    return Sae
+
+
+def Sae_TBEC2007(T, zone, soil):
+
+    """
+    Details
+    -------
+    This method calculates the design response spectrum according to TBEC2007.
+
+    References
+    ----------
+    TBEC. (2007). Turkish building earthquake code.
+
+    Notes
+    -----
+
+    Parameters
+    ----------
+    T:  numpy.array
+        Period array for which elastic response spectrum is calculated
+    zone: int
+        Seismic zone (1, 2, 3, 4)
+    soil: str
+        Site class ('Z1', 'Z2', 'Z3', 'Z4')
+    SD1: float
+        Spectral acceleration coefficient at period 1.0
+
+    Returns
+    -------
+    Sae: numpy.array
+        Elastic acceleration response spectrum
+    """
+
+    # Seismic zone
+    if zone == 1:
+      A0 = 0.1
+    elif zone == 2:
+      A0 = 0.2
+    elif zone == 3:
+      A0 = 0.3
+    elif zone == 4:
+      A0 = 0.4
+
+    # site class
+    if soil == 'Z1':
+      TA = 0.1
+      TB = 0.30
+    elif soil == 'Z2':
+       TA = 0.15
+       TB = 0.40     
+    elif soil == 'Z3':
+       TA = 0.15
+       TB = 0.60   
+    elif soil == 'Z4':
+       TA = 0.2
+       TB = 0.90   
+
+    # Response spectrum
+    Sae = np.zeros(len(T))
+    for i in range(len(T)):
+        if T[i] <= TA:
+            Sae[i] = 1+1.5*T[i]/TA
+        elif T[i] > TA and T[i]<=TB:       
+            Sae[i] = 2.5
+        elif T[i] > TB:       
+            Sae[i] = 2.5*(TB/T[i])**0.8  
+        
+    Sae = A0*Sae
+    
     return Sae
 
 

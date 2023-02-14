@@ -356,7 +356,7 @@ def get_parameters(Ag, dt, T, xi):
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs(u), axis=0)
     param['Sv'] = np.max(np.abs(v), axis=0)
-    param['Sa'] = np.max(np.abs(ac_tot), axis=0)
+    param['Sa'] = np.max(np.abs(ac), axis=0)
     param['PSv'] = (2 * np.pi / T) * param['Sd']
     param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
     ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m

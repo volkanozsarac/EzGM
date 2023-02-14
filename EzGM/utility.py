@@ -962,7 +962,7 @@ def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
     """
     Details
     -------
-    This method retrieves the design response spectrum parameters for the given site according to TBEC2018.
+    This method retrieves the elastic design spectrum parameters for the given site according to TBEC2018.
 
     References
     ----------
@@ -1111,11 +1111,11 @@ def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
     return PGA, SDS, SD1, TL
 
 
-def Sae_tbec2018(T, PGA, SDS, SD1, TL):
+def Sae_tbec2018(T, SDS, SD1, TL):
     """
     Details
     -------
-    This method calculates the design response spectrum according to TBEC2018.
+    This method calculates the elastic design spectrum according to TBEC2018.
 
     References
     ----------
@@ -1128,8 +1128,6 @@ def Sae_tbec2018(T, PGA, SDS, SD1, TL):
     ----------
     T:  numpy.array
         Period array for which elastic response spectrum is calculated
-    PGA: float
-        Peak ground acceleration
     SDS: float
         Short period (0.2 sec) spectral acceleration coefficient
     SD1: float
@@ -1140,17 +1138,21 @@ def Sae_tbec2018(T, PGA, SDS, SD1, TL):
     Returns
     -------
     Sae: numpy.array
-        Elastic acceleration response spectrum
+        Horizontal elastic acceleration response spectrum
+    SaeD: numpy.array
+        Vertıcal elastic acceleration response spectrum
     """
 
     TA = 0.2 * SD1 / SDS
     TB = SD1 / SDS
+    TAD = TA/3
+    TBD = TB/3
+    TLD = TL/2
     Sae = np.zeros(len(T))
+    SaeD = np.zeros(len(T))
 
     for i in range(len(T)):
-        if T[i] == 0:
-            Sae[i] = PGA
-        elif T[i] <= TA:
+        if T[i] <= TA:
             Sae[i] = (0.4 + 0.6 * T[i] / TA) * SDS
         elif TA < T[i] <= TB:
             Sae[i] = SDS
@@ -1159,7 +1161,16 @@ def Sae_tbec2018(T, PGA, SDS, SD1, TL):
         elif T[i] > TL:
             Sae[i] = SD1 * TL / T[i] ** 2
 
-    return Sae
+        if T[i] <= TAD:
+            SaeD[i] = (0.32 + 0.48 * T[i] / TAD) * SDS
+        elif TAD < T[i] <= TBD:
+            SaeD[i] = 0.8 * SDS
+        elif TBD < T[i] <= TLD:
+            SaeD[i] = 0.8 * SD1 / T[i]
+        elif T[i] > TLD:
+            SaeD[i] = SD1 * TLD / T[i] ** 2
+
+    return Sae, SaeD
 
 
 def Sae_TBEC2007(T, zone, soil):
@@ -1167,7 +1178,7 @@ def Sae_TBEC2007(T, zone, soil):
     """
     Details
     -------
-    This method calculates the design response spectrum according to TBEC2007.
+    This method calculates the elastic horizontal design spectrum according to TBEC2007.
 
     References
     ----------

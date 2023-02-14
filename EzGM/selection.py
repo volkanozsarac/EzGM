@@ -287,6 +287,7 @@ class _subclass_:
         -------
         None.
         """
+
         def save_signal(path, uns_acc, sf, dt):
             """
             Details
@@ -2037,11 +2038,11 @@ class conditional_spectrum(_subclass_):
             # specDict[j] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov, size=self.nGM))
 
             # how close is the mean of the spectra to the target
-            devMeanSim = np.mean(np.log(specDict[j]), axis=0) - self.mu_ln 
+            devMeanSim = np.mean(np.log(specDict[j]), axis=0) - self.mu_ln
             # how close is the mean of the spectra to the target
             devSigSim = np.std(np.log(specDict[j]), axis=0) - self.sigma_ln
             # how close is the skewness of the spectra to zero (i.e., the target)  
-            devSkewSim = skew(np.log(specDict[j]), axis=0)  
+            devSkewSim = skew(np.log(specDict[j]), axis=0)
             # combine the three error metrics to compute a total error
             devTotalSim[j] = self.weights[0] * np.sum(devMeanSim ** 2) + \
                              self.weights[1] * np.sum(devSigSim ** 2) + \
@@ -2399,7 +2400,6 @@ class code_spectrum(_subclass_):
 
         # Add new selection settings to self
         else:
-            self.database['Name'] = database
             self.nGM = nGM
             self.selection = selection
             self.Mw_lim = Mw_lim
@@ -2414,6 +2414,10 @@ class code_spectrum(_subclass_):
         # Add the input the ground motion database to use
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
+        if 'Name' in self.database:
+            pass
+        else:
+            self.database['Name'] = database
 
         # create the output directory and add the path to self
         cwd = os.getcwd()
@@ -2526,7 +2530,7 @@ class code_spectrum(_subclass_):
         # Determine the elastic design spectrum from code
         else:
             PGA, SDS, SD1, TL = SiteParam_tbec2018(Lat, Long, DD, SiteClass)
-            target_spec = Sae_tbec2018(self.T, PGA, SDS, SD1, TL)
+            target_spec, _ = Sae_tbec2018(self.T, SDS, SD1, TL)
 
         # Consider the lower bound spectrum specified by the code as target spectrum
         if self.selection == 1:
@@ -2645,7 +2649,7 @@ class code_spectrum(_subclass_):
         if self.target_path:
             self.target = intfunc(self.T)
         else:
-            self.target = Sae_tbec2018(self.T, PGA, SDS, SD1, TL)
+            self.target, _ = Sae_tbec2018(self.T, SDS, SD1, TL)
 
         print('TBEC 2018 based ground motion record selection and amplitude scaling are finished...')
 

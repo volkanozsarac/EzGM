@@ -1166,9 +1166,9 @@ def Sae_tbec2018(T, SDS, SD1, TL):
         elif TAD < T[i] <= TBD:
             SaeD[i] = 0.8 * SDS
         elif TBD < T[i] <= TLD:
-            SaeD[i] = 0.8 * SD1 / T[i]
+            SaeD[i] = 0.8 * SDS / T[i]
         elif T[i] > TLD:
-            SaeD[i] = 0.8 * SD1 * TLD / T[i] ** 2
+            SaeD[i] = 0.8 * SDS * TLD / T[i] ** 2
 
     return Sae, SaeD
 

@@ -255,13 +255,13 @@ def get_parameters(Ag, dt, T, xi):
         PSv: numpy.array
             Elastic pseudo-velocity response spectrum [m/s].
         Sd: numpy.array
-            Elastic displacement response spectrum  - relative displacement [m].
+            Elastic relative displacement response spectrum [m].
         Sv: numpy.array
-            Elastic velocity response spectrum - relative velocity at [m/s].
+            Elastic relative velocity response spectrum [m/s].
         Sa_r: numpy.array
-            Elastic accleration response spectrum - relative acceleration [m/s2].
+            Elastic relative accleration response spectrum [m/s2].
         Sa_a: numpy.array
-            Elastic accleration response spectrum - absolute acceleration [m/s2].
+            Elastic absolute accleration response spectrum [m/s2].
         Ei_r: numpy.array
             Relative input energy spectrum for elastic system [N.m].
         Ei_a: numpy.array

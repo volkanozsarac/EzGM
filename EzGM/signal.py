@@ -260,8 +260,8 @@ def get_parameters(Ag, dt, T, xi):
             Elastic velocity response spectrum - relative velocity at [m/s].
         Sa_r: numpy.array
             Elastic accleration response spectrum - relative acceleration [m/s2].
-        Sa: numpy.array
-            Elastic accleration response spectrum - total acceleration [m/s2].
+        Sa_a: numpy.array
+            Elastic accleration response spectrum - absolute acceleration [m/s2].
         Ei_r: numpy.array
             Relative input energy spectrum for elastic system [N.m].
         Ei_a: numpy.array
@@ -359,7 +359,7 @@ def get_parameters(Ag, dt, T, xi):
     param['Sd'] = np.max(np.abs(u), axis=0)
     param['Sv'] = np.max(np.abs(v), axis=0)
     param['Sa_r'] = np.max(np.abs(ac), axis=0)
-    param['Sa'] = np.max(np.abs(ac_tot), axis=0)
+    param['Sa_a'] = np.max(np.abs(ac_tot), axis=0)
     param['PSv'] = (2 * np.pi / T) * param['Sd']
     param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
     ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m
@@ -443,12 +443,12 @@ def get_parameters(Ag, dt, T, xi):
     # ACCELERATION AND VELOCITY SPECTRUM INTENSITY
     try:
         index3 = np.where(T == 0.5)[0][0]
-        param['ASI'] = np.trapz(param['Sa'][index1:index3], T[index1:index3])
+        param['ASI'] = np.trapz(param['PSa'][index1:index3], T[index1:index3])
     except:
         param['ASI'] = -1
     try:
-        param['MASI'] = np.trapz(param['Sa'][index1:index2], T[index1:index2])
-        param['VSI'] = np.trapz(param['Sv'][index1:index2], T[index1:index2])
+        param['MASI'] = np.trapz(param['PSa'][index1:index2], T[index1:index2])
+        param['VSI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
     except:
         param['MASI'] = -1
         param['VSI'] = -1
@@ -480,7 +480,7 @@ def get_parameters(Ag, dt, T, xi):
     param['Tm'] = np.sum(Ci ** 2 / fi) / np.sum(Ci ** 2)
 
     # PREDOMINANT PERIOD
-    mask = param['Sa'] == max(param['Sa'])
+    mask = param['PSa'] == max(param['PSa'])
     indices = np.where(mask)[0]
     param['Tp'] = T[indices]
 

@@ -258,6 +258,8 @@ def get_parameters(Ag, dt, T, xi):
             Elastic displacement response spectrum  - relative displacement [m].
         Sv: numpy.array
             Elastic velocity response spectrum - relative velocity at [m/s].
+        Sa_r: numpy.array
+            Elastic accleration response spectrum - relative acceleration [m/s2].
         Sa: numpy.array
             Elastic accleration response spectrum - total acceleration [m/s2].
         Ei_r: numpy.array
@@ -356,7 +358,8 @@ def get_parameters(Ag, dt, T, xi):
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs(u), axis=0)
     param['Sv'] = np.max(np.abs(v), axis=0)
-    param['Sa'] = np.max(np.abs(ac), axis=0)
+    param['Sa_r'] = np.max(np.abs(ac), axis=0)
+    param['Sa'] = np.max(np.abs(ac_tot), axis=0)
     param['PSv'] = (2 * np.pi / T) * param['Sd']
     param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
     ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m
@@ -559,6 +562,7 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     for theta in range(0, 180, 1):
         Rot_Disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
 
+    # Pseudo-acceleration
     Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
     if isinstance(xx, list):
         Sa_RotDxx = [np.percentile(Rot_Acc, value, axis=0) for value in xx]

@@ -243,7 +243,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                     Z = np.zeros(len(X))
 
                     dx = np.ones(len(X)) * dbin / 2
-                    dy = np.ones(len(X)) * Mbin / 2
+                    dy = np.ones(len(Y)) * Mbin / 2
                     dz = hz_cont[i] * 100
 
                     # here we may make the colormap based on epsilon instead of hazard contribution

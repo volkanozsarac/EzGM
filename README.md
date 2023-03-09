@@ -66,7 +66,7 @@ Special thanks to Besim Yukselen for his help in the development of ngaw2_downlo
 ## References
 The references associated with each method are provided as the docstring.
 If you are going to use the code presented herein for any official study, please refer to: <br /> 
-Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2021). Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
+Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2023) Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, 19:4, 554-574, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
 ***
 ## Potential Improvements
 - Computation of the exact CS

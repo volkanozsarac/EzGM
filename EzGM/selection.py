@@ -459,6 +459,11 @@ class _subclass_:
         plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
         plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
         plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+        plt.rcParams['mathtext.it']= 'Times New Roman:italic'
+        plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
+        plt.rcParams['mathtext.default'] = 'regular'
+        plt.rcParams["mathtext.fontset"] ='custom'
         plt.ioff()
 
         if type(self).__name__ == 'conditional_spectrum':

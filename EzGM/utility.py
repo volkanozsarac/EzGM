@@ -56,6 +56,12 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
     None.
     """
 
+    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.default'] = 'regular'
+    plt.rcParams["mathtext.fontset"] ='custom'
+
     # Initialise some lists
     lat = []
     lon = []
@@ -177,6 +183,12 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
     -------
     None.
     """
+
+    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.default'] = 'regular'
+    plt.rcParams["mathtext.fontset"] ='custom'
 
     # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap
@@ -319,6 +331,12 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
     -------
     None.
     """
+
+    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
+    plt.rcParams['mathtext.default'] = 'regular'
+    plt.rcParams["mathtext.fontset"] ='custom'
 
     # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap

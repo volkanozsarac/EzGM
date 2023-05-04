@@ -5,8 +5,8 @@ Signal processing toolbox
 # Import python libraries
 import numpy as np
 import numpy.matlib
-from scipy.signal import butter, lfilter, windows
-from scipy.integrate import cumtrapz
+from scipy.signal import butter, windows, find_peaks, filtfilt
+from scipy.integrate import cumtrapz, trapz
 from scipy.fft import fft, fftfreq, fftshift
 
 
@@ -27,16 +27,16 @@ def baseline_correction(values, dt, polynomial_type):
     Parameters
     ----------
     values: numpy.array
-        signal values.
+        Input signal values.
     dt: float          
-        sampling interval.
+        Sampling interval.
     polynomial_type: str
-        type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'.
+        Type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'.
         
     Returns
     -------
     values_corrected: numpy.array
-        corrected values
+        Corrected signal values
     """
 
     if polynomial_type == 'Constant':
@@ -56,55 +56,56 @@ def baseline_correction(values, dt, polynomial_type):
     return values_corrected
 
 
-def butterworth_filter(values, dt, cut_off=25, filter_order=4, filter_type='lowpass', alpha_window=0.05):
+def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, alpha_window=0.0):
     """
     Details
     -------
-    This function performs infinite impulse response (IIR) filtering.
+    This function performs acausal or two-pass (forward and reverse) infinite impulse response (IIR) filtering.
+    The acausal filter is preferable to a causal filter (one pass) as it does not cause phase shift, in other words it is a zero-phase filter.
     It uses butterworth digital and analog filter design.
-    Before performing the filtering, it applies tukey window on the signal, and adds zero pads with signal length
-    to the start and end.
     
     References
     ----------
-    Kramer, Steven L. 1996. Geotechnical Earthquake Engineering, Prentice Hall.
-        
+    Boore, D. M., and S. Akkar (2003). Effect of causal and acausal filters on
+    elastic and inelastic response spectra, Earthquake Eng. Struct. Dyn. 32, 1729–1748.
+    Boore, D. M. (2005). On Pads and Filters: Processing Strong-Motion Data. 
+    Bulletin of the Seismological Society of America, 95(2), 745–750. 
+    doi: 10.1785/0120040160
+
     Parameters
     ----------
     values: numpy.array
         Input signal.
     dt: float
-        time-step.
+        Sampling interval.
     cut_off: float, tuple, list, optional (The default is 25)
         Cut off frequencies for the filter (Hz).
         For lowpass and highpass filters this parameters is a float e.g. 25 or 0.1
         For bandpass or bandstop filters this parameter is a tuple or list e.g. (0.1, 25)
-    filter_type: str, optional (The default is 'lowpass')
-        The type of filter {'lowpass', 'highpass', 'bandpass', 'bandstop'}.
     filter_order: int, optional (The default is 4)
         Order of the Butterworth filter.
-    alpha_window: float, optional (The default is 0.05)
+    alpha_window: float, optional (The default is 0.0)
         Shape parameter of the Tukey window
 
     Returns
     -------
     values_filtered: numpy.array
-        Filtered signal.
+        Filtered signal values.
     """
 
     if isinstance(cut_off, list) or isinstance(cut_off, tuple):
         cut_off = np.array(cut_off)
-    L = len(values)  # Signal length
     sampling_rate = 1.0 / dt  # Sampling rate
     nyq_freq = sampling_rate * 0.5  # Nyquist frequency
-    w = windows.tukey(L, alpha_window)  # This is the window
-    values_filtered = w * values  # Apply the tapered cosine window
-    values_filtered = np.append(np.append(np.zeros(L), values_filtered), np.zeros(L))  # Add zero pads to start and end
     wn = cut_off / nyq_freq  # The critical frequency or frequencies. For lowpass and highpass filters,
+    Lpad = round(len(values) /2)  # Half of signal length
+    w = windows.tukey(len(values), alpha_window)  # This is the window
+    values = w * values  # Apply the tapered cosine window
+    values = np.append(np.append(np.zeros(Lpad), values), np.zeros(Lpad))  # Add zero pads to start and end
     # Wn is a scalar; for bandpass and bandstop filters, Wn is a length-2 sequence.
     b, a = butter(filter_order, wn, filter_type)  # Numerator (b) and denominator (a) polynomials of the IIR filter.
-    values_filtered = lfilter(b, a, values_filtered)  # Filter data along one-dimension with an IIR or FIR filter.
-    values_filtered = values_filtered[L:2 * L]  # removing extra zeros
+    values = filtfilt(b, a, values)  # Filtering data with an IIR or FIR filter.
+    values_filtered = values[Lpad: -Lpad]  # removing extra zeros
 
     return values_filtered
 
@@ -259,9 +260,9 @@ def get_parameters(Ag, dt, T, xi):
         Sv: numpy.array
             Elastic relative velocity response spectrum [m/s].
         Sa_r: numpy.array
-            Elastic relative accleration response spectrum [m/s2].
+            Elastic relative acceleration response spectrum [m/s2].
         Sa_a: numpy.array
-            Elastic absolute accleration response spectrum [m/s2].
+            Elastic absolute acceleration response spectrum [m/s2].
         Ei_r: numpy.array
             Relative input energy spectrum for elastic system [N.m].
         Ei_a: numpy.array
@@ -297,7 +298,7 @@ def get_parameters(Ag, dt, T, xi):
             Significant duration between 5% and 95% of energy release (from Aint).
         t_bracketed: list 
             Bracketed duration time vector (acc>0.05g).
-            Not applicable, in case of low intensity records, thus, equal to '-1.
+            Not applicable, in case of low intensity records, thus, equal to -1.
         D_bracketed: float
             Bracketed duration (acc>0.05g)
         t_uniform: list 
@@ -321,14 +322,21 @@ def get_parameters(Ag, dt, T, xi):
         ASI: float   
             Acceleration spectrum intensity [m/s].
             Requires T to be defined between (0.1-0.5 sec), otherwise not applicable, and equal to -1.
-        MASI: float [m]
-            Modified acceleration spectrum intensity.
+        MASI: float 
+            Modified acceleration spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        VSI: float [m]
-            Velocity spectrum intensity.
+        VSI: float
+            Velocity spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
+        VSI: float
+            Velocity spectrum intensity [m].
+            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
+        FIV3: numpy.array 
+            filtered incremental velocity [m/s], FIV3 as per Eq. (3) of Davalos and Miranda (2019)
     """
     # TODO: there are bunch of other IMs which can be computed. Add them here.
+
+    g = 9.81
 
     if isinstance(T, (int, float)):
         T = np.array([T])
@@ -347,7 +355,7 @@ def get_parameters(Ag, dt, T, xi):
     # Get the length of period array
     n2 = max(T.shape)
     # Create the time array
-    t = np.linspace(0, (n1 - 1) * dt, n1)
+    t = dt * np.arange(0, n1, 1)
     # Get ground velocity and displacement through integration
     Vg = cumtrapz(Ag, t, initial=0)
     Dg = cumtrapz(Vg, t, initial=0)
@@ -373,7 +381,7 @@ def get_parameters(Ag, dt, T, xi):
     param['PGD'] = np.max(np.abs(Dg))
 
     # GET ARIAS INTENSITY
-    Aint = np.cumsum(Ag ** 2) * np.pi * dt / (2 * 9.81)
+    Aint = np.cumsum(Ag ** 2) * np.pi * dt / (2 * g)
     param['Arias'] = Aint[-1]
     temp = np.zeros((len(Aint), 2))
     temp[:, 0] = t
@@ -406,7 +414,7 @@ def get_parameters(Ag, dt, T, xi):
 
     # BRACKETED DURATION (0.05g)
     try:
-        mask = np.abs(Ag) >= 0.05 * 9.81
+        mask = np.abs(Ag) >= 0.05 * g
         # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
         indices = np.where(mask)[0]
         t1 = round(t[indices[0]], 3)
@@ -419,7 +427,7 @@ def get_parameters(Ag, dt, T, xi):
 
     # UNIFORM DURATION (0.05g)
     try:
-        mask = np.abs(Ag) >= 0.05 * 9.81
+        mask = np.abs(Ag) >= 0.05 * g
         # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
         indices = np.where(mask)[0]
         t_treshold = t[indices]
@@ -484,6 +492,9 @@ def get_parameters(Ag, dt, T, xi):
     indices = np.where(mask)[0]
     param['Tp'] = T[indices]
 
+    # FILTERED INCREMENTAL VELOCITY, FIV3 
+    param['FIV3'] = get_fiv3(Ag, dt, T)
+
     return param
 
 
@@ -500,29 +511,21 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     Boore, D. M. (2010). Orientation-Independent, Nongeometric-Mean Measures 
     of Seismic Intensity from Two Horizontal Components of Motion. 
     Bulletin of the Seismological Society of America, 100(4), 1830–1835.
-    
-    Notes
-    -----
-    * Linear Acceleration Method: Gamma = 1/2, Beta = 1/6
-    * Average Acceleration Method: Gamma = 1/2, Beta = 1/4
-    * Average acceleration method is unconditionally stable,
-      whereas linear acceleration method is stable only if dt/Tn <= 0.55
-      Linear acceleration method is preferable due to its accuracy.
         
     Parameters
     ----------
-    Ag1 : numpy.array    
-        Acceleration values of 1st horizontal ground motion component.
-    Ag2 : numpy.array    
-        Acceleration values of 2nd horizontal ground motion component.
-    dt: float
-        Time step [sec].
-    T:  float, numpy.array
-        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
-    xi: float
-        Damping ratio, e.g. 0.05 for 5%.
-    xx: int, list
-        Percentile to calculate, e.g. 50 for RotD50.
+    Ag1: numpy.array    
+         Acceleration values of 1st horizontal ground motion component.
+    Ag2: numpy.array    
+         Acceleration values of 2nd horizontal ground motion component.
+    dt:  float
+         Time step [sec].
+    T:   float, numpy.array
+         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
+    xi:  float
+         Damping ratio, e.g. 0.05 for 5%.
+    xx:  int, list
+         Percentile to calculate, e.g. 50 for RotD50.
         
     Returns
     -------
@@ -571,3 +574,85 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
     Periods = T
 
     return Periods, Sa_RotDxx
+
+def get_fiv3(Ag, dt, T, alpha = 0.7, beta = 0.85):
+    """
+    Details
+    -------
+    This function computes the filtered incremental velocity for a ground motion
+
+    References
+    ----------
+    Dávalos H, Miranda E. Filtered incremental velocity: A novel approach in intensity measures for seismic collapse estimation. 
+    Earthquake Engineering & Structural Dynamics 2019; 48(12): 1384-1405. DOI: 10.1002/eqe.3205.
+
+    Parameters
+    ----------
+    Ag: numpy.array    
+        Acceleration values.
+    dt: float
+        Time step [sec]
+    T:  float, numpy.array.
+        Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
+    alpha : float
+        Period factor, by default 0.7
+    beta : float
+        Cut-off frequency factor, by default 0.85
+
+    Returns
+    ----------
+    fiv3: numpy.array 
+        filtered incremental velocity, FIV3 as per Eq. (3) of Davalos and Miranda (2019)
+    """
+    
+    if isinstance(T, (int, float)):
+        T = np.array([T])
+    if isinstance(T, list):
+        T = np.array(T)
+    elif isinstance(T, numpy.ndarray):
+        T = T
+
+    T = T[T != 0]  # do not use T = zero for response spectrum calculations
+
+    # Time series of the signal
+    t = dt * np.arange(0, len(Ag), 1)
+
+    # FIV3 array
+    fiv3 = []
+
+    # apply a 2nd order Butterworth low pass filter to the ground motion
+    for tn in T:
+        wn = beta / tn / (0.5 / dt)
+        b, a = butter(2, wn, 'low')
+        ugf = filtfilt(b, a, Ag)
+
+        # filtered incremental velocity (FIV)
+        ugf_pc = np.zeros(
+            (np.sum(t < t[-1] - alpha * tn), int(np.floor(alpha * tn / dt))))
+        for i in range(int(np.floor(alpha * tn / dt))):
+            ugf_pc[:, i] = ugf[np.where(t < t[-1] - alpha * tn)[0] + i]
+
+        fiv = dt * trapz(ugf_pc, axis=1)
+
+        # Find the peaks and troughs of the FIV array
+        pks_ind, _ = find_peaks(fiv)
+        trs_ind, _ = find_peaks(-fiv)
+
+        # Sort the values
+        pks_srt = np.sort(fiv[pks_ind])
+        trs_srt = np.sort(fiv[trs_ind])
+
+        # Get the peaks
+        pks = pks_srt[-3:]
+        trs = trs_srt[0:3]
+
+        # Compute the FIV3
+        fiv3_tmp = np.max([np.sum(pks), np.sum(trs)])
+
+        # Append the computed FIV3
+        fiv3.append(fiv3_tmp)
+    
+    # Convert list to an array
+    fiv3 = np.array(fiv3)
+
+    return fiv3

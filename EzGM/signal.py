@@ -334,8 +334,6 @@ def get_parameters(Ag, dt, T, xi):
         VSI: float
             Velocity spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        FIV3: numpy.array 
-            filtered incremental velocity [m/s], FIV3 as per Eq. (3) of Davalos and Miranda (2019)
     """
     # TODO: there are bunch of other IMs which can be computed. Add them here.
 
@@ -494,9 +492,6 @@ def get_parameters(Ag, dt, T, xi):
     mask = param['PSa'] == max(param['PSa'])
     indices = np.where(mask)[0]
     param['Tp'] = T[indices]
-
-    # FILTERED INCREMENTAL VELOCITY, FIV3 
-    param['FIV3'] = get_fiv3(Ag, dt, T)
 
     return param
 

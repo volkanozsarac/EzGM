@@ -56,7 +56,7 @@ def baseline_correction(values, dt, polynomial_type):
     return values_corrected
 
 
-def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, alpha_window=0.0):
+def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, filter_type='bandpass', alpha_window=0.0):
     """
     Details
     -------
@@ -82,6 +82,8 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, alpha_wind
         Cut off frequencies for the filter (Hz).
         For lowpass and highpass filters this parameters is a float e.g. 25 or 0.1
         For bandpass or bandstop filters this parameter is a tuple or list e.g. (0.1, 25)
+    filter_type: str, optional (The default is 'lowpass')
+        The type of filter {'lowpass', 'highpass', 'bandpass', 'bandstop'}.
     filter_order: int, optional (The default is 4)
         Order of the Butterworth filter.
     alpha_window: float, optional (The default is 0.0)
@@ -93,8 +95,15 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, alpha_wind
         Filtered signal values.
     """
 
-    if isinstance(cut_off, list) or isinstance(cut_off, tuple):
+    if not isinstance(cut_off, np.ndarray):
         cut_off = np.array(cut_off)
+    if filter_type in ['bandpass', 'bandstop'] and len(cut_off) != 2:
+        raise ValueError("cut_off must be length 2 for bandpass or bandstop filter.")
+    elif filter_type == 'lowpass' and len(cut_off) > 1:
+        raise ValueError("cut_off must be length 1 for lowpass filter.")
+    elif filter_type == 'highpass' and len(cut_off) > 1:
+        raise ValueError("cut_off must be length 1 for highpass filter.")
+
     sampling_rate = 1.0 / dt  # Sampling rate
     nyq_freq = sampling_rate * 0.5  # Nyquist frequency
     wn = cut_off / nyq_freq  # The critical frequency or frequencies. For lowpass and highpass filters,
@@ -623,7 +632,7 @@ def get_fiv3(Ag, dt, T, alpha = 0.7, beta = 0.85):
     # apply a 2nd order Butterworth low pass filter to the ground motion
     for tn in T:
         wn = beta / tn / (0.5 / dt)
-        b, a = butter(2, wn, 'low')
+        b, a = butter(2, wn, 'lowpass')
         ugf = filtfilt(b, a, Ag)
 
         # filtered incremental velocity (FIV)

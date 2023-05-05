@@ -392,7 +392,7 @@ class _subclass_:
             # Time steps
             np.savetxt(os.path.join(self.outdir, 'GMR_dts.txt'), dts, fmt='%.5f')
             # Scale factors
-            np.savetxt(os.path.join(self.outdir, 'GMR_sf_used'), np.array([self.rec_scale]).T, fmt='%1.5f')
+            np.savetxt(os.path.join(self.outdir, 'GMR_sf_used.txt'), np.array([self.rec_scale]).T, fmt='%1.5f')
             # Close the files
             h1s.close()
             if self.selection == 2:

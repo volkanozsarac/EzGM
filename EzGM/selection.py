@@ -913,7 +913,7 @@ class _subclass_:
                 # Running on personal computer (PC) using chrome
                 elif browser == 'chrome':
                     gdd = ChromeDriverDownloader()
-                    driver_path = gdd.download_and_install()
+                    driver_path = gdd.download_and_install(version = 'compatible')
                     ChromeOptions = webdriver.ChromeOptions()
                     prefs = {"download.default_directory": download_dir}
                     ChromeOptions.add_experimental_option("prefs", prefs)

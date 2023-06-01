@@ -91,7 +91,7 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
             f = open(''.join([path_hazard_results, '/', file]), "r")
             temp1 = f.readline().split(',')
             temp2 = list(filter(None, temp1))
-            inv_t = float(temp2[5].replace(" investigation_time=", ""))
+            inv_t = float(list(filter(lambda x: 'investigation_time=' in x, temp2))[0].replace(" investigation_time=", ""))
             f.close()
 
             # For each of the sites investigated
@@ -202,10 +202,10 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
             # Get some salient values
             f = open(''.join([path_disagg_results, '/', file]), "r")
             ff = f.readline().split(',')
-            lon = float(ff[-2].replace(" lon=", ""))
-            lat = float(ff[-1].replace(" lat=", "").replace("\"\n", ""))
+            lon = float(list(filter(lambda x: 'lon=' in x, ff))[0].replace(" lon=", ""))
+            lat = float(list(filter(lambda x: 'lat=' in x, ff))[0].replace(" lat=", "").replace("\"\n", ""))
+            inv_t = float(list(filter(lambda x: 'investigation_time=' in x, ff))[0].replace(" investigation_time=", ""))
             ims = np.unique(df['imt'])
-            inv_t = float(ff[7].replace(" investigation_time=", ""))
             for imt in ims:
                 M, R = [], []
                 hz_cont = []
@@ -353,10 +353,10 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
             # Get some salient values
             f = open(''.join([path_disagg_results, '/', file]), "r")
             ff = f.readline().split(',')
-            lon = float(ff[-2].replace(" lon=", ""))
-            lat = float(ff[-1].replace(" lat=", "").replace("\"\n", ""))
+            lon = float(list(filter(lambda x: 'lon=' in x, ff))[0].replace(" lon=", ""))
+            lat = float(list(filter(lambda x: 'lat=' in x, ff))[0].replace(" lat=", "").replace("\"\n", ""))
+            inv_t = float(list(filter(lambda x: 'investigation_time=' in x, ff))[0].replace(" investigation_time=", ""))
             ims = np.unique(df['imt'])
-            inv_t = float(ff[8].replace(" investigation_time=", ""))
             for imt in ims:
                 modeLst, meanLst = [], []
                 Tr = []

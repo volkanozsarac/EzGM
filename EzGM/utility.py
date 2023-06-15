@@ -56,12 +56,6 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
     None.
     """
 
-    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
-    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.default'] = 'regular'
-    plt.rcParams["mathtext.fontset"] ='custom'
-
     # Initialise some lists
     lat = []
     lon = []
@@ -184,12 +178,6 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
     None.
     """
 
-    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
-    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.default'] = 'regular'
-    plt.rcParams["mathtext.fontset"] ='custom'
-
     # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap
 
@@ -197,6 +185,9 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
         if file.startswith(filename) and 'Mag_Dist_Eps' not in file:
             # Load the dataframe
             df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
+            for key in df.keys():
+                if key.startswith('rlz'):
+                    hz_key = key
             poes = np.unique(df['poe']).tolist()
             poes.sort(reverse=True)
             # Get some salient values
@@ -216,7 +207,7 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                     data = {}
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
-                    data['hz_cont'] = df.iloc[:, 4][(df['poe'] == poe) & (df['imt'] == imt)]
+                    data['hz_cont'] = df[hz_key][(df['poe'] == poe) & (df['imt'] == imt)]
                     hz_cont.append(data['hz_cont'] / data['hz_cont'].sum())
                     data['hz_cont'] = hz_cont[-1]
                     data = pd.DataFrame(data)
@@ -332,12 +323,6 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
     None.
     """
 
-    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
-    plt.rcParams['mathtext.it']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.cal']= 'Times New Roman:italic'
-    plt.rcParams['mathtext.default'] = 'regular'
-    plt.rcParams["mathtext.fontset"] ='custom'
-
     # lets add the plotting options to make everything clearer
     cmap = cm.get_cmap('jet')  # Get desired colormap
 
@@ -348,6 +333,9 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
         if file.startswith(filename):
             # Load the dataframe
             df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
+            for key in df.keys():
+                if key.startswith('rlz'):
+                    hz_key = key
             poes = np.unique(df['poe']).tolist()
             poes.sort(reverse=True)
             # Get some salient values
@@ -368,7 +356,7 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['eps'] = df['eps'][(df['poe'] == poe) & (df['imt'] == imt)]
-                    data['hz_cont'] = df.iloc[:, 5][(df['poe'] == poe) & (df['imt'] == imt)]
+                    data['hz_cont'] = df[hz_key][(df['poe'] == poe) & (df['imt'] == imt)]
                     hz_cont.append(np.array(data['hz_cont'] / data['hz_cont'].sum()))
                     data['hz_cont'] = hz_cont[-1]
                     data = pd.DataFrame(data)

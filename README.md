@@ -49,11 +49,15 @@ For EzGM examples, see:
    pip install --upgrade pip
    ```
    2. Clone openquake.engine from https://github.com/gem/oq-engine, and open the terminal inside the clone directory. 
-   Activate the environment you want to install the package. Then, install the package via:
+   Activate the environment you want to install the package. Then, install the package requirements based on your system via:
+   ```
+   pip install -r requirements-py38-win64.txt
+   ```
+   3. Install OpenQuake:
    ```
    pip install -e .
    ```
-   3. Clone EzGM, and open the terminal inside the clone directory. 
+   4. Clone EzGM, and open the terminal inside the clone directory. 
    Activate the environment you want to install the package. Finally, install the package via the same command shown in the previous step.
 - Finally the package can be imported as:
 ```

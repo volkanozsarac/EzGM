@@ -39,7 +39,6 @@ For EzGM examples, see:
 ## Installation
 [![YOUTUBE](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/19steSlknmo)
 
-https://www.youtube.com/watch?v=19steSlknmo&ab_channel=VolkanOzsarac
 - EzGM downloads google-chrome or firefox webdriver while executing ngaw2_download method. Therefore, user-specified browser ('chrome' or 'firefox') must be readily available.
 - EzGM requires: <br /> openquake.engine>=3.14.0; selenium>=4.2.0; numba>=0.55.1; beautifulsoup4>=4.11.1; tqdm>=4.64.0; 
 - The package management system *pip* can be used to install EzGM (python >3.7).

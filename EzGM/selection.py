@@ -28,17 +28,31 @@ from selenium import webdriver
 from .webdriverdownloader import ChromeDriverDownloader, GeckoDriverDownloader
 from numba import njit
 from openquake.hazardlib import gsim, imt, const
-from .utility import create_dir, ContentFromZip, ReadNGA, ReadESM
-from .utility import SiteParam_tbec2018, Sae_tbec2018, SiteParam_asce7_16, Sae_asce7_16, Sae_ec8_part1
+from .utility import make_dir, content_from_zip, read_nga, read_esm, get_esm_token
+from .utility import site_parameters_tbec2018, sae_tbec2018, site_parameters_asce7_16, sae_asce7_16, sae_ec8_part1
 from .utility import random_multivariate_normal
 
 
-class _subclass_:
+SMALL_SIZE = 15
+MEDIUM_SIZE = 16
+BIG_SIZE = 18
+BIGGER_SIZE = 20
+
+plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+class _SubClass_:
     """
     Details
     -------
-    This subclass contains common methods inherited by the two parent classes:
-     conditional_spectrum and code_spectrum.
+    This sub-class contains common methods inherited by the two parent classes:
+    ConditionalSpectrum and CodeSpectrum.
     """
 
     def __init__(self):
@@ -106,73 +120,73 @@ class _subclass_:
 
         Returns
         -------
-        sampleBig : numpy.array
+        sample_big : numpy.ndarray
             An array which contains the IMLs from filtered database.
-        soil_Vs30 : numpy.array
+        vs30 : numpy.ndarray
             An array which contains the Vs30s from filtered database.
-        Mw : numpy.array
+        magnitude : numpy.ndarray
             An array which contains the magnitudes from filtered database.
-        Rjb : numpy.array
+        rjb : numpy.ndarray
             An array which contains the Rjbs from filtered database.
-        fault : numpy.array
-            An array which contains the fault type info from filtered database.
-        Filename_1 : numpy.array
+        mechanism : numpy.ndarray
+            An array which contains the fault mechanism info from filtered database.
+        filename1 : numpy.ndarray
             An array which contains the filename of 1st gm component from filtered database.
             If selection is set to 1, it will include filenames of both components.
-        Filename_2 : numpy.array
+        filename2 : numpy.ndarray
             An array which contains the filename of 2nd gm component filtered database.
             If selection is set to 1, it will be None value.
-        NGA_num : numpy.array
+        nga_num : numpy.ndarray
             If NGA_W2 is used as record database, record sequence numbers from filtered
             database will be saved, for other databases this variable is None.
-        eq_ID : numpy.array
+        eq_id : numpy.ndarray
             An array which contains event ids from filtered database.
-        station_code : numpy.array
+        station_code : numpy.ndarray
             If ESM_2018 is used as record database, station codes from filtered
             database will be saved, for other databases this variable is None.
         """
 
-        if self.selection == 1:  # SaKnown = Sa_arb
+        if self.num_components == 1:  # sa_known is from arbitrary ground motion component
 
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            soil_Vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
-            Mw = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
-            Rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
-            fault = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-            eq_ID = np.append(self.database['EQID'], self.database['EQID'], axis=0)
+            sa_known = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+            vs30 = np.append(self.database['soil_Vs30'], self.database['soil_Vs30'], axis=0)
+            magnitude = np.append(self.database['magnitude'], self.database['magnitude'], axis=0)
+            rjb = np.append(self.database['Rjb'], self.database['Rjb'], axis=0)
+            mechanism = np.append(self.database['mechanism'], self.database['mechanism'], axis=0)
+            filename1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            eq_id = np.append(self.database['EQID'], self.database['EQID'], axis=0)
 
             if self.database['Name'] == "NGA_W2":
-                NGA_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
+                nga_num = np.append(self.database['NGA_num'], self.database['NGA_num'], axis=0)
 
             elif self.database['Name'] == "ESM_2018":
                 station_code = np.append(self.database['station_code'], self.database['station_code'], axis=0)
 
-        elif self.selection == 2:
+        elif self.num_components == 2:
 
-            if self.Sa_def == 'GeoMean':
-                SaKnown = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
-            elif self.Sa_def == 'SRSS':
-                SaKnown = np.sqrt(self.database['Sa_1'] ** 2 + self.database['Sa_2'] ** 2)
-            elif self.Sa_def == 'ArithmeticMean':
-                SaKnown = (self.database['Sa_1'] + self.database['Sa_2']) / 2
-            elif self.Sa_def == 'RotD50':  # SaKnown = Sa_RotD50.
-                SaKnown = self.database['Sa_RotD50']
-            elif self.Sa_def == 'RotD100':  # SaKnown = Sa_RotD100.
-                SaKnown = self.database['Sa_RotD100']
+            if self.spectrum_definition == 'GeoMean':
+                sa_known = np.sqrt(self.database['Sa_1'] * self.database['Sa_2'])
+            elif self.spectrum_definition == 'SRSS':
+                sa_known = np.sqrt(self.database['Sa_1'] ** 2 + self.database['Sa_2'] ** 2)
+            elif self.spectrum_definition == 'ArithmeticMean':
+                sa_known = (self.database['Sa_1'] + self.database['Sa_2']) / 2
+            elif self.spectrum_definition == 'RotD50':  # sa_known = Sa_RotD50.
+                sa_known = self.database['Sa_RotD50']
+            elif self.spectrum_definition == 'RotD100':  # sa_known = Sa_RotD100.
+                sa_known = self.database['Sa_RotD100']
             else:
                 raise ValueError('Unexpected Sa definition, exiting...')
 
-            soil_Vs30 = self.database['soil_Vs30']
-            Mw = self.database['magnitude']
-            Rjb = self.database['Rjb']
-            fault = self.database['mechanism']
-            Filename_1 = self.database['Filename_1']
-            Filename_2 = self.database['Filename_2']
-            eq_ID = self.database['EQID']
+            vs30 = self.database['soil_Vs30']
+            magnitude = self.database['magnitude']
+            rjb = self.database['Rjb']
+            mechanism = self.database['mechanism']
+            filename1 = self.database['Filename_1']
+            filename2 = self.database['Filename_2']
+            eq_id = self.database['EQID']
 
             if self.database['Name'] == "NGA_W2":
-                NGA_num = self.database['NGA_num']
+                nga_num = self.database['NGA_num']
 
             elif self.database['Name'] == "ESM_2018":
                 station_code = self.database['station_code']
@@ -180,80 +194,80 @@ class _subclass_:
         else:
             raise ValueError('Selection can only be performed for one or two components at the moment, exiting...')
 
-        # Limiting the records to be considered using the `notAllowed' variable
+        # Limiting the records to be considered using the `not_allowed' variable
         # Sa cannot be negative or zero, remove these.
-        notAllowed = np.unique(np.where(SaKnown <= 0)[0]).tolist()
+        not_allowed = np.unique(np.where(sa_known <= 0)[0]).tolist()
 
-        if self.Vs30_lim is not None:  # limiting values on soil exist
-            mask = (soil_Vs30 > min(self.Vs30_lim)) * (soil_Vs30 < max(self.Vs30_lim))
+        if self.vs30_limits is not None:  # limiting values on soil exist
+            mask = (vs30 > min(self.vs30_limits)) * (vs30 < max(self.vs30_limits))
             temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
+            not_allowed.extend(temp)
 
-        if self.Mw_lim is not None:  # limiting values on magnitude exist
-            mask = (Mw > min(self.Mw_lim)) * (Mw < max(self.Mw_lim))
+        if self.mag_limits is not None:  # limiting values on magnitude exist
+            mask = (magnitude > min(self.mag_limits)) * (magnitude < max(self.mag_limits))
             temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
+            not_allowed.extend(temp)
 
-        if self.Rjb_lim is not None:  # limiting values on Rjb exist
-            mask = (Rjb > min(self.Rjb_lim)) * (Rjb < max(self.Rjb_lim))
+        if self.rjb_limits is not None:  # limiting values on Rjb exist
+            mask = (rjb > min(self.rjb_limits)) * (rjb < max(self.rjb_limits))
             temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
+            not_allowed.extend(temp)
 
-        if self.fault_lim is not None:  # limiting values on mechanism exist
-            for fault_i in range(len(self.fault_lim)):
-                if fault_i == 0:
-                    mask = fault == self.fault_lim[fault_i]
+        if self.mech_limits is not None:  # limiting values on mechanism exist
+            for mechanism_i in range(len(self.mech_limits)):
+                if mechanism_i == 0:
+                    mask = mechanism == self.mech_limits[mechanism_i]
                 else:
-                    mask = np.logical_or(mask, fault == self.fault_lim[fault_i])
+                    mask = np.logical_or(mask, mechanism == self.mech_limits[mechanism_i])
             temp = [i for i, x in enumerate(mask) if not x]
-            notAllowed.extend(temp)
+            not_allowed.extend(temp)
 
         # get the unique values
-        notAllowed = (list(set(notAllowed)))
-        Allowed = [i for i in range(SaKnown.shape[0])]
-        for i in notAllowed:
-            Allowed.remove(i)
+        not_allowed = (list(set(not_allowed)))
+        allowed = [i for i in range(sa_known.shape[0])]
+        for i in not_allowed:
+            allowed.remove(i)
 
         # Use only allowed records
-        SaKnown = SaKnown[Allowed, :]
-        soil_Vs30 = soil_Vs30[Allowed]
-        Mw = Mw[Allowed]
-        Rjb = Rjb[Allowed]
-        fault = fault[Allowed]
-        eq_ID = eq_ID[Allowed]
-        Filename_1 = Filename_1[Allowed]
+        sa_known = sa_known[allowed, :]
+        vs30 = vs30[allowed]
+        magnitude = magnitude[allowed]
+        rjb = rjb[allowed]
+        mechanism = mechanism[allowed]
+        eq_id = eq_id[allowed]
+        filename1 = filename1[allowed]
 
-        if self.selection == 1:
-            Filename_2 = None
+        if self.num_components == 1:
+            filename2 = None
         else:
-            Filename_2 = Filename_2[Allowed]
+            filename2 = filename2[allowed]
 
         if self.database['Name'] == "NGA_W2":
-            NGA_num = NGA_num[Allowed]
+            nga_num = nga_num[allowed]
             station_code = None
         elif self.database['Name'] == "ESM_2018":
-            NGA_num = None
-            station_code = station_code[Allowed]
+            nga_num = None
+            station_code = station_code[allowed]
 
         # Arrange the available spectra in a usable format and check for invalid input
         # Match periods (known periods and periods for error computations)
-        recPer = []
-        for i in range(len(self.T)):
-            recPer.append(np.where(self.database['Periods'] == self.T[i])[0][0])
+        record_periods = []
+        for i in range(len(self.periods)):
+            record_periods.append(np.where(self.database['Periods'] == self.periods[i])[0][0])
 
         # Check for invalid input
-        sampleBig = SaKnown[:, recPer]
-        if np.any(np.isnan(sampleBig)):
+        sample_big = sa_known[:, record_periods]
+        if np.any(np.isnan(sample_big)):
             raise ValueError('NaNs found in input response spectra')
 
-        if self.nGM > len(eq_ID):
+        if self.num_records > len(eq_id):
             raise ValueError('There are not enough records which satisfy',
                              'the given record selection criteria...',
                              'Please use broaden your selection criteria...')
 
-        return sampleBig, soil_Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code
+        return sample_big, vs30, magnitude, rjb, mechanism, filename1, filename2, nga_num, eq_id, station_code
 
-    def write(self, obj=0, recs=1, rtype='acc', recs_f=''):
+    def write(self, object=0, records=1, record_type='acc', zip_parent_path=''):
         """
         Details
         -------
@@ -261,22 +275,23 @@ class _subclass_:
 
         Parameters
         ----------
-        obj : int, optional
+        object : int, optional
             flag to write the object into the pickle file.
             The default is 0.
-        recs : int, optional
-            flag to write the selected and scaled time histories.
+        records : int, optional
+            flag to write the selected and scaled time histories
+            time-steps, filenames, scaling factors.
             The default is 1.
-        rtype : str, optional
+        record_type : str, optional
             option to choose the type of time history to be written.
             'acc' : for the acceleration series, units: g
             'vel' : for the velocity series, units: g * sec
             'disp': for the displacement series: units: g * sec2
-        recs_f : str, optional
+        zip_parent_path : str, optional
             This is option could be used if the user already has all the
             records in database. This is the folder path which contains
-            "database.zip" file. The records must be placed inside
-            recs_f/database.zip/database/
+            "database.zip" file (e.g., database could be NGA_W2 or ESM_2018). 
+            The records must be placed inside zip_parent_path/database.zip/database/
             The default is ''.
 
         Notes
@@ -288,7 +303,7 @@ class _subclass_:
         None.
         """
 
-        def save_signal(path, uns_acc, sf, dt):
+        def save_signal(path, unscaled_acc, sf, dt):
             """
             Details
             -------
@@ -298,7 +313,7 @@ class _subclass_:
             ----------
             path : str
                 path of the file to save
-            uns_acc : numpy.ndarray
+            unscaled_acc : numpy.ndarray
                 unscaled acceleration series
             sf : float
                 scaling factor
@@ -310,68 +325,68 @@ class _subclass_:
             None.
             """
 
-            if rtype == 'vel':  # integrate once if velocity
-                signal = integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0)
+            if record_type == 'vel':  # integrate once if velocity
+                signal = integrate.cumtrapz(unscaled_acc * sf, dx=dt, initial=0)
 
-            elif rtype == 'disp':  # integrate twice if displacement
-                signal = integrate.cumtrapz(integrate.cumtrapz(uns_acc * sf, dx=dt, initial=0), dx=dt, initial=0)
+            elif record_type == 'disp':  # integrate twice if displacement
+                signal = integrate.cumtrapz(integrate.cumtrapz(unscaled_acc * sf, dx=dt, initial=0), dx=dt, initial=0)
 
             else:
-                signal = uns_acc * sf
+                signal = unscaled_acc * sf
 
             np.savetxt(path, signal, fmt='%1.5e')
 
-        if recs == 1:
+        if records == 1:
             # set the directories and file names
             try:  # this will work if records are downloaded
-                zipName = self.Unscaled_rec_file
+                zip_name = self.unscaled_rec_file
             except AttributeError:
-                zipName = os.path.join(recs_f, self.database['Name'] + '.zip')
-            n = len(self.rec_h1)
-            dts = np.zeros(n)
-            path_H1 = os.path.join(self.outdir, 'GMR_names.txt')
-            if self.selection == 2:
-                path_H1 = os.path.join(self.outdir, 'GMR_H1_names.txt')
-                path_H2 = os.path.join(self.outdir, 'GMR_H2_names.txt')
-                h2s = open(path_H2, 'w')
-            h1s = open(path_H1, 'w')
+                zip_name = os.path.join(zip_parent_path, self.database['Name'] + '.zip')
+            size = len(self.rec_file_h1)
+            dts = np.zeros(size)
+            path_h1 = os.path.join(self.output_directory_path, 'GMR_names.txt')
+            if self.num_components == 2:
+                path_h1 = os.path.join(self.output_directory_path, 'GMR_H1_names.txt')
+                path_h2 = os.path.join(self.output_directory_path, 'GMR_H2_names.txt')
+                h2s = open(path_h2, 'w')
+            h1s = open(path_h1, 'w')
 
             # Get record paths for # NGA_W2 or ESM_2018
-            if zipName != os.path.join(recs_f, self.database['Name'] + '.zip'):
-                rec_paths1 = self.rec_h1
-                if self.selection == 2:
-                    rec_paths2 = self.rec_h2
+            if zip_name != os.path.join(zip_parent_path, self.database['Name'] + '.zip'):
+                rec_paths1 = self.rec_file_h1
+                if self.num_components == 2:
+                    rec_paths2 = self.rec_file_h2
             else:
-                rec_paths1 = [self.database['Name'] + '/' + self.rec_h1[i] for i in range(n)]
-                if self.selection == 2:
-                    rec_paths2 = [self.database['Name'] + '/' + self.rec_h2[i] for i in range(n)]
+                rec_paths1 = [self.database['Name'] + '/' + self.rec_file_h1[i] for i in range(size)]
+                if self.num_components == 2:
+                    rec_paths2 = [self.database['Name'] + '/' + self.rec_file_h2[i] for i in range(size)]
 
             # Read contents from zipfile
-            contents1 = ContentFromZip(rec_paths1, zipName)  # H1 gm components
-            if self.selection == 2:
-                contents2 = ContentFromZip(rec_paths2, zipName)  # H2 gm components
+            contents1 = content_from_zip(rec_paths1, zip_name)  # H1 gm components
+            if self.num_components == 2:
+                contents2 = content_from_zip(rec_paths2, zip_name)  # H2 gm components
 
             # Start saving records
-            for i in range(n):
+            for i in range(size):
 
                 # Read the record files
                 if self.database['Name'].startswith('NGA'):  # NGA
-                    dts[i], npts1, _, _, inp_acc1 = ReadNGA(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
+                    dts[i], npts1, _, _, inp_acc1 = read_nga(in_filename=self.rec_file_h1[i], content=contents1[i])
+                    gmr_file1 = self.rec_file_h1[i].replace('/', '_')[:-4] + '_' + record_type.upper() + '.txt'
 
-                    if self.selection == 2:  # H2 component
-                        _, npts2, _, _, inp_acc2 = ReadNGA(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-4] + '_' + rtype.upper() + '.txt'
+                    if self.num_components == 2:  # H2 component
+                        _, npts2, _, _, inp_acc2 = read_nga(in_filename=self.rec_file_h2[i], content=contents2[i])
+                        gmr_file2 = self.rec_file_h2[i].replace('/', '_')[:-4] + '_' + record_type.upper() + '.txt'
 
                 elif self.database['Name'].startswith('ESM'):  # ESM
-                    dts[i], npts1, _, _, inp_acc1 = ReadESM(inFilename=self.rec_h1[i], content=contents1[i])
-                    gmr_file1 = self.rec_h1[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
-                    if self.selection == 2:  # H2 component
-                        _, npts2, _, _, inp_acc2 = ReadESM(inFilename=self.rec_h2[i], content=contents2[i])
-                        gmr_file2 = self.rec_h2[i].replace('/', '_')[:-11] + '_' + rtype.upper() + '.txt'
+                    dts[i], npts1, _, _, inp_acc1 = read_esm(in_filename=self.rec_file_h1[i], content=contents1[i])
+                    gmr_file1 = self.rec_file_h1[i].replace('/', '_')[:-11] + '_' + record_type.upper() + '.txt'
+                    if self.num_components == 2:  # H2 component
+                        _, npts2, _, _, inp_acc2 = read_esm(in_filename=self.rec_file_h2[i], content=contents2[i])
+                        gmr_file2 = self.rec_file_h2[i].replace('/', '_')[:-11] + '_' + record_type.upper() + '.txt'
 
                 # Write the record files
-                if self.selection == 2:
+                if self.num_components == 2:
                     # ensure that two acceleration signals have the same length, if not add zeros.
                     npts = max(npts1, npts2)
                     temp1 = np.zeros(npts)
@@ -382,37 +397,37 @@ class _subclass_:
                     inp_acc2 = temp2.copy()
 
                     # H2 component
-                    save_signal(os.path.join(self.outdir, gmr_file2), inp_acc2, self.rec_scale[i], dts[i])
+                    save_signal(os.path.join(self.output_directory_path, gmr_file2), inp_acc2, self.rec_scale_factors[i], dts[i])
                     h2s.write(gmr_file2 + '\n')
 
                 # H1 component
-                save_signal(os.path.join(self.outdir, gmr_file1), inp_acc1, self.rec_scale[i], dts[i])
+                save_signal(os.path.join(self.output_directory_path, gmr_file1), inp_acc1, self.rec_scale_factors[i], dts[i])
                 h1s.write(gmr_file1 + '\n')
 
             # Time steps
-            np.savetxt(os.path.join(self.outdir, 'GMR_dts.txt'), dts, fmt='%.5f')
+            np.savetxt(os.path.join(self.output_directory_path, 'GMR_dts.txt'), dts, fmt='%.5f')
             # Scale factors
-            np.savetxt(os.path.join(self.outdir, 'GMR_sf_used.txt'), np.array([self.rec_scale]).T, fmt='%1.5f')
+            np.savetxt(os.path.join(self.output_directory_path, 'GMR_sf_used.txt'), np.array([self.rec_scale_factors]).T, fmt='%1.5f')
             # Close the files
             h1s.close()
-            if self.selection == 2:
+            if self.num_components == 2:
                 h2s.close()
 
-        if obj == 1:
+        if object == 1:
             # save some info as pickle obj
-            obj = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
-            obj['database'] = self.database['Name']
-            del obj['outdir']
+            object = vars(copy.deepcopy(self))  # use copy.deepcopy to create independent obj
+            object['database'] = self.database['Name']
+            del object['output_directory_path']
 
-            if 'bgmpe' in obj:
-                del obj['bgmpe']
+            if 'bgmpe' in object:
+                del object['bgmpe']
 
-            with open(os.path.join(self.outdir, 'obj.pkl'), 'wb') as file:
-                pickle.dump(obj, file)
+            with open(os.path.join(self.output_directory_path, 'obj.pkl'), 'wb') as file:
+                pickle.dump(object, file)
 
-        print(f"Finished writing process, the files are located in\n{self.outdir}")
+        print(f"Finished writing process, the files are located in\n{self.output_directory_path}")
 
-    def plot(self, tgt=0, sim=0, rec=1, save=0, show=1):
+    def plot(self, target=0, simulations=0, records=1, save=0, show=1):
         """
         Details
         -------
@@ -421,20 +436,20 @@ class _subclass_:
 
         Parameters
         ----------
-        tgt    : int, optional for conditional_spectrum
+        target : int, optional for ConditionalSpectrum
             Flag to plot target spectrum.
             The default is 1.
-        sim    : int, optional for conditional_spectrum
+        simulations : int, optional for ConditionalSpectrum
             Flag to plot simulated response spectra vs. target spectrum.
             The default is 0.
-        rec    : int, optional for conditional_spectrum
+        records : int, optional for ConditionalSpectrum
             Flag to plot Selected response spectra of selected records
             vs. target spectrum.
             The default is 1.
-        save   : int, optional for all selection options
+        save : int, optional for all selection options
             Flag to save plotted figures in pdf format.
             The default is 0.
-        show  : int, optional for all selection options
+        show : int, optional for all selection options
             Flag to show figures
             The default is 0.
 
@@ -447,48 +462,36 @@ class _subclass_:
         None.
         """
 
-        SMALL_SIZE = 15
-        MEDIUM_SIZE = 16
-        BIG_SIZE = 18
-        BIGGER_SIZE = 20
-
-        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
-        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
-        plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-        plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
-        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
         plt.ioff()
 
-        if type(self).__name__ == 'conditional_spectrum':
+        if type(self).__name__ == 'ConditionalSpectrum':
 
             # xticks and yticks to use for plotting
-            xticks = [self.T[0]]
-            for x in [0.01, 0.1, 0.2, 0.5, 1, 2, 4, 7, 10]:
-                if self.T[0] < x < self.T[-1]:
+            xticks = [self.periods[0]]
+            for x in [0.01, 0.1, 0.2, 0.5, 1, 5, 10]:
+                if self.periods[0] < x < self.periods[-1]:
                     xticks.append(x)
-            xticks.append(self.T[-1])
+            xticks.append(self.periods[-1])
             yticks = [0.01, 0.1, 0.2, 0.5, 1, 2, 3, 5]
 
-            if self.cond == 1:
+            if self.is_conditioned == 1:
                 if len(self.Tstar) == 1:
                     hatch = [float(self.Tstar * 0.98), float(self.Tstar * 1.02)]
                 else:
                     hatch = [float(self.Tstar.min()), float(self.Tstar.max())]
 
-            if tgt == 1:
+            if target == 1:
                 # Plot Target spectrum vs. Simulated response spectra
                 fig, ax = plt.subplots(1, 2, figsize=(16, 8))
                 plt.suptitle('Target Spectrum', y=0.95)
-                ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.useVar == 1:
-                    ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+                if self.use_variance == 1:
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xlim([self.periods[0], self.periods[-1]])
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
@@ -502,54 +505,54 @@ class _subclass_:
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.cond == 1:
+                if self.is_conditioned == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
                 # Sample and target standard deviations
-                if self.useVar == 1:
-                    ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2,
+                if self.use_variance == 1:
+                    ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
                                    label='Target - $\sigma_{ln}$')
                     ax[1].set_xlabel('Period [sec]')
                     ax[1].set_ylabel('Dispersion')
                     ax[1].grid(True)
                     ax[1].legend(frameon=False)
-                    ax[1].set_xlim([self.T[0], self.T[-1]])
+                    ax[1].set_xlim([self.periods[0], self.periods[-1]])
                     ax[1].set_xticks(xticks)
                     ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
                     ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                     ax[1].set_ylim(bottom=0)
                     ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
                     ax[1].get_yaxis().set_minor_formatter(NullFormatter())
-                    if self.cond == 1:
+                    if self.is_conditioned == 1:
                         ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
                 if save == 1:
-                    plt.savefig(os.path.join(self.outdir, 'Targeted.pdf'))
+                    plt.savefig(os.path.join(self.output_directory_path, 'Targeted.pdf'))
 
-            if sim == 1:
+            if simulations == 1:
                 # Plot Target spectrum vs. Simulated response spectra
                 fig, ax = plt.subplots(1, 2, figsize=(16, 8))
                 plt.suptitle('Target Spectrum vs. Simulated Spectra', y=0.95)
 
-                for i in range(self.nGM):
-                    ax[0].loglog(self.T, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected')
+                for i in range(self.num_records):
+                    ax[0].loglog(self.periods, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected')
 
-                ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.useVar == 1:
-                    ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+                if self.use_variance == 1:
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0)), color='blue', lw=2,
+                ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0)), color='blue', lw=2,
                              label='Selected - $e^{\mu_{ln}}$')
-                if self.useVar == 1:
-                    ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0) + 2 * np.std(self.sim_spec, axis=0)),
+                if self.use_variance == 1:
+                    ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) + 2 * np.std(self.sim_spec, axis=0)),
                                  color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.T, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
+                    ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
                                  color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xlim([self.periods[0], self.periods[-1]])
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
@@ -562,55 +565,55 @@ class _subclass_:
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.cond == 1:
+                if self.is_conditioned == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
-                if self.useVar == 1:
+                if self.use_variance == 1:
                     # Sample and target standard deviations
-                    ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2,
+                    ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
                                    label='Target - $\sigma_{ln}$')
-                    ax[1].semilogx(self.T, np.std(self.sim_spec, axis=0), color='black', linestyle='--', lw=2,
+                    ax[1].semilogx(self.periods, np.std(self.sim_spec, axis=0), color='black', linestyle='--', lw=2,
                                    label='Selected - $\sigma_{ln}$')
                     ax[1].set_xlabel('Period [sec]')
                     ax[1].set_ylabel('Dispersion')
                     ax[1].grid(True)
                     ax[1].legend(frameon=False)
-                    ax[1].set_xlim([self.T[0], self.T[-1]])
+                    ax[1].set_xlim([self.periods[0], self.periods[-1]])
                     ax[1].set_xticks(xticks)
                     ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
                     ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                     ax[1].set_ylim(bottom=0)
                     ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
                     ax[1].get_yaxis().set_minor_formatter(NullFormatter())
-                    if self.cond == 1:
+                    if self.is_conditioned == 1:
                         ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
                 if save == 1:
-                    plt.savefig(os.path.join(self.outdir, 'Simulated.pdf'))
+                    plt.savefig(os.path.join(self.output_directory_path, 'Simulated.pdf'))
 
-            if rec == 1:
+            if records == 1:
                 # Plot Target spectrum vs. Selected response spectra
                 fig, ax = plt.subplots(1, 2, figsize=(16, 8))
                 plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
 
-                for i in range(self.nGM):
-                    ax[0].loglog(self.T, np.exp(self.rec_spec[i, :]), color='gray', lw=1, label='Selected')
+                for i in range(self.num_records):
+                    ax[0].loglog(self.periods, np.exp(self.rec_sa_ln[i, :]), color='gray', lw=1, label='Selected')
 
-                ax[0].loglog(self.T, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.useVar == 1:
-                    ax[0].loglog(self.T, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+                if self.use_variance == 1:
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.T, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
                                  label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0)), color='blue', lw=2,
+                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0)), color='blue', lw=2,
                              label='Selected - $e^{\mu_{ln}}$')
-                ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0) + 2 * np.std(self.rec_spec, axis=0)),
+                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) + 2 * np.std(self.rec_sa_ln, axis=0)),
                              color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.T, np.exp(np.mean(self.rec_spec, axis=0) - 2 * np.std(self.rec_spec, axis=0)),
+                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) - 2 * np.std(self.rec_sa_ln, axis=0)),
                              color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-                ax[0].set_xlim([self.T[0], self.T[-1]])
+                ax[0].set_xlim([self.periods[0], self.periods[-1]])
                 ax[0].set_xticks(xticks)
                 ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[0].get_xaxis().set_minor_formatter(NullFormatter())
@@ -623,54 +626,54 @@ class _subclass_:
                 handles, labels = ax[0].get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.cond == 1:
+                if self.is_conditioned == 1:
                     ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
                 # Sample and target standard deviations
-                ax[1].semilogx(self.T, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-                ax[1].semilogx(self.T, np.std(self.rec_spec, axis=0), color='black', linestyle='--', lw=2,
+                ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.periods, np.std(self.rec_sa_ln, axis=0), color='black', linestyle='--', lw=2,
                                label='Selected - $\sigma_{ln}$')
                 ax[1].set_xlabel('Period [sec]')
                 ax[1].set_ylabel('Dispersion')
                 ax[1].grid(True)
                 ax[1].legend(frameon=False)
-                ax[1].set_xlim([self.T[0], self.T[-1]])
+                ax[1].set_xlim([self.periods[0], self.periods[-1]])
                 ax[1].set_xticks(xticks)
                 ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
                 ax[1].get_xaxis().set_minor_formatter(NullFormatter())
                 ax[1].set_ylim(bottom=0)
                 ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
                 ax[1].get_yaxis().set_minor_formatter(NullFormatter())
-                if self.cond == 1:
+                if self.is_conditioned == 1:
                     ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
                 if save == 1:
-                    plt.savefig(os.path.join(self.outdir, 'Selected.pdf'))
+                    plt.savefig(os.path.join(self.output_directory_path, 'Selected.pdf'))
 
-        if type(self).__name__ == 'code_spectrum':
+        if type(self).__name__ == 'CodeSpectrum':
 
-            hatch = [self.Tlower, self.Tupper]
+            hatch = [self.lower_bound_period, self.upper_bound_period]
             # Plot Target spectrum vs. Selected response spectra
             fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-            for i in range(self.rec_spec.shape[0]):
-                ax.plot(self.T, self.rec_spec[i, :] * self.rec_scale[i], color='gray', lw=1, label='Selected')
-            ax.plot(self.T, np.mean(self.rec_spec * self.rec_scale.reshape(-1, 1), axis=0), color='black', lw=2,
+            for i in range(self.rec_sa_ln.shape[0]):
+                ax.plot(self.periods, self.rec_sa_ln[i, :] * self.rec_scale_factors[i], color='gray', lw=1, label='Selected')
+            ax.plot(self.periods, np.mean(self.rec_sa_ln * self.rec_scale_factors.reshape(-1, 1), axis=0), color='black', lw=2,
                     label='Selected Mean')
 
             if self.code == 'TBEC 2018':
-                ax.plot(self.T, self.target, color='red', lw=2, label='Design Response Spectrum')
-                if self.selection == 2:
-                    ax.plot(self.T, 1.3 * self.target, color='red', ls='--', lw=2,
+                ax.plot(self.periods, self.target, color='red', lw=2, label='Design Response Spectrum')
+                if self.num_components == 2:
+                    ax.plot(self.periods, 1.3 * self.target, color='red', ls='--', lw=2,
                             label='1.3 x Design Response Spectrum')
 
             if self.code == 'ASCE 7-16':
-                ax.plot(self.T, self.target, color='red', lw=2, label='$MCE_{R}$ Response Spectrum')
-                ax.plot(self.T, 0.9 * self.target, color='red', ls='--', lw=2,
+                ax.plot(self.periods, self.target, color='red', lw=2, label='$MCE_{R}$ Response Spectrum')
+                ax.plot(self.periods, 0.9 * self.target, color='red', ls='--', lw=2,
                         label='0.9 x $MCE_{R}$ Response Spectrum')
 
             if self.code == 'EC8-Part1':
-                ax.plot(self.T, self.target, color='red', lw=2, label='Design Response Spectrum')
-                ax.plot(self.T, 0.9 * self.target, color='red', lw=2, ls='--', label='0.9 x Design Response Spectrum')
+                ax.plot(self.periods, self.target, color='red', lw=2, label='Design Response Spectrum')
+                ax.plot(self.periods, 0.9 * self.target, color='red', lw=2, ls='--', label='0.9 x Design Response Spectrum')
 
             ax.axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
             ax.set_xlabel('Period [sec]')
@@ -679,11 +682,11 @@ class _subclass_:
             handles, labels = ax.get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
             ax.legend(by_label.values(), by_label.keys(), frameon=False)
-            ax.set_xlim([self.T[0], self.Tupper * 2])
+            ax.set_xlim([self.periods[0], self.upper_bound_period * 2])
             plt.suptitle(f'Spectra of Selected Records ({self.code})', y=0.95)
 
             if save == 1:
-                plt.savefig(os.path.join(self.outdir, 'Selected.pdf'))
+                plt.savefig(os.path.join(self.output_directory_path, 'Selected.pdf'))
 
         # Show the figure
         if show == 1:
@@ -691,7 +694,62 @@ class _subclass_:
 
         plt.close('all')
 
-    def esm2018_download(self):
+    def download(self, username=None, password=None, token_path=None, sleeptime=2, browser='chrome'):
+        """
+        Details
+        -------
+        This function has been created as a web automation tool in order to
+        download unscaled record time histories from either
+        NGA-West2 (https://ngawest2.berkeley.edu/) or ESM databases (https://esm-db.eu/).
+
+        Notes
+        -----
+        Either of google-chrome or mozilla-firefox should have been installed priorly to download from NGA-West2.
+
+        Parameters
+        ----------
+        username : str
+            Account username (e-mail),  e.g. 'example_username@email.com'.
+        password : str
+            Account password, e.g. 'example_password123456'.
+        sleeptime : int, optional
+            Time (sec) spent between each browser operation. This can be increased or decreased depending on the internet speed.
+            Used in the case of database='NGA_W2'
+            The default is 2
+        browser : str, optional
+            The browser to use for download purposes. Valid entries are: 'chrome' or 'firefox'. 
+            Used in the case of database='NGA_W2'
+            The default is 'chrome'.
+
+        Returns
+        -------
+        None
+        """
+        
+        if self.database['Name'] == 'ESM_2018':
+
+            if token_path is None:
+                # In order to access token file must be retrieved initially.
+                # copy paste the readily available token.txt into EzGM or generate new one using get_esm_token method.
+                if username is None or password is None:
+                    raise ValueError('You have to enter either credentials or path to the token to download records from ESM database')
+                else:
+                    get_esm_token(username, password)
+                    token_path = 'token.txt'
+
+            self._esm2018_download(token_path)
+
+        elif self.database['Name'] == 'NGA_W2':
+
+            if username is None or password is None:
+                raise ValueError('You have to enter either credentials  to download records from NGA-West2 database')
+
+            self._ngaw2_download(username, password, sleeptime, browser)
+
+        else:
+            raise NotImplementedError('You have to use either of ESM_2018 or NGA_W2 databases to use download method.')
+
+    def _esm2018_download(self, token_path=None):
         """
 
         Details
@@ -702,7 +760,11 @@ class _subclass_:
 
         Parameters
         ----------
-        None.
+        username : str
+            Account username (e-mail),  e.g. 'example_username@email.com'.
+        password : str
+            Account password, e.g. 'example_password123456'.
+        
 
         Returns
         -------
@@ -710,67 +772,63 @@ class _subclass_:
 
         """
 
-        if self.database['Name'] == 'ESM_2018':
-            print('\nStarted executing esm2018_download method...')
+        print('\nStarted executing download method to retrieve selected records from https://esm-db.eu')
 
-            # temporary zipfile name
-            zip_temp = os.path.join(self.outdir, 'output_temp.zip')
-            # temporary folder to extract files
-            folder_temp = os.path.join(self.outdir, 'output_temp')
+        # temporary zipfile name
+        zip_temp = os.path.join(self.output_directory_path, 'output_temp.zip')
+        # temporary folder to extract files
+        folder_temp = os.path.join(self.output_directory_path, 'output_temp')
 
-            for i in range(self.nGM):
-                print('Downloading %d/%d...' % (i + 1, self.nGM))
-                event = self.rec_eqID[i]
-                station = self.rec_station_code[i]
-                params = (
-                    ('eventid', event),
-                    ('data-type', 'ACC'),
-                    ('station', station),
-                    ('format', 'ascii'),
-                )
-                files = {
-                    'message': ('path/to/token.txt', open('token.txt', 'rb')),
-                }
+        for i in range(self.num_records):
+            print('Downloading %d/%d...' % (i + 1, self.num_records))
+            event = self.rec_eq_id[i]
+            station = self.rec_station_code[i]
+            params = (
+                ('eventid', event),
+                ('data-type', 'ACC'),
+                ('station', station),
+                ('format', 'ascii'),
+            )
+            files = {
+                'message': ('path/to/token.txt', open(token_path, 'rb')),
+            }
 
-                url = 'https://esm-db.eu/esmws/eventdata/1/query'
+            url = 'https://esm-db.eu/esmws/eventdata/1/query'
 
-                req = requests.post(url=url, params=params, files=files)
+            req = requests.post(url=url, params=params, files=files)
 
-                if req.status_code == 200:
-                    with open(zip_temp, "wb") as zf:
-                        zf.write(req.content)
+            if req.status_code == 200:
+                with open(zip_temp, "wb") as zf:
+                    zf.write(req.content)
 
-                    with zipfile.ZipFile(zip_temp, 'r') as zipObj:
-                        zipObj.extractall(folder_temp)
-                    os.remove(zip_temp)
+                with zipfile.ZipFile(zip_temp, 'r') as zipObj:
+                    zipObj.extractall(folder_temp)
+                os.remove(zip_temp)
 
+            else:
+                if req.status_code == 403:
+                    sys.exit('Problem with ESM download. Maybe the token is no longer valid')
                 else:
-                    if req.status_code == 403:
-                        sys.exit('Problem with ESM download. Maybe the token is no longer valid')
-                    else:
-                        sys.exit('Problem with ESM download. Status code: ' + str(req.status_code))
+                    sys.exit('Problem with ESM download. Status code: ' + str(req.status_code))
 
-            # create the output zipfile for all downloaded records
-            time_tag = gmtime()
-            time_tag_str = f'{time_tag[0]}'
-            for i in range(1, len(time_tag)):
-                time_tag_str += f'_{time_tag[i]}'
-            file_name = os.path.join(self.outdir, f'unscaled_records_{time_tag_str}.zip')
-            with zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED) as zipObj:
-                len_dir_path = len(folder_temp)
-                for root, _, files in os.walk(folder_temp):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        zipObj.write(file_path, file_path[len_dir_path:])
+        # create the output zipfile for all downloaded records
+        time_tag = gmtime()
+        time_tag_str = f'{time_tag[0]}'
+        for i in range(1, len(time_tag)):
+            time_tag_str += f'_{time_tag[i]}'
+        file_name = os.path.join(self.output_directory_path, f'unscaled_records_{time_tag_str}.zip')
+        with zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED) as zipObj:
+            len_dir_path = len(folder_temp)
+            for root, _, files in os.walk(folder_temp):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    zipObj.write(file_path, file_path[len_dir_path:])
 
-            shutil.rmtree(folder_temp)
-            self.Unscaled_rec_file = file_name
-            print(f'Downloaded files are located in\n{self.Unscaled_rec_file}')
+        shutil.rmtree(folder_temp)
+        self.unscaled_rec_file = file_name
+        print(f'Downloaded files are located in\n{self.unscaled_rec_file}')
 
-        else:
-            raise ValueError('You have to use ESM_2018 database to use esm2018_download method.')
-
-    def ngaw2_download(self, username, pwd, sleeptime=2, browser='chrome'):
+    def _ngaw2_download(self, username, password, sleeptime, browser):
         """
         Details
         -------
@@ -784,13 +842,13 @@ class _subclass_:
 
         Parameters
         ----------
-        username     : str
-            Account username (e-mail),  e.g. 'username@mail.com'.
-        pwd          : str
-            Account password, e.g. 'password!12345'.
-        sleeptime    : int, default is 3
+        username : str
+            Account username (e-mail),  e.g. 'example_username@email.com'.
+        password : str
+            Account password, e.g. 'example_password123456'.
+        sleeptime : int, default is 3
             Time (sec) spent between each browser operation. This can be increased or decreased depending on the internet speed.
-        browser       : str, default is 'chrome'
+        browser : str, default is 'chrome'
             The browser to use for download purposes. Valid entries are: 'chrome' or 'firefox'.
 
         Returns
@@ -806,12 +864,12 @@ class _subclass_:
 
             Parameters
             ----------
-            download_dir     : str
+            download_dir : str
                 Directory for the output time histories to be downloaded
 
             Returns
             -------
-            total_size      : float
+            total_size : float
                 Measured size of the download directory
 
             """
@@ -831,7 +889,7 @@ class _subclass_:
 
             Parameters
             ----------
-            download_dir     : str
+            download_dir : str
                 Directory for the output time histories to be downloaded.
 
             Returns
@@ -859,14 +917,14 @@ class _subclass_:
 
             Parameters
             ----------
-            download_dir     : str
+            download_dir : str
                 Directory for the output time histories to be downloaded.
-            browser       : str, default is 'chrome'
+            browser : str, default is 'chrome'
                 The browser to use for download purposes. Valid entries are: 'chrome' or 'firefox'
 
             Returns
             -------
-            driver      : selenium webdriver object
+            driver : selenium webdriver object
                 Driver object used to download NGA_W2 records.
             """
 
@@ -909,11 +967,11 @@ class _subclass_:
                 elif browser == 'chrome':
                     gdd = ChromeDriverDownloader()
                     driver_path = gdd.download_and_install(version = 'compatible')
-                    ChromeOptions = webdriver.ChromeOptions()
+                    options = webdriver.ChromeOptions()
                     prefs = {"download.default_directory": download_dir}
-                    ChromeOptions.add_experimental_option("prefs", prefs)
-                    ChromeOptions.headless = True
-                    driver = webdriver.Chrome(executable_path=driver_path[1], options=ChromeOptions)
+                    options.add_experimental_option("prefs", prefs)
+                    options.headless = True
+                    driver = webdriver.Chrome(executable_path=driver_path[1], options=options)
 
                 print('Webdriver is obtained successfully.')
 
@@ -923,7 +981,7 @@ class _subclass_:
                 print('Failed to get webdriver.')
                 raise
 
-        def sign_in(driver, USERNAME, PASSWORD):
+        def sign_in(driver, username, password):
             """
 
             Details
@@ -933,16 +991,16 @@ class _subclass_:
 
             Parameters
             ----------
-            driver     : selenium webdriver object
+            driver : selenium webdriver object
                 Driver object used to download NGA_W2 records.
-            USERNAME   : str
+            username : str
                 Account username (e-mail), e.g.: 'username@mail.com'.
-            PASSWORD   : str
+            password : str
                 Account password, e.g.: 'password!12345'.
 
             Returns
             -------
-            driver      : selenium webdriver object
+            driver : selenium webdriver object
                 Driver object used to download NGA_W2 records.
 
             """
@@ -952,8 +1010,8 @@ class _subclass_:
             #  Modify the ngaw2_download method to use greater versions of Selenium than 4.2.0
             print("Signing in with credentials...")
             driver.get('https://ngawest2.berkeley.edu/users/sign_in')
-            driver.find_element_by_id('user_email').send_keys(USERNAME)
-            driver.find_element_by_id('user_password').send_keys(PASSWORD)
+            driver.find_element_by_id('user_email').send_keys(username)
+            driver.find_element_by_id('user_password').send_keys(password)
             driver.find_element_by_id('user_submit').click()
 
             try:
@@ -971,22 +1029,22 @@ class _subclass_:
 
             return driver
 
-        def download(RSNs, download_dir, driver):
+        def download(rsn, download_dir, driver):
             """
 
             Details
             -------
-            This function dowloads the timehistories which have been indicated with their RSNs
+            This function dowloads the timehistories which have been indicated with their record sequence numbers (rsn)
             from 'https://ngawest2.berkeley.edu/'.
 
             Parameters
             ----------
-            RSNs     : str
+            rsn : str
                 A string variable contains RSNs to be downloaded which uses ',' as delimiter
                 between RNSs, e.g.: '1,5,91,35,468'.
-            download_dir     : str
+            download_dir : str
                 Directory for the output time histories to be downloaded.
-            driver     : selenium webdriver object
+            driver : class object, (selenium webdriver)
                 Driver object used to download NGA_W2 records.
 
             Returns
@@ -999,7 +1057,7 @@ class _subclass_:
             sleep(sleeptime)
             driver.find_element_by_xpath("//button[@type='button']").submit()
             sleep(sleeptime)
-            driver.find_element_by_id('search_search_nga_number').send_keys(RSNs)
+            driver.find_element_by_id('search_search_nga_number').send_keys(rsn)
             sleep(sleeptime)
             driver.find_element_by_xpath(
                 "//button[@type='button' and @onclick='uncheck_plot_selected();reset_selectedResult();OnSubmit();']").submit()
@@ -1013,7 +1071,7 @@ class _subclass_:
 
             if 'NO' in note:
                 driver.set_window_size(800, 800)
-                driver.save_screenshot(os.path.join(self.outdir, 'download_error.png'))
+                driver.save_screenshot(os.path.join(self.output_directory_path, 'download_error.png'))
                 driver.quit()
                 raise Warning("Could not be able to download records!"
                               "Either they no longer exist in database"
@@ -1037,37 +1095,34 @@ class _subclass_:
                 download_wait(download_dir)
                 driver.quit()
 
-        if self.database['Name'] == 'NGA_W2':
-            print('\nStarted executing ngaw2_download method...')
+        print('\nStarted executing download method to retrieve selected records from https://ngawest2.berkeley.edu')
 
-            self.username = username
-            self.pwd = pwd
-            driver = set_driver(self.outdir, browser)
-            driver = sign_in(driver, self.username, self.pwd)
-            RSNs = ''
-            for i in self.rec_rsn:
-                RSNs += str(int(i)) + ','
-            RSNs = RSNs[:-1:]
-            files_before_download = set(os.listdir(self.outdir))
-            download(RSNs, self.outdir, driver)
-            files_after_download = set(os.listdir(self.outdir))
-            Downloaded_File = str(list(files_after_download.difference(files_before_download))[0])
-            file_extension = Downloaded_File[Downloaded_File.find('.')::]
-            time_tag = gmtime()
-            time_tag_str = f'{time_tag[0]}'
-            for i in range(1, len(time_tag)):
-                time_tag_str += f'_{time_tag[i]}'
-            new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
-            Downloaded_File = os.path.join(self.outdir, Downloaded_File)
-            Downloaded_File_Rename = os.path.join(self.outdir, new_file_name)
-            os.rename(Downloaded_File, Downloaded_File_Rename)
-            self.Unscaled_rec_file = Downloaded_File_Rename
-            print(f'Downloaded files are located in\n{self.Unscaled_rec_file}')
-        else:
-            raise ValueError('You have to use NGA_W2 database to use ngaw2_download method.')
+        self.username = username
+        self.pwd = password
+        driver = set_driver(self.output_directory_path, browser)
+        driver = sign_in(driver, self.username, self.pwd)
+        rsn = ''
+        for i in self.rec_rsn:
+            rsn += str(int(i)) + ','
+        rsn = rsn[:-1:]
+        files_before_download = set(os.listdir(self.output_directory_path))
+        download(rsn, self.output_directory_path, driver)
+        files_after_download = set(os.listdir(self.output_directory_path))
+        downloaded_file = str(list(files_after_download.difference(files_before_download))[0])
+        file_extension = downloaded_file[downloaded_file.find('.')::]
+        time_tag = gmtime()
+        time_tag_str = f'{time_tag[0]}'
+        for i in range(1, len(time_tag)):
+            time_tag_str += f'_{time_tag[i]}'
+        new_file_name = f'unscaled_records_{time_tag_str}{file_extension}'
+        downloaded_file = os.path.join(self.output_directory_path, downloaded_file)
+        downloaded_file_rename = os.path.join(self.output_directory_path, new_file_name)
+        os.rename(downloaded_file, downloaded_file_rename)
+        self.unscaled_rec_file = downloaded_file_rename
+        print(f'Downloaded files are located in\n{self.unscaled_rec_file}')
 
 
-class conditional_spectrum(_subclass_):
+class ConditionalSpectrum(_SubClass_):
     """
     This class is used to
         1) Create target spectrum
@@ -1098,7 +1153,7 @@ class conditional_spectrum(_subclass_):
 
     """
 
-    def __init__(self, database='NGA_W2', outdir='Outputs', obj_pkl=None):
+    def __init__(self, database='NGA_W2', output_directory='Outputs', obj_path=None):
         # TODO: Combine all metadata into single sql file.
         """
         Details
@@ -1111,11 +1166,13 @@ class conditional_spectrum(_subclass_):
         database : str, optional
             Database to use: NGA_W2, ESM_2018
             The default is NGA_W2.
-        outdir     : str, optional, the default is 'Outputs'.
+        output_directory : str, optional.
             output directory to create.
-        obj_pkl    : str, optional, the default is None.
+            The default is 'Outputs'
+        obj_path : str, optional
             This is the path to the previously saved obj.pkl file by EzGM.
             One can use the previously saved instance and use rest of the methods.
+            The default is None.
 
         Returns
         -------
@@ -1126,25 +1183,26 @@ class conditional_spectrum(_subclass_):
         super().__init__()
 
         # Read the old EzGM obj
-        if obj_pkl:
+        if obj_path:
             with open('obj.pkl', 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
             database = self.database
 
         # Add the input the ground motion database to use
+        # TODO: Combine all metadata into single jason file. Not essential, but makes the code more elegant.
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
         self.database = loadmat(matfile, squeeze_me=True)
         self.database['Name'] = database
 
         # create the output directory and add the path to self
         cwd = os.getcwd()
-        outdir_path = os.path.join(cwd, outdir)
-        self.outdir = outdir_path
-        create_dir(self.outdir)
+        outdir_path = os.path.join(cwd, output_directory)
+        self.output_directory_path = outdir_path
+        make_dir(self.output_directory_path)
 
     @staticmethod
-    def _BakerJayaramCorrelationModel(T1, T2):
+    def _baker_jayaram_correlation_model(period1, period2):
         """
         Details
         -------
@@ -1157,9 +1215,9 @@ class conditional_spectrum(_subclass_):
     
         Parameters
         ----------
-        T1: float
+        period1 : float
             First period
-        T2: float
+        period2 : float
             Second period
     
         Returns
@@ -1168,28 +1226,28 @@ class conditional_spectrum(_subclass_):
              Predicted correlation coefficient
         """
 
-        t_min = min(T1, T2)
-        t_max = max(T1, T2)
+        period_min = min(period1, period2)
+        period_max = max(period1, period2)
 
-        c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(t_max / max(t_min, 0.109)) * 0.366)
+        c1 = 1.0 - np.cos(np.pi / 2.0 - np.log(period_max / max(period_min, 0.109)) * 0.366)
 
-        if t_max < 0.2:
-            c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * t_max - 5.0))) * (t_max - t_min) / (t_max - 0.0099)
+        if period_max < 0.2:
+            c2 = 1.0 - 0.105 * (1.0 - 1.0 / (1.0 + np.exp(100.0 * period_max - 5.0))) * (period_max - period_min) / (period_max - 0.0099)
         else:
             c2 = 0
 
-        if t_max < 0.109:
+        if period_max < 0.109:
             c3 = c2
         else:
             c3 = c1
 
-        c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * t_min / 0.109))
+        c4 = c1 + 0.5 * (np.sqrt(c3) - c3) * (1.0 + np.cos(np.pi * period_min / 0.109))
 
-        if t_max <= 0.109:
+        if period_max <= 0.109:
             rho = c2
-        elif t_min > 0.109:
+        elif period_min > 0.109:
             rho = c1
-        elif t_max < 0.2:
+        elif period_max < 0.2:
             rho = min(c2, c4)
         else:
             rho = c4
@@ -1197,7 +1255,7 @@ class conditional_spectrum(_subclass_):
         return rho
 
     @staticmethod
-    def _AkkarCorrelationModel(T1, T2):
+    def _akkar_correlation_model(period1, period2):
         """
         Details
         -------
@@ -1210,9 +1268,9 @@ class conditional_spectrum(_subclass_):
     
         Parameters
         ----------
-        T1: float
+        period1 : float
             First period
-        T2: float
+        period2 : float
             Second period
                 
         Returns
@@ -1291,20 +1349,20 @@ class conditional_spectrum(_subclass_):
         0.327591227 0.327475695 0.319627396 0.309845437 0.287061335 0.244808717 0.246124740 0.243767437 0.246189710 0.251575366 0.249258668 0.239620288 0.245635104 0.255837514 0.264918559 0.271319428 0.267233297 0.264459231 0.276507212 0.286839305 0.290190152 0.306793984 0.313364781 0.322319411 0.334237875 0.343985400 0.354611000 0.368638617 0.380051200 0.387956859 0.405181228 0.425482934 0.465522040 0.492870578 0.510064415 0.517257200 0.530236122 0.553791800 0.575691608 0.595807459 0.616808159 0.635307705 0.664055282 0.684394961 0.706169171 0.721304101 0.734778759 0.750310219 0.763724118 0.777354214 0.788230830 0.798942709 0.830129231 0.863419172 0.891643991 0.911343164 0.931015807 0.948046812 0.965411448 0.982542990 0.994598788 1.000000000
         """, dtype=float, sep=" ").reshape(-1, len(periods))
 
-        if np.any([T1, T2] < periods[0]) or \
-                np.any([T1, T2] > periods[-1]):
+        if np.any([period1, period2] < periods[0]) or \
+                np.any([period1, period2] > periods[-1]):
             raise ValueError("Period array contains values outside of the "
                              "range supported by the Akkar et al. (2014) "
                              "correlation model")
 
-        if T1 == T2:
+        if period1 == period2:
             rho = 1.0
         else:
-            rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(T1, T2)[0]
+            rho = interpolate.interp2d(periods, periods, coeff_table, kind='linear')(period1, period2)[0]
 
         return rho
 
-    def _get_correlation(self, T1, T2):
+    def _get_correlation(self, period1, period2):
         """
         Details
         -------
@@ -1312,33 +1370,33 @@ class conditional_spectrum(_subclass_):
         
         Parameters
         ----------
-        T1: float
+        period1 : float
             First period
-        T2: float
+        period2 : float
             Second period
                 
         Returns
         -------
-        rho: float
+        rho : float
              Predicted correlation coefficient
         """
         # TODO: Add alternative correlation models: https://github.com/bakerjw/NGAW2_correlations
 
         correlation_function_handles = {
-            'baker_jayaram': self._BakerJayaramCorrelationModel,
-            'akkar': self._AkkarCorrelationModel,
+            'baker_jayaram': self._baker_jayaram_correlation_model,
+            'akkar': self._akkar_correlation_model,
         }
 
         # Check for existing correlation function
-        if self.corr_func not in correlation_function_handles:
+        if self.correlation_model not in correlation_function_handles:
             raise ValueError('Not a valid correlation function')
         else:
             rho = \
-                correlation_function_handles[self.corr_func](T1, T2)
+                correlation_function_handles[self.correlation_model](period1, period2)
 
         return rho
 
-    def _gmpe_sb_2014_ratios(self, T):
+    def _gmpe_sb_2014_ratios(self, periods):
         """
         Details
         -------
@@ -1351,14 +1409,14 @@ class conditional_spectrum(_subclass_):
 
         Parameters
         ----------
-        T: numpy.ndarray
+        periods : numpy.ndarray
             Period(s) of interest (sec)
 
         Returns
         -------
-        ratio: float
+        ratio : float
              geometric mean of Sa_RotD100/Sa_RotD50
-        sigma: float
+        sigma : float
             standard deviation of log(Sa_RotD100/Sa_RotD50)
         """
 
@@ -1368,7 +1426,7 @@ class conditional_spectrum(_subclass_):
              0.100000000000000, 0.150000000000000, 0.200000000000000, 0.250000000000000, 0.300000000000000,
              0.400000000000000, 0.500000000000000, 0.750000000000000, 1, 1.50000000000000, 2, 3, 4, 5,
              7.50000000000000, 10])
-        ratios_orig = np.array(
+        mu_ratios_orig = np.array(
             [1.19243805900000, 1.19124621700000, 1.18767783300000, 1.18649074900000, 1.18767783300000,
              1.18767783300000, 1.19961419400000, 1.20562728500000, 1.21652690500000, 1.21896239400000,
              1.22875320400000, 1.22875320400000, 1.23738465100000, 1.24110237900000, 1.24234410200000,
@@ -1379,11 +1437,10 @@ class conditional_spectrum(_subclass_):
              0.08, 0.08, 0.08, 0.08])
 
         # Interpolate to compute values for the user-specified periods
-        f = interpolate.interp1d(np.log(periods_orig), ratios_orig)(np.log(T))
-        ratio = interpolate.interp1d(np.log(periods_orig), ratios_orig)(np.log(T))
-        sigma = interpolate.interp1d(np.log(periods_orig), sigma_orig)(np.log(T))
+        mu_ratio = interpolate.interp1d(np.log(periods_orig), mu_ratios_orig)(np.log(periods))
+        sigma = interpolate.interp1d(np.log(periods_orig), sigma_orig)(np.log(periods))
 
-        return ratio, sigma
+        return mu_ratio, sigma
 
     def _get_cond_param(self, sctx, rctx, dctx):
         """
@@ -1404,59 +1461,56 @@ class conditional_spectrum(_subclass_):
     
         Returns
         -------
-        mu_lnSaTstar : float
-            Logarithmic mean of intensity measure according to the selected GMPM.
-        sigma_lnSaTstar : float
-           Logarithmic standard deviation of intensity measure according to the selected GMPM.
-        rho_T_Tstar : numpy.array
+        mu_lnAvgsaTstar : float
+            Logarithmic mean of intensity measure according to the selected GMPE.
+        sigma_lnAvgsaTstar : float
+           Logarithmic standard deviation of intensity measure according to the selected GMPE.
+        rho_lnSaT_lnAvgsaTstar : numpy.ndarray
             Correlation coefficients.
         """
 
-        n = len(self.Tstar)
-        mu_lnSaT = np.zeros(n)
-        sigma_lnSaT = np.zeros(n)
-        MoC = np.zeros((n, n))
+        len_Tstar = len(self.Tstar)
+        mu_lnSaTstar = np.zeros(len_Tstar)
+        sigma_lnSaTstar = np.zeros(len_Tstar)
+        MoC = np.zeros((len_Tstar, len_Tstar))
 
-        # Get the GMPE output
-        for i in range(n):
-            mu_lnSaT[i], stddvs_lnSa = self.bgmpe.get_mean_and_stddevs(sctx, rctx, dctx, imt.SA(period=self.Tstar[i]),
-                                                                       [const.StdDev.TOTAL])
-            sigma_lnSaT[i] = stddvs_lnSa[0]
+        # Get the raw GMPE output (SAs only)
+        for i in range(len_Tstar):
+            params = self.bgmpe.get_mean_and_stddevs(sctx, rctx, dctx, imt.SA(period=self.Tstar[i]), [const.StdDev.TOTAL])
+            mu_lnSaTstar[i] = params[0]
+            sigma_lnSaTstar[i] = params[1][0]
 
-            # modify spectral targets if RotD100 values were specified for two-component selection
-            if self.Sa_def == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.selection == 2:
-                rotD100Ratio, rotD100Sigma = self._gmpe_sb_2014_ratios(self.Tstar[i])
-                mu_lnSaT[i] = mu_lnSaT[i] + np.log(rotD100Ratio)
-                sigma_lnSaT[i] = (sigma_lnSaT[i] ** 2 + rotD100Sigma ** 2) ** 0.5
+            # Modify spectral targets if RotD100 values were specified for two-component selection
+            if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.num_components == 2:
+                rotD100_mu_ratio, rotD100_sigma = self._gmpe_sb_2014_ratios(self.Tstar[i])
+                mu_lnSaTstar[i] = mu_lnSaTstar[i] + np.log(rotD100_mu_ratio)
+                sigma_lnSaTstar[i] = (sigma_lnSaTstar[i] ** 2 + rotD100_sigma ** 2) ** 0.5
 
-            for j in range(n):
-                rho = self._get_correlation(self.Tstar[i], self.Tstar[j])
-                MoC[i, j] = rho
+            # Compute correlations at AvgSA periods
+            for j in range(len_Tstar):
+                rho_lnSaTstar_lnSaTstar = self._get_correlation(self.Tstar[i], self.Tstar[j])
+                MoC[i, j] = rho_lnSaTstar_lnSaTstar
 
-        Sa_avg_meanLn = (1 / n) * sum(mu_lnSaT)  # logarithmic mean of AvgSa
+        # Determine logarithmic mean and standard from selected gmpe for IM=AvgSA
+        # In case of IM=SA len_period_star becomes 1, thus, also works in this case
+        mu_lnAvgsaTstar = (1 / len_Tstar) * sum(mu_lnSaTstar)
+        sigma_lnAvgsaTstar = 0
+        for i in range(len_Tstar):
+            for j in range(len_Tstar):
+                sigma_lnAvgsaTstar = sigma_lnAvgsaTstar + (MoC[i, j] * sigma_lnSaTstar[i] * sigma_lnSaTstar[j])
+        sigma_lnAvgsaTstar = np.sqrt(sigma_lnAvgsaTstar * (1 / len_Tstar) ** 2)
 
-        Sa_avg_std = 0
-        for i in range(n):
-            for j in range(n):
-                Sa_avg_std = Sa_avg_std + (MoC[i, j] * sigma_lnSaT[i] * sigma_lnSaT[j])  # logarithmic Var of the AvgSa
+        # Compute correlation coefficients for IM=AvgSA
+        # In case of IM=SA len_period_star becomes 1, thus, also works in this case
+        rho_lnSaT_lnAvgsaTstar = np.zeros(len(self.periods))
+        for i in range(len(self.periods)):
+            for j in range(len_Tstar):
+                rho = self._get_correlation(self.periods[i], self.Tstar[j])
+                rho_lnSaT_lnAvgsaTstar[i] = rho_lnSaT_lnAvgsaTstar[i] + rho * sigma_lnSaTstar[j]
 
-        Sa_avg_std = Sa_avg_std * (1 / n) ** 2
+            rho_lnSaT_lnAvgsaTstar[i] = rho_lnSaT_lnAvgsaTstar[i] / (len_Tstar * sigma_lnAvgsaTstar)
 
-        # compute mean of logarithmic average spectral acceleration and logarithmic standard deviation of spectral
-        # acceleration prediction
-        mu_lnSaTstar = Sa_avg_meanLn
-        sigma_lnSaTstar = np.sqrt(Sa_avg_std)
-
-        # compute correlation coefficients
-        rho_T_Tstar = np.zeros(len(self.T))
-        for i in range(len(self.T)):
-            for j in range(len(self.Tstar)):
-                rho_bj = self._get_correlation(self.T[i], self.Tstar[j])
-                rho_T_Tstar[i] = rho_bj * sigma_lnSaT[j] + rho_T_Tstar[i]
-
-            rho_T_Tstar[i] = rho_T_Tstar[i] / (len(self.Tstar) * sigma_lnSaTstar)
-
-        return mu_lnSaTstar, sigma_lnSaTstar, rho_T_Tstar
+        return mu_lnAvgsaTstar, sigma_lnAvgsaTstar, rho_lnSaT_lnAvgsaTstar
 
     def _set_contexts(self, index):
 
@@ -1478,7 +1532,7 @@ class conditional_spectrum(_subclass_):
 
         Parameters
         ----------
-        index: int
+        index : int
             The scenario index for which gmm attributes are set
 
         Returns
@@ -1602,10 +1656,7 @@ class conditional_spectrum(_subclass_):
                         if rjb * np.abs(np.tan(np.radians(azimuth))) <= width * np.cos(np.radians(dip)):
                             rx = rjb * np.abs(np.tan(np.radians(azimuth)))
                         else:
-                            rx = rjb * np.tan(np.radians(azimuth)) * np.cos(np.radians(azimuth) -
-                                                                            np.arcsin(width * np.cos(
-                                                                                np.radians(dip)) * np.cos(
-                                                                                np.radians(azimuth)) / rjb))
+                            rx = rjb * np.tan(np.radians(azimuth)) * np.cos(np.radians(azimuth) - np.arcsin(width * np.cos(np.radians(dip)) * np.cos(np.radians(azimuth)) / rjb))
                     elif azimuth == 90:  # we assume that Rjb>0
                         rx = rjb + width * np.cos(np.radians(dip))
                     else:
@@ -1632,12 +1683,10 @@ class conditional_spectrum(_subclass_):
         elif rx:
             if rx < ztor * np.tan(np.radians(dip)):
                 rrup1 = np.sqrt(np.square(rx) + np.square(ztor))
-            if ztor * np.tan(np.radians(dip)) <= rx <= ztor * np.tan(np.radians(dip)) + width * 1. / np.cos(
-                    np.radians(dip)):
+            if ztor * np.tan(np.radians(dip)) <= rx <= ztor * np.tan(np.radians(dip)) + width * 1. / np.cos(np.radians(dip)):
                 rrup1 = rx * np.sin(np.radians(dip)) + ztor * np.cos(np.radians(dip))
             if rx > ztor * np.tan(np.radians(dip)) + width * 1. / np.cos(np.radians(dip)):
-                rrup1 = np.sqrt(
-                    np.square(rx - width * np.cos(np.radians(dip))) + np.square(ztor + width * np.sin(np.radians(dip))))
+                rrup1 = np.sqrt(np.square(rx - width * np.cos(np.radians(dip))) + np.square(ztor + width * np.sin(np.radians(dip))))
             rrup = np.sqrt(np.square(rrup1) + np.square(ry0))
         elif not 'rrup' in self.dist_param.keys():
             if 'rhypo' in self.dist_param.keys():
@@ -1713,10 +1762,97 @@ class conditional_spectrum(_subclass_):
 
         return sctx, rctx, dctx
 
-    def create(self, Tstar=0.5, gmpe='BooreEtAl2014', selection=1, Sa_def='RotD50',
+    @staticmethod
+    @njit
+    def _find_rec_greedy(sample_small, scaling_factors, mu_ln, sigma_ln, rec_id, sample_big, error_weights, max_scale_factor, num_records, penalty):
+        """
+        Details
+        -------
+        Greedy subset modification algorithm
+        The method is defined separately so that njit can be used as wrapper and the routine can be run faster
+
+        Parameters
+        ----------
+        sample_small : numpy.ndarray (2-D)
+            Spectra of the reduced candidate record set (num_records - 1)
+        scaling_factors : numpy.ndarray (1-D)
+            Scaling factors for all records in the filtered database
+        mu_ln : numpy.ndarray (1-D)
+            Logarthmic mean of the target spectrum (conditional or unconditional)
+        sigma_ln : numpy.ndarray (1-D)
+            Logarthmic standard deviation of the target spectrum (conditional or unconditional)
+        rec_id : numpy.ndarray (1-D)
+            Record IDs of the reduced candidate set records in the database (num_records - 1)
+        sample_big : numpy.ndarray (2-D)
+            Spectra of the records in the filtered database
+        error_weights : numpy.ndarray (1-D) or list 
+            Weights for error in mean, standard deviation and skewness
+        max_scale_factor : float
+            The maximum allowable scale factor
+        num_records : int
+            Number of ground motions to be selected.
+        penalty : int
+            > 0 to penalize selected spectra more than 3 sigma from the target at any period, 0 otherwise.
+
+        Returns
+        -------
+        min_id : int
+            ID of the new selected record with the scale factor closest to 1
+        """
+        def mean_numba(arr):
+            """
+            Computes the mean of a 2-D array along axis=0.
+            Required for computations since njit is used as wrapper.
+            """
+
+            res = []
+            for i in range(arr.shape[1]):
+                res.append(arr[:, i].mean())
+
+            return np.array(res)
+
+        def std_numba(arr):
+            """
+            Computes the standard deviation of a 2-D array along axis=0.
+            Required for computations since njit is used as wrapper.
+            """
+
+            res = []
+            for i in range(arr.shape[1]):
+                res.append(arr[:, i].std())
+
+            return np.array(res)
+
+        min_dev = 100000
+        for j in range(sample_big.shape[0]):
+            # Add to the sample the scaled spectrum
+            temp = np.zeros((1, len(sample_big[j, :])))
+            temp[:, :] = sample_big[j, :]
+            sample_small_trial = np.concatenate((sample_small, temp + np.log(scaling_factors[j])), axis=0)
+            dev_mean = mean_numba(sample_small_trial) - mu_ln  # Compute deviations from target
+            dev_sig = std_numba(sample_small_trial) - sigma_ln
+            dev_total = error_weights[0] * np.sum(dev_mean * dev_mean) + error_weights[1] * np.sum(dev_sig * dev_sig)
+
+            # Check if we exceed the scaling limit
+            if scaling_factors[j] > max_scale_factor or scaling_factors[j] < 1 / max_scale_factor or np.any(rec_id == j):
+                dev_total = dev_total + 1000000
+            # Penalize bad spectra
+            elif penalty > 0:
+                for m in range(num_records):
+                    dev_total = dev_total + np.sum(np.abs(np.exp(sample_small_trial[m, :]) > np.exp(mu_ln + 3.0 * sigma_ln))) * penalty
+                    dev_total = dev_total + np.sum(np.abs(np.exp(sample_small_trial[m, :]) < np.exp(mu_ln - 3.0 * sigma_ln))) * penalty
+
+            # Should cause improvement and record should not be repeated
+            if dev_total < min_dev:
+                min_id = j
+                min_dev = dev_total
+
+        return min_id
+
+    def create(self, Tstar=None, gmpe='BooreEtAl2014', num_components=1, spectrum_definition='RotD50',
                site_param={'vs30': 520}, rup_param={'rake': [0.0, 45.0], 'mag': [7.2, 6.5]},
-               dist_param={'rjb': [20, 5]}, Hcont=[0.6, 0.4], T_Tgt_range=[0.01, 4],
-               im_Tstar=1.0, epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram'):
+               dist_param={'rjb': [20, 5]}, hz_cont=[0.6, 0.4], period_range=[0.01, 4],
+               im_Tstar=1.0, epsilon=None, use_variance=1, correlation_model='baker_jayaram'):
         """
         Details
         -------
@@ -1728,7 +1864,7 @@ class conditional_spectrum(_subclass_):
         in order to check required input parameters for the ground motion models.
         e.g. rupture parameters (rup_param), site parameters (site_param), distance parameters (dist_param).
         Rupture parameters 'fhw', 'azimuth', 'upper_sd' and 'lower_sd' are used to derive some gmm parameters
-        in accordance with Kaklamanos et al. 2011 within conditional_spectrum._set_contexts method. They are not
+        in accordance with Kaklamanos et al. 2011 within ConditionalSpectrum._set_contexts method. They are not
         required by any gmm.
 
         References
@@ -1750,18 +1886,20 @@ class conditional_spectrum(_subclass_):
 
         Parameters
         ----------
-        Tstar    : int, float, numpy.array, the default is None.
+        Tstar : int, float, numpy.ndarray
             Conditioning period or periods in case of AvgSa [sec].
-        gmpe     : str, optional
+            If None the target is an unconditional spectrum.
+            The default is None.
+        gmpe : str, optional
             GMPE model (see OpenQuake library).
             The default is 'BooreEtAl2014'.
-        selection : int, optional, The default is 1.
+        num_components : int, optional, the default is 1.
             1 for single-component selection and arbitrary component sigma.
             2 for two-component selection and average component sigma.
-        Sa_def : str, optional, the default is 'RotD50'.
-            The spectra definition. Necessary if selection = 2.
-            'GeoMean', 'RotD50', 'RotD100'.
-        site_param : dictionary, The default is {'vs30': 520}
+        spectrum_definition : str, optional
+            The spectra definition, 'GeoMean', 'RotD50', 'RotD100'. Necessary if num_components = 2.
+            The default is 'RotD50'.
+        site_param : dictionary
             Contains site parameters to define target spectrum.
             Dictionary keys (parameters) are not list type. Same parameters are used for each scenario.
             Some parameters are:
@@ -1769,7 +1907,8 @@ class conditional_spectrum(_subclass_):
             'vs30measured': vs30 type, True (measured) or False (inferred)
             'z1pt0': Depth to Vs=1 km/sec from the site
             'z2pt5': Depth to Vs=2.5 km/sec from the site
-        rup_param  : dictionary, The default is {'rake': [0.0, 45.0], 'mag': [7.2, 6.5]}
+            The default is {'vs30': 520}
+        rup_param : dictionary
             Contains rupture parameters to define target spectrum.
             Dictionary keys (parameters) are list type. Each item in the list corresponds to a scenario.
             Some parameters are:
@@ -1783,7 +1922,8 @@ class conditional_spectrum(_subclass_):
             'azimuth': Source-to-site azimuth, alternative of hanging wall factor (optional)
             'upper_sd': Upper seismogenic depth (optional)
             'lower_sd': Lower seismogenic depth (optional)
-        dist_param : dictionary, The default is {'rjb': [20, 5]}
+            The default is {'rake': [0.0, 45.0], 'mag': [7.2, 6.5]}
+        dist_param : dictionary
             Contains distance parameters to define target spectrum.
             Dictionary keys (parameters) are list type. Each item in the list corresponds to a scenario.
             Some parameters are:
@@ -1793,23 +1933,27 @@ class conditional_spectrum(_subclass_):
             'rhypo': Hypocentral distance (km)
             'rx': Horizontal distance from top of rupture measured perpendicular to fault strike (km)
             'ry0': The horizontal distance off the end of the rupture measured parallel to strike (km)
-        Hcont      : list, optional, the default is None.
+            The default is {'rjb': [20, 5]}
+        hz_cont : list, optional
             Hazard contribution for considered scenarios. 
             If None hazard contribution is the same for all scenarios.
-        im_Tstar   : int, float, optional, the default is 1.
+            The default is None.
+        im_Tstar : int, float, optional
             Conditioning intensity measure level [g] (conditional selection)
-        epsilon    : list, optional, the default is None.
+            the default is 1.
+        epsilon : list, optional
             Epsilon values for considered scenarios (conditional selection)
-        T_Tgt_range: list, optional, the default is [0.01,4].
+            The default is None.
+        period_range : list, optional
             Lower and upper bound values for the period range of target spectrum.
-        cond       : int, optional
-            0 to run unconditional selection
-            1 to run conditional selection
-        useVar     : int, optional, the default is 1.
+            The default is [0.01,4].
+        use_variance : int, optional
             0 not to use variance in target spectrum
             1 to use variance in target spectrum
-        corr_func: str, optional, the default is baker_jayaram
+            The default is 1.
+        correlation_model : str, optional
             correlation model to use "baker_jayaram","akkar"
+            The default is baker_jayaram
 
         Returns
         -------
@@ -1819,9 +1963,14 @@ class conditional_spectrum(_subclass_):
         # https://docs.openquake.org/oq-engine/advanced/developing.html#working-with-gmpes-directly-the-contextmaker
 
         # TODO:  Make the step size equal in period array. This will result in more realistic matching.
-        #  However, this is not essential. Moreover, this will require generation of new meta_data files
+        # However, this is not essential. Moreover, this will require generation of new meta_data files
+        if Tstar is None:
+            # runing unconditional spectrum based record selection
+            self.is_conditioned = 0
 
-        if cond == 1:
+        else:
+            # runing conditional-spectrum based record selection
+            self.is_conditioned = 1
 
             # add Tstar to self
             if isinstance(Tstar, int) or isinstance(Tstar, float):
@@ -1832,31 +1981,31 @@ class conditional_spectrum(_subclass_):
             # check if AvgSa or Sa is used as IM, then in case of Sa(T*) add T* and Sa(T*) if not present
             if not self.Tstar[0] in self.database['Periods'] and len(self.Tstar) == 1:
                 f = interpolate.interp1d(self.database['Periods'], self.database['Sa_1'], axis=1)
-                Sa_int = f(self.Tstar[0])
-                Sa_int.shape = (len(Sa_int), 1)
-                Sa = np.append(self.database['Sa_1'], Sa_int, axis=1)
-                Periods = np.append(self.database['Periods'], self.Tstar[0])
-                self.database['Sa_1'] = Sa[:, np.argsort(Periods)]
+                sa_in = f(self.Tstar[0])
+                sa_in.shape = (len(sa_in), 1)
+                sa = np.append(self.database['Sa_1'], sa_in, axis=1)
+                periods = np.append(self.database['Periods'], self.Tstar[0])
+                self.database['Sa_1'] = sa[:, np.argsort(periods)]
 
                 f = interpolate.interp1d(self.database['Periods'], self.database['Sa_2'], axis=1)
-                Sa_int = f(self.Tstar[0])
-                Sa_int.shape = (len(Sa_int), 1)
-                Sa = np.append(self.database['Sa_2'], Sa_int, axis=1)
-                self.database['Sa_2'] = Sa[:, np.argsort(Periods)]
+                sa_in = f(self.Tstar[0])
+                sa_in.shape = (len(sa_in), 1)
+                sa = np.append(self.database['Sa_2'], sa_in, axis=1)
+                self.database['Sa_2'] = sa[:, np.argsort(periods)]
 
                 f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD50'], axis=1)
-                Sa_int = f(self.Tstar[0])
-                Sa_int.shape = (len(Sa_int), 1)
-                Sa = np.append(self.database['Sa_RotD50'], Sa_int, axis=1)
-                self.database['Sa_RotD50'] = Sa[:, np.argsort(Periods)]
+                sa_in = f(self.Tstar[0])
+                sa_in.shape = (len(sa_in), 1)
+                sa = np.append(self.database['Sa_RotD50'], sa_in, axis=1)
+                self.database['Sa_RotD50'] = sa[:, np.argsort(periods)]
 
                 f = interpolate.interp1d(self.database['Periods'], self.database['Sa_RotD100'], axis=1)
-                Sa_int = f(self.Tstar[0])
-                Sa_int.shape = (len(Sa_int), 1)
-                Sa = np.append(self.database['Sa_RotD100'], Sa_int, axis=1)
-                self.database['Sa_RotD100'] = Sa[:, np.argsort(Periods)]
+                sa_in = f(self.Tstar[0])
+                sa_in.shape = (len(sa_in), 1)
+                sa = np.append(self.database['Sa_RotD100'], sa_in, axis=1)
+                self.database['Sa_RotD100'] = sa[:, np.argsort(periods)]
 
-                self.database['Periods'] = Periods[np.argsort(Periods)]
+                self.database['Periods'] = periods[np.argsort(periods)]
 
         try:  # this is smth like self.bgmpe = gsim.boore_2014.BooreEtAl2014()
             self.bgmpe = gsim.get_available_gsims()[gmpe]()
@@ -1867,143 +2016,137 @@ class conditional_spectrum(_subclass_):
             raise
 
         # add target spectrum settings to self
-        self.selection = selection
-        self.Sa_def = Sa_def
-        self.cond = cond
-        self.useVar = useVar
-        self.corr_func = corr_func
+        self.num_components = num_components
+        self.spectrum_definition = spectrum_definition
+        self.use_variance = use_variance
+        self.correlation_model = correlation_model
         self.site_param = site_param
         self.rup_param = rup_param
         self.dist_param = dist_param
 
-        nScenarios = len(rup_param['mag'])  # number of scenarios
-        if Hcont is None:  # equal for all
-            self.Hcont = [1 / nScenarios for _ in range(nScenarios)]
+        num_scenarios = len(rup_param['mag'])  # number of scenarios
+        if hz_cont is None:  # equal for all
+            self.hz_cont = [1 / num_scenarios for _ in range(num_scenarios)]
         else:
-            self.Hcont = Hcont
+            self.hz_cont = hz_cont
 
         # Period range of the target spectrum
-        temp = np.abs(self.database['Periods'] - np.min(T_Tgt_range))
+        temp = np.abs(self.database['Periods'] - np.min(period_range))
         idx1 = np.where(temp == np.min(temp))[0][0]
-        temp = np.abs(self.database['Periods'] - np.max(T_Tgt_range))
+        temp = np.abs(self.database['Periods'] - np.max(period_range))
         idx2 = np.where(temp == np.min(temp))[0][0]
-        self.T = self.database['Periods'][idx1:idx2 + 1]
+        self.periods = self.database['Periods'][idx1:idx2 + 1]
 
-        # Get number of scenarios, and their contribution
-        Hcont_mat = np.matlib.repmat(np.asarray(self.Hcont), len(self.T), 1)
+        # Hazard contribution of all rupture scenarios
+        hz_cont_rups = np.matlib.repmat(np.asarray(self.hz_cont), len(self.periods), 1)
+        # Conditional mean spectra (in logartihm) for all rupture scenarios
+        mu_ln_rups = np.zeros((len(self.periods), num_scenarios))
+        # Covariance matrices for all rupture scenarios
+        cov_rups = np.zeros((num_scenarios, len(self.periods), len(self.periods)))
 
-        # Conditional spectrum, log parameters
-        TgtMean = np.zeros((len(self.T), nScenarios))
-
-        # Covariance
-        TgtCov = np.zeros((nScenarios, len(self.T), len(self.T)))
-
-        for n in range(nScenarios):
+        for n in range(num_scenarios):
 
             # gmpe spectral values
-            mu_lnSaT = np.zeros(len(self.T))
-            sigma_lnSaT = np.zeros(len(self.T))
+            mu_lnSaT = np.zeros(len(self.periods))
+            sigma_lnSaT = np.zeros(len(self.periods))
 
             # correlation coefficients
-            rho_T_Tstar = np.zeros(len(self.T))
+            rho_lnSaT_lnAvgsaTstar = np.zeros(len(self.periods))
 
             # Covariance
-            Cov = np.zeros((len(self.T), len(self.T)))
+            cov = np.zeros((len(self.periods), len(self.periods)))
 
             # Set the contexts for the scenario
             sctx, rctx, dctx = self._set_contexts(n)
 
-            # TODO: Combine all metadata into single sql file. Not essential, but makes the code more elegant.
-            for i in range(len(self.T)):
+            for i in range(len(self.periods)):
                 # Get the GMPE output for a rupture scenario
-                mu, sigma = self.bgmpe.get_mean_and_stddevs(sctx, rctx, dctx, imt.SA(period=self.T[i]),
-                                                            [const.StdDev.TOTAL])
-                mu_lnSaT[i] = mu
-                sigma_lnSaT[i] = sigma[0]
+                params = self.bgmpe.get_mean_and_stddevs(sctx, rctx, dctx, imt.SA(period=self.periods[i]), [const.StdDev.TOTAL])
+                mu_lnSaT[i] = params[0]
+                sigma_lnSaT[i] = params[1][0]
                 # modify spectral targets if RotD100 values were specified for two-component selection:
-                if self.Sa_def == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.selection == 2:
-                    rotD100Ratio, rotD100Sigma = self._gmpe_sb_2014_ratios(self.T[i])
-                    mu_lnSaT[i] = mu_lnSaT[i] + np.log(rotD100Ratio)
-                    sigma_lnSaT[i] = (sigma_lnSaT[i] ** 2 + rotD100Sigma ** 2) ** 0.5
+                if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.num_components == 2:
+                    rotd100_mu_ratio, rotd100_sigma = self._gmpe_sb_2014_ratios(self.periods[i])
+                    mu_lnSaT[i] = mu_lnSaT[i] + np.log(rotd100_mu_ratio)
+                    sigma_lnSaT[i] = (sigma_lnSaT[i] ** 2 + rotd100_sigma ** 2) ** 0.5
 
-            if self.cond == 1:
-                # Get the GMPE output and calculate AvgSa_Tstar and associated dispersion
-                mu_lnSaTstar, sigma_lnSaTstar, rho_T_Tstar = self._get_cond_param(sctx, rctx, dctx)
+            if self.is_conditioned == 1:
+                # Get the GMPE output and calculate for IM=AvgSA and associated dispersion
+                mu_lnAvgsaTstar, sigma_lnAvgsaTstar, rho_lnSaT_lnAvgsaTstar = self._get_cond_param(sctx, rctx, dctx)
 
                 if epsilon is None:
                     # Back calculate epsilon
-                    rup_eps = (np.log(im_Tstar) - mu_lnSaTstar) / sigma_lnSaTstar
+                    epsilon_rup = (np.log(im_Tstar) - mu_lnAvgsaTstar) / sigma_lnAvgsaTstar
                 else:
-                    rup_eps = epsilon[n]
+                    epsilon_rup = epsilon[n]
 
                 # Get the value of the ln(CMS), conditioned on T_star
-                TgtMean[:, n] = mu_lnSaT + rho_T_Tstar * rup_eps * sigma_lnSaT
+                mu_ln_rups[:, n] = mu_lnSaT + rho_lnSaT_lnAvgsaTstar * epsilon_rup * sigma_lnSaT
 
-            elif self.cond == 0:
-                TgtMean[:, n] = mu_lnSaT
+            elif self.is_conditioned == 0:
+                mu_ln_rups[:, n] = mu_lnSaT
 
-            for i in range(len(self.T)):
-                for j in range(len(self.T)):
+            for i in range(len(self.periods)):
+                for j in range(len(self.periods)):
 
                     var1 = sigma_lnSaT[i] ** 2
                     var2 = sigma_lnSaT[j] ** 2
 
-                    rho = self._get_correlation(self.T[i], self.T[j])
-                    sigma_Corr = rho * np.sqrt(var1 * var2)
+                    rho = self._get_correlation(self.periods[i], self.periods[j])
+                    sigma_corr = rho * np.sqrt(var1 * var2)
 
-                    if self.cond == 1:
-                        varTstar = sigma_lnSaTstar ** 2
-                        sigma11 = np.matrix([[var1, sigma_Corr], [sigma_Corr, var2]])
+                    if self.is_conditioned == 1:
+                        varTstar = sigma_lnAvgsaTstar ** 2
+                        sigma11 = np.matrix([[var1, sigma_corr], [sigma_corr, var2]])
                         sigma22 = np.array([varTstar])
-                        sigma12 = np.array([rho_T_Tstar[i] * np.sqrt(var1 * varTstar),
-                                            rho_T_Tstar[j] * np.sqrt(varTstar * var2)])
+                        sigma12 = np.array([rho_lnSaT_lnAvgsaTstar[i] * np.sqrt(var1 * varTstar), rho_lnSaT_lnAvgsaTstar[j] * np.sqrt(varTstar * var2)])
                         sigma12.shape = (2, 1)
                         sigma22.shape = (1, 1)
                         sigma_cond = sigma11 - sigma12 * 1. / sigma22 * sigma12.T
-                        Cov[i, j] = sigma_cond[0, 1]
+                        cov[i, j] = sigma_cond[0, 1]
 
-                    elif self.cond == 0:
-                        Cov[i, j] = sigma_Corr
+                    elif self.is_conditioned == 0:
+                        cov[i, j] = sigma_corr
 
             # Get the value of standard deviation of target spectrum
-            TgtCov[n, :, :] = Cov
+            cov_rups[n, :, :] = cov
 
         # over-write covariance matrix with zeros if no variance is desired in the ground motion selection
-        if self.useVar == 0:
-            TgtCov = np.zeros(TgtCov.shape)
+        if self.use_variance == 0:
+            cov_rups = np.zeros(cov_rups.shape)
 
-        TgtMean_fin = np.sum(TgtMean * Hcont_mat, 1)
+        mu_ln_target = np.sum(mu_ln_rups * hz_cont_rups, 1)
         # all 2D matrices are the same for each kk scenario, since sigma is only T dependent
-        TgtCov_fin = TgtCov[0, :, :]
-        Cov_elms = np.zeros((len(self.T), nScenarios))
-        for ii in range(len(self.T)):
-            for kk in range(nScenarios):
+        cov_target = cov_rups[0, :, :]
+        cov_elms = np.zeros((len(self.periods), num_scenarios))
+        for ii in range(len(self.periods)):
+            for kk in range(num_scenarios):
                 # Hcont[kk] is hazard contribution of the k-th scenario
-                Cov_elms[ii, kk] = (TgtCov[kk, ii, ii] + (TgtMean[ii, kk] - TgtMean_fin[ii]) ** 2) * self.Hcont[kk]
+                cov_elms[ii, kk] = (cov_rups[kk, ii, ii] + (mu_ln_rups[ii, kk] - mu_ln_target[ii]) ** 2) * self.hz_cont[kk]
 
         # Compute the final covariance matrix
-        cov_diag = np.sum(Cov_elms, 1)
-        TgtCov_fin[np.eye(len(self.T)) == 1] = cov_diag
+        cov_diag = np.sum(cov_elms, 1)
+        cov_target[np.eye(len(self.periods)) == 1] = cov_diag
         # Avoid positive semi-definite covariance matrix with several eigenvalues being exactly zero.
         # See: https://stackoverflow.com/questions/41515522/numpy-positive-semi-definite-warning!
-        min_eig = np.min(np.real(np.linalg.eigvals(TgtCov_fin)))
+        min_eig = np.min(np.real(np.linalg.eigvals(cov_target)))
         if min_eig < 0:
-            TgtCov_fin -= 2 * min_eig * np.eye(*TgtCov_fin.shape)
-        TgtSigma_fin = np.sqrt(np.diagonal(TgtCov_fin))
+            cov_target -= 2 * min_eig * np.eye(*cov_target.shape)
+        sigma_ln_target = np.sqrt(np.diagonal(cov_target))
 
         # Add target spectrum to self
-        self.mu_ln = TgtMean_fin
-        self.sigma_ln = TgtSigma_fin
-        self.cov = TgtCov_fin
+        self.mu_ln = mu_ln_target
+        self.sigma_ln = sigma_ln_target
+        self.cov = cov_target
 
-        if cond == 1:
+        if self.is_conditioned == 1:
             # add intensity measure level to self
             if epsilon is None:
                 self.im_Tstar = im_Tstar
             else:
-                f = interpolate.interp1d(self.T, np.exp(self.mu_ln))
-                Sa_int = f(self.Tstar)
-                self.im_Tstar = np.exp(np.sum(np.log(Sa_int)) / len(self.Tstar))
+                f = interpolate.interp1d(self.periods, np.exp(self.mu_ln))
+                sa_in = f(self.Tstar)
+                self.im_Tstar = np.exp(np.sum(np.log(sa_in)) / len(self.Tstar))
                 self.epsilon = epsilon
 
         print('Target spectrum is created.')
@@ -2024,36 +2167,34 @@ class conditional_spectrum(_subclass_):
         """
 
         # Set initial seed for simulation
-        if self.seedValue:
-            np.random.seed(self.seedValue)
+        if self.seed_value:
+            np.random.seed(self.seed_value)
         else:
             np.random.seed(sum(gmtime()[:6]))
 
-        devTotalSim = np.zeros((self.nTrials, 1))
-        specDict = {}
+        dev_total_sim = np.zeros((self.num_simulations, 1))
+        spectra = {}
         # Generate simulated response spectra with best matches to the target values
-        for j in range(self.nTrials):
+        for j in range(self.num_simulations):
             # It might be better to use the second function if cov_rank = np.linalg.matrix_rank(self.cov) < len(mu_ln)
-            specDict[j] = np.exp(random_multivariate_normal(self.mu_ln, self.cov, self.nGM, 'LHS'))
-            # specDict[j] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov, size=self.nGM))
+            spectra[j] = np.exp(random_multivariate_normal(self.mu_ln, self.cov, self.num_records, 'LHS'))
+            # specDict[j] = np.exp(np.random.multivariate_normal(self.mu_ln, self.cov, size=self.num_records))
 
             # how close is the mean of the spectra to the target
-            devMeanSim = np.mean(np.log(specDict[j]), axis=0) - self.mu_ln
+            dev_mean_sim = np.mean(np.log(spectra[j]), axis=0) - self.mu_ln
             # how close is the mean of the spectra to the target
-            devSigSim = np.std(np.log(specDict[j]), axis=0) - self.sigma_ln
+            dev_sig_sim = np.std(np.log(spectra[j]), axis=0) - self.sigma_ln
             # how close is the skewness of the spectra to zero (i.e., the target)  
-            devSkewSim = skew(np.log(specDict[j]), axis=0)
+            dev_skew_sim = skew(np.log(spectra[j]), axis=0)
             # combine the three error metrics to compute a total error
-            devTotalSim[j] = self.weights[0] * np.sum(devMeanSim ** 2) + \
-                             self.weights[1] * np.sum(devSigSim ** 2) + \
-                             0.1 * (self.weights[2]) * np.sum(devSkewSim ** 2)
+            dev_total_sim[j] = self.error_weights[0] * np.sum(dev_mean_sim ** 2) + self.error_weights[1] * np.sum(dev_sig_sim ** 2) + 0.1 * (self.error_weights[2]) * np.sum(dev_skew_sim ** 2)
 
-        recUse = np.argmin(np.abs(devTotalSim))  # find the simulated spectra that best match the targets
-        self.sim_spec = np.log(specDict[recUse])  # return the best set of simulations
+        recUse = np.argmin(np.abs(dev_total_sim))  # find the simulated spectra that best match the targets
+        self.sim_spec = np.log(spectra[recUse])  # return the best set of simulations
 
-    def select(self, nGM=30, isScaled=1, maxScale=4,
-               Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None,
-               nTrials=20, seedValue=None, weights=[1, 2, 0.3], nLoop=2, penalty=0, tol=10):
+    def select(self, num_records=30, is_scaled=1, max_scale_factor=4, mag_limits=None, vs30_limits=None, rjb_limits=None,
+               mech_limits=None, num_simulations=20, seed_value=None, error_weights=[1, 2, 0.3], num_greedy_loops=2, penalty=0, 
+               tolerance=10):
         """
         Details
         -------
@@ -2068,20 +2209,28 @@ class conditional_spectrum(_subclass_):
         
         Parameters
         ----------
-        nGM : int, optional, the default is 30.
+        num_records : int, optional
             Number of ground motions to be selected.
-        isScaled : int, optional, the default is 1.
-            0 not to allow use of amplitude scaling for spectral matching.
-            1 to allow use of amplitude scaling for spectral matching.
-        maxScale : float, optional, the default is 4.
+            The default is 30.
+        max_scale_factor : float, optional
             The maximum allowable scale factor
-        Mw_lim : list, optional, the default is None.
-            The limiting values on magnitude. 
-        Vs30_lim : list, optional, the default is None.
+            If None use of amplitude scaling for spectral matching is not allowed.
+            If other than None use of amplitude scaling for spectral matching is allowed.
+            The default is 4.
+        is_scaled : int, optional
+            If 1 use of amplitude scaling for spectral matching is not allowed.
+            If 0 None use of amplitude scaling for spectral matching is allowed.
+            The default is 1.        
+        mag_limits : list, optional
+            The limiting values on magnitude.
+            The default is None.
+        vs30_limits : list, optional
             The limiting values on Vs30. 
-        Rjb_lim : list, optional, the default is None.
-            The limiting values on Rjb. 
-        fault_lim : list, optional, the default is None.
+            The default is None.
+        rjb_limits : list, optional
+            The limiting values on Rjb.
+            The default is None.
+        mech_limits : list, optional
             The limiting fault mechanisms.
             For NGA_W2 database:
                 0 for unspecified fault
@@ -2096,29 +2245,36 @@ class conditional_spectrum(_subclass_):
                 'TF' for thrust faulting
                 'TS' for predominately thrust with strike-slip component
                 'U' for unknown
-        nTrials : int, optional, the default is 20.
-            nTrials sets of response spectra are simulated and the best set (in terms of
+            The default is None.
+        num_simulations : int, optional
+            num_simulations sets of response spectra are simulated and the best set (in terms of
             matching means, variances and skewness is chosen as the seed). The user
             can also optionally rerun this segment multiple times before deciding to
             proceed with the rest of the algorithm. It is to be noted, however, that
             the greedy improvement technique significantly improves the match between
             the means and the variances subsequently.
-        seedValue  : int, optional, the default is None.
-            For repeatability. For a particular seedValue not equal to
+            The default is 20.
+        seed_value : int, optional
+            For repeatability. For a particular seed value not equal to
             zero, the code will output the same set of ground motions.
-            The set will change when the seedValue changes. If set to
+            The set will change when the seed value changes. If set to
             zero, the code randomizes the algorithm and different sets of
             ground motions (satisfying the target mean and variance) are
             generated each time.
-        weights : numpy.array or list, optional, the default is [1,2,0.3].
+            The default is None.
+        error_weights : numpy.ndarray or list, optional
             Weights for error in mean, standard deviation and skewness
-        nLoop   : int, optional, the default is 2.
+            the default is [1, 2, 0.3].
+        num_greedy_loops : int, optional
             Number of loops of optimization to perform.
-        penalty : int, optional, the default is 0.
-            > 0 to penalize selected spectra more than 
-            3 sigma from the target at any period, = 0 otherwise.
-        tol     : int, optional, the default is 10.
-            Tolerable percent error to skip optimization 
+            The default is 2.
+        penalty : int, optional
+            > 0 to penalize selected spectra more than 3 sigma from the target at any period, 
+            0 otherwise.
+            The default is 0.
+        tolerance : int, optional
+            Tolerable percent error to skip optimization
+            The default is 10.
 
         Returns
         -------
@@ -2126,210 +2282,158 @@ class conditional_spectrum(_subclass_):
         """
 
         # Add selection settings to self
-        self.nGM = nGM
-        self.isScaled = isScaled
-        self.Mw_lim = Mw_lim
-        self.Vs30_lim = Vs30_lim
-        self.Rjb_lim = Rjb_lim
-        self.fault_lim = fault_lim
-        self.seedValue = seedValue
-        self.weights = weights
-        self.nTrials = nTrials
-        self.maxScale = maxScale
-        self.nLoop = nLoop
-        self.tol = tol
+        self.num_records = num_records
+        self.mag_limits = mag_limits
+        self.vs30_limits = vs30_limits
+        self.rjb_limits = rjb_limits
+        self.mech_limits = mech_limits
+        self.seed_value = seed_value
+        self.error_weights = error_weights
+        self.num_simulations = num_simulations
+        self.max_scale_factor = max_scale_factor
+        self.is_scaled = is_scaled
+        self.num_greedy_loops = num_greedy_loops
+        self.tolerance = tolerance
         self.penalty = penalty
 
         # Simulate response spectra
         self._simulate_spectra()
 
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID, station_code = self._search_database()
+        sample_big, vs30, mag, rjb, mechanism, filename1, filename2, rsn, eq_id, station_code = self._search_database()
 
         # Processing available spectra
-        sampleBig = np.log(sampleBig)
-        nBig = sampleBig.shape[0]
+        sample_big = np.log(sample_big)
+        len_big = sample_big.shape[0]
 
         # Find best matches to the simulated spectra from ground-motion database
-        recID = np.ones(self.nGM, dtype=int) * (-1)
-        finalScaleFac = np.ones(self.nGM)
-        sampleSmall = np.ones((self.nGM, sampleBig.shape[1]))
-        weights = np.array(weights)
+        rec_id = np.ones(self.num_records, dtype=int) * (-1)
+        final_scale_factors = np.ones(self.num_records)
+        sample_small = np.ones((self.num_records, sample_big.shape[1]))
+        error_weights = np.array(error_weights)
 
-        if self.cond == 1 and self.isScaled == 1:
+        # Check if max_scale_factor is None
+        if max_scale_factor is None:
+            max_scale_factor = 10 # use the default value
+
+        if self.is_conditioned == 1 and self.is_scaled == 1:
             # Calculate IMLs for the sample
-            f = interpolate.interp1d(self.T, np.exp(sampleBig), axis=1)
-            sampleBig_imls = np.exp(np.sum(np.log(f(self.Tstar)), axis=1) / len(self.Tstar))
+            f = interpolate.interp1d(self.periods, np.exp(sample_big), axis=1)
+            sample_big_imls = np.exp(np.sum(np.log(f(self.Tstar)), axis=1) / len(self.Tstar))
 
-        if self.cond == 1 and len(self.Tstar) == 1:
+        if self.is_conditioned == 1 and len(self.Tstar) == 1:
             # These indices are required in case IM = Sa(T) to break the loop
-            ind2 = (np.where(self.T != self.Tstar[0])[0][0]).tolist()
+            ind2 = (np.where(self.periods != self.Tstar[0])[0][0]).tolist()
 
-        # Find nGM ground motions, initial subset
-        for i in range(self.nGM):
-            err = np.zeros(nBig)
-            scaleFac = np.ones(nBig)
+        # Find num_records ground motions, initial subset
+        for i in range(self.num_records):
+            error = np.zeros(len_big)
+            scaling_factors = np.ones(len_big)
 
             # Calculate the scaling factor
-            if self.isScaled == 1:
+            if self.is_scaled == 1:
                 # using conditioning IML
-                if self.cond == 1:
-                    scaleFac = self.im_Tstar / sampleBig_imls
+                if self.is_conditioned == 1:
+                    scaling_factors = self.im_Tstar / sample_big_imls
                 # using error minimization
-                elif self.cond == 0:
-                    scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
-                        np.exp(sampleBig) ** 2, axis=1)
+                elif self.is_conditioned == 0:
+                    scaling_factors = np.sum(np.exp(sample_big) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(np.exp(sample_big) ** 2, axis=1)
+
             else:
-                scaleFac = np.ones(nBig)
+                scaling_factors = np.ones(len_big)
 
-            mask = (1 / self.maxScale < scaleFac) * (scaleFac < self.maxScale)
+            # check if enough records are found
+            mask = (1 / max_scale_factor < scaling_factors) * (scaling_factors < max_scale_factor)
             idxs = np.where(mask)[0]
-            err[~mask] = 1000000
-            err[mask] = np.sum((np.log(
-                np.exp(sampleBig[idxs, :]) * scaleFac[mask].reshape(len(scaleFac[mask]), 1)) -
-                                self.sim_spec[i, :]) ** 2, axis=1)
-
-            recID[i] = int(np.argsort(err)[0])
-            if err.min() >= 1000000:
+            error[~mask] = 1000000
+            error[mask] = np.sum((np.log(np.exp(sample_big[idxs, :]) * scaling_factors[mask].reshape(len(scaling_factors[mask]), 1)) -self.sim_spec[i, :]) ** 2, axis=1)
+            rec_id[i] = int(np.argsort(error)[0])
+            if error.min() >= 1000000:
                 raise Warning('Possible problem with simulated spectrum. No good matches found')
 
-            if self.isScaled == 1:
-                finalScaleFac[i] = scaleFac[recID[i]]
+            if self.is_scaled == 1:
+                final_scale_factors[i] = scaling_factors[rec_id[i]]
 
             # Save the selected spectra
-            sampleSmall[i, :] = np.log(np.exp(sampleBig[recID[i], :]) * finalScaleFac[i])
+            sample_small[i, :] = np.log(np.exp(sample_big[rec_id[i], :]) * final_scale_factors[i])
 
-        # Apply Greedy subset modification procedure
-        # Use njit to speed up the optimization algorithm
-        @njit
-        def find_rec(sampleSmall, scaleFac, mu_ln, sigma_ln, recIDs):
+        # Apply greedy subset modification procedure
+        for _ in range(self.num_greedy_loops):  # Number of passes
 
-            def mean_numba(a):
-
-                res = []
-                for i in range(a.shape[1]):
-                    res.append(a[:, i].mean())
-
-                return np.array(res)
-
-            def std_numba(a):
-
-                res = []
-                for i in range(a.shape[1]):
-                    res.append(a[:, i].std())
-
-                return np.array(res)
-
-            minDev = 100000
-            for j in range(nBig):
-                # Add to the sample the scaled spectra
-                temp = np.zeros((1, len(sampleBig[j, :])))
-                temp[:, :] = sampleBig[j, :]
-                tempSample = np.concatenate((sampleSmall, temp + np.log(scaleFac[j])), axis=0)
-                devMean = mean_numba(tempSample) - mu_ln  # Compute deviations from target
-                devSig = std_numba(tempSample) - sigma_ln
-                devTotal = weights[0] * np.sum(devMean * devMean) + weights[1] * np.sum(devSig * devSig)
-
-                # Check if we exceed the scaling limit
-                if scaleFac[j] > maxScale or scaleFac[j] < 1 / maxScale or np.any(recIDs == j):
-                    devTotal = devTotal + 1000000
-                # Penalize bad spectra
-                elif penalty > 0:
-                    for m in range(nGM):
-                        devTotal = devTotal + np.sum(
-                            np.abs(np.exp(tempSample[m, :]) > np.exp(mu_ln + 3.0 * sigma_ln))) * penalty
-                        devTotal = devTotal + np.sum(
-                            np.abs(np.exp(tempSample[m, :]) < np.exp(mu_ln - 3.0 * sigma_ln))) * penalty
-
-                # Should cause improvement and record should not be repeated
-                if devTotal < minDev:
-                    minID = j
-                    minDev = devTotal
-
-            return minID
-
-        for k in range(self.nLoop):  # Number of passes
-
-            for i in range(self.nGM):  # Loop for nGM
-                sampleSmall = np.delete(sampleSmall, i, 0)
-                recID = np.delete(recID, i)
+            for i in range(self.num_records):  # Loop for num_records
+                sample_small = np.delete(sample_small, i, 0)
+                rec_id = np.delete(rec_id, i)
 
                 # Calculate the scaling factor
-                if self.isScaled == 1:
+                if self.is_scaled == 1:
                     # using conditioning IML
-                    if self.cond == 1:
-                        scaleFac = self.im_Tstar / sampleBig_imls
+                    if self.is_conditioned == 1:
+                        scaling_factors = self.im_Tstar / sample_big_imls
                     # using error minimization
-                    elif self.cond == 0:
-                        scaleFac = np.sum(np.exp(sampleBig) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(
-                            np.exp(sampleBig) ** 2, axis=1)
+                    elif self.is_conditioned == 0:
+                        scaling_factors = np.sum(np.exp(sample_big) * np.exp(self.sim_spec[i, :]), axis=1) / np.sum(np.exp(sample_big) ** 2, axis=1)
                 else:
-                    scaleFac = np.ones(nBig)
+                    scaling_factors = np.ones(len_big)
 
-                # Try to add a new spectra to the subset list
-                minID = find_rec(sampleSmall, scaleFac, self.mu_ln, self.sigma_ln, recID)
+                # Try to add a new spectrum to the subset list
+                min_id = self._find_rec_greedy(sample_small, scaling_factors, self.mu_ln, self.sigma_ln, rec_id, sample_big, error_weights, max_scale_factor, num_records, penalty)
 
                 # Add new element in the right slot
-                if self.isScaled == 1:
-                    finalScaleFac[i] = scaleFac[minID]
+                if self.is_scaled == 1:
+                    final_scale_factors[i] = scaling_factors[min_id]
                 else:
-                    finalScaleFac[i] = 1
-                sampleSmall = np.concatenate(
-                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]) + np.log(scaleFac[minID]),
-                     sampleSmall[i:, :]), axis=0)
-                recID = np.concatenate((recID[:i], np.array([minID]), recID[i:]))
+                    final_scale_factors[i] = 1
+                sample_small = np.concatenate((sample_small[:i, :], sample_big[min_id, :].reshape(1, sample_big.shape[1]) + np.log(scaling_factors[min_id]), sample_small[i:, :]), axis=0)
+                rec_id = np.concatenate((rec_id[:i], np.array([min_id]), rec_id[i:]))
 
             # Lets check if the selected ground motions are good enough, if the errors are sufficiently small stop!
-            if self.cond == 1 and len(self.Tstar) == 1:  # if conditioned on SaT, ignore error at T*
-                medianErr = np.max(
-                    np.abs(np.exp(np.mean(sampleSmall[:, ind2], axis=0)) - np.exp(self.mu_ln[ind2])) / np.exp(
-                        self.mu_ln[ind2])) * 100
-                stdErr = np.max(
-                    np.abs(np.std(sampleSmall[:, ind2], axis=0) - self.sigma_ln[ind2]) / self.sigma_ln[ind2]) * 100
+            if self.is_conditioned == 1 and len(self.Tstar) == 1:  # if conditioned on SaT, ignore error at T*
+                median_error = np.max(np.abs(np.exp(np.mean(sample_small[:, ind2], axis=0)) - np.exp(self.mu_ln[ind2])) / np.exp(self.mu_ln[ind2])) * 100
+                std_error = np.max(np.abs(np.std(sample_small[:, ind2], axis=0) - self.sigma_ln[ind2]) / self.sigma_ln[ind2]) * 100
             else:
-                medianErr = np.max(
-                    np.abs(np.exp(np.mean(sampleSmall, axis=0)) - np.exp(self.mu_ln)) / np.exp(self.mu_ln)) * 100
-                stdErr = np.max(np.abs(np.std(sampleSmall, axis=0) - self.sigma_ln) / self.sigma_ln) * 100
+                median_error = np.max(np.abs(np.exp(np.mean(sample_small, axis=0)) - np.exp(self.mu_ln)) / np.exp(self.mu_ln)) * 100
+                std_error = np.max(np.abs(np.std(sample_small, axis=0) - self.sigma_ln) / self.sigma_ln) * 100
 
-            if medianErr < self.tol and stdErr < self.tol:
+            if median_error < self.tolerance and std_error < self.tolerance:
                 break
+
         print('Ground motion selection is finished.')
-        print(f'For T ∈ [{self.T[0]:.2f} - {self.T[-1]:.2f}]')
-        print(f'Max error in median = {medianErr:.2f} %')
-        print(f'Max error in standard deviation = {stdErr:.2f} %')
-        if medianErr < self.tol and stdErr < self.tol:
-            print(f'The errors are within the target {self.tol:d} percent %')
+        print(f'For T ∈ [{self.periods[0]:.2f} - {self.periods[-1]:.2f}]')
+        print(f'Max error in median = {median_error:.2f} %')
+        print(f'Max error in standard deviation = {std_error:.2f} %')
+        if median_error < self.tolerance and std_error < self.tolerance:
+            print(f'The errors are within the target {self.tolerance:d} percent %')
 
-        recID = recID.tolist()
+        rec_id = rec_id.tolist()
         # Add selected record information to self
-        self.rec_scale = finalScaleFac
-        self.rec_spec = sampleSmall
-        self.rec_Vs30 = Vs30[recID]
-        self.rec_Rjb = Rjb[recID]
-        self.rec_Mw = Mw[recID]
-        self.rec_fault = fault[recID]
-        self.rec_eqID = eq_ID[recID]
-        self.rec_h1 = Filename_1[recID]
+        self.rec_scale_factors = final_scale_factors
+        self.rec_sa_ln = sample_small
+        self.rec_vs30 = vs30[rec_id]
+        self.rec_rjb = rjb[rec_id]
+        self.rec_mag = mag[rec_id]
+        self.rec_mech = mechanism[rec_id]
+        self.rec_eq_id = eq_id[rec_id]
+        self.rec_file_h1 = filename1[rec_id]
 
-        if self.selection == 2:
-            self.rec_h2 = Filename_2[recID]
+        if self.num_components == 2:
+            self.rec_file_h2 = filename2[rec_id]
 
         if self.database['Name'] == 'NGA_W2':
-            self.rec_rsn = NGA_num[recID]
+            self.rec_rsn = rsn[rec_id]
 
         if self.database['Name'] == 'ESM_2018':
-            self.rec_station_code = station_code[recID]
+            self.rec_station_code = station_code[rec_id]
 
 
-class code_spectrum(_subclass_):
+class CodeSpectrum(_SubClass_):
     """
     This class is used for
         1) Creating target spectrum based on various codes (TBEC 2018, ASCE 7-16, EC8-Part1)
         2) Selecting and scaling suitable ground motion sets for target spectrum in accordance with specified code
     """
 
-    def __init__(self, database='NGA_W2', outdir='Outputs', target_path=None, nGM=11, selection=1, opt=1,
-                 Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, maxScale=2, RecPerEvent=3, obj_pkl=None):
+    def __init__(self, database='NGA_W2', output_directory='Outputs', target_path=None, num_records=11, num_components=1, selection_algorithm=1,
+                 mag_limits=None, vs30_limits=None, rjb_limits=None, mech_limits=None, max_scale_factor=2, max_rec_per_event=3, obj_path=None):
         """
         Details
         -------
@@ -2340,27 +2444,27 @@ class code_spectrum(_subclass_):
         database : str, optional
             Database to use: NGA_W2, ESM_2018
             The default is NGA_W2.
-        outdir : str, optional
+        output_directory : str, optional
             Output directory
             The default is 'Outputs'
-        target_path = str, optional, the default is None.
+        target_path : str, optional, the default is None.
             Path for used defined target spectrum.
-        nGM : int, optional, the default is 11.
+        num_records : int, optional, the default is 11.
             Number of records to be selected. 
-        selection : int, optional, the default is 1.
+        num_components : int, optional, the default is 1.
             Number of ground motion components to select.
-        opt : int, optional, the default is 1.
+        selection_algorithm : int, optional, the default is 1.
             If equal to 1, the record set is selected using
             method of “least squares”, each record has individual scaling factor.
             If equal to 2, the record set selected such that each record has
             identical scale factor which is as close as possible to 1.
-        Mw_lim : list, optional, the default is None.
+        mag_limits : list, optional, the default is None.
             The limiting values on magnitude. 
-        Vs30_lim : list, optional, the default is None.
+        vs30_limits : list, optional, the default is None.
             The limiting values on Vs30. 
-        Rjb_lim : list, optional, the default is None.
+        rjb_limits : list, optional, the default is None.
             The limiting values on Rjb. 
-        fault_lim : list, optional, the default is None.
+        mech_limits : list, optional, the default is None.
             The limiting fault mechanisms.
             For NGA_W2 database:
                 0 for unspecified fault
@@ -2375,11 +2479,11 @@ class code_spectrum(_subclass_):
                 'TF' for thrust faulting
                 'TS' for predominately thrust with strike-slip component
                 'U' for unknown
-        maxScale : float, optional, the default is 2.
+        max_scale_factor : float, optional, the default is 2.
             Maximum allowed scaling factor, used with opt=2 case.
-        RecPerEvent: int, the default is 3.
+        max_rec_per_event : int, the default is 3.
             The limit for the maximum number of records belong to the same event
-        obj_pkl    : str, optional, the default is None.
+        obj_path : str, optional, the default is None.
             This is the path to the previously saved obj.pkl file by EzGM.
             One can use the previously saved instance and use rest of the methods.
 
@@ -2392,7 +2496,7 @@ class code_spectrum(_subclass_):
         super().__init__()
 
         # Read the old EzGM obj
-        if obj_pkl:
+        if obj_path:
             with open('obj.pkl', 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
@@ -2400,16 +2504,16 @@ class code_spectrum(_subclass_):
 
         # Add new selection settings to self
         else:
-            self.nGM = nGM
-            self.selection = selection
-            self.Mw_lim = Mw_lim
-            self.Vs30_lim = Vs30_lim
-            self.Rjb_lim = Rjb_lim
-            self.fault_lim = fault_lim
-            self.opt = opt
-            self.maxScale = maxScale
+            self.num_records = num_records
+            self.num_components = num_components
+            self.mag_limits = mag_limits
+            self.vs30_limits = vs30_limits
+            self.rjb_limits = rjb_limits
+            self.mech_limits = mech_limits
+            self.selection_algorithm = selection_algorithm
+            self.max_scale_factor = max_scale_factor
             self.target_path = target_path
-            self.RecPerEvent = RecPerEvent
+            self.max_rec_per_event = max_rec_per_event
 
         # Add the input the ground motion database to use
         matfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data', database)
@@ -2421,15 +2525,53 @@ class code_spectrum(_subclass_):
 
         # create the output directory and add the path to self
         cwd = os.getcwd()
-        outdir_path = os.path.join(cwd, outdir)
-        create_dir(outdir_path)
-        self.outdir = outdir_path
+        outdir_path = os.path.join(cwd, output_directory)
+        make_dir(outdir_path)
+        self.output_directory_path = outdir_path
 
     @staticmethod
     @njit
-    def _opt2(sampleSmall, scaleFac, target_spec, recIDs, eqIDs, minID, nBig, eq_ID, sampleBig, RecPerEvent):
-        # Optimize based on scaling factor
+    def _find_rec_smallest_sf(sample_small, scale_factors_small, target_spectrum, rec_ids_small, eq_ids_small, min_id, eq_ids_big, sample_big, max_rec_per_event):
+        """
+        Details
+        -------
+        Greedy subset modification to obtain set of records the scaling factors closest to 1
+        The method is defined separately so that njit can be used as wrapper and the routine can be run faster
+
+        Parameters
+        ----------
+        sample_small : numpy.ndarray (2-D)
+            Spectra of the reduced candidate record set (num_records - 1)
+        scale_factors_small : numpy.ndarray (2-D)
+            Scale factors for the reduced candidate record set (num_records - 1)
+        target_spectrum : numpy.ndarray (1-D)
+            Target spectrum (elastic spectrum from the code)
+        rec_ids_small : numpy.ndarray (1-D)
+            Record IDs of the reduced candidate set records in the database
+        eq_ids_small : numpy.ndarray (1-D)
+            Event IDs of the reduced candidate set records in the database
+        min_id : int
+            ID of the eliminated record from candidate record set
+        eq_ids_big : numpy.ndarray (2-D)
+            Event IDs of the records in the filtered database
+        sample_big : numpy.ndarray (2-D)
+            Spectra of the records in the filtered database
+        max_rec_per_event : int
+            The limit for the maximum number of records belong to the same event
+
+        Returns
+        -------
+        min_id : int
+            ID of the new selected record with the scale factor closest to 1
+        scale_factors_small : numpy.ndarray (2-D)
+            Scale factors for the candidate record set (num_records) with the addition of new record
+        """
+
         def mean_numba(a):
+            """
+            Computes the mean of a 2-D array along axis=0.
+            Required for computations since njit is used as wrapper.
+            """
 
             res = []
             for i in range(a.shape[1]):
@@ -2437,31 +2579,30 @@ class code_spectrum(_subclass_):
 
             return np.array(res)
 
-        for j in range(nBig):
-            tmp = eq_ID[j]
+        for j in range(sample_big.shape[0]):
+            tmp = eq_ids_big[j]
             # record should not be repeated and number of eqs from the same event should not exceed 3
-            if not np.any(recIDs == j) and np.sum(eqIDs == tmp) < RecPerEvent:
+            if not np.any(rec_ids_small == j) and np.sum(eq_ids_small == tmp) < max_rec_per_event:
                 # Add to the sample the scaled spectra
-                temp = np.zeros((1, len(sampleBig[j, :])))
-                temp[:, :] = sampleBig[j, :]  # get the trial spectra
-                tempSample = np.concatenate((sampleSmall, temp), axis=0)  # add the trial spectra to subset list
-                tempScale = np.max(target_spec / mean_numba(tempSample))  # compute new scaling factor
+                temp = np.zeros((1, len(sample_big[j, :])))
+                temp[:, :] = sample_big[j, :]  # get the trial spectra
+                sample_small_trial = np.concatenate((sample_small, temp), axis=0)  # add the trial spectra to subset list
+                temp_scale = np.max(target_spectrum / mean_numba(sample_small_trial))  # compute new scaling factor
 
                 # Should cause improvement
-                if abs(tempScale - 1) <= abs(scaleFac - 1):
-                    minID = j
-                    scaleFac = tempScale
+                if abs(temp_scale - 1) <= abs(scale_factors_small - 1):
+                    min_id = j
+                    scale_factors_small = temp_scale
 
-        return minID, scaleFac
+        return min_id, scale_factors_small
 
-    def tbec2018(self, Lat=41.0582, Long=29.00951, DD=2, SiteClass='ZC', Tp=1):
+    def select_tbec2018(self, lat=41.0582, long=29.00951, dd_level=2, site_class='ZC', predominant_period=1):
         """
         Details
         -------
         Selects the suitable ground motion set in accordance with TBEC 2018. 
         If user did not define any target spectrum, the design spectrum defined by the code is going to be used. 
         The latter requires the definition of site parameters
-
 
         References
         ----------
@@ -2470,27 +2611,27 @@ class code_spectrum(_subclass_):
         Notes
         -----
         Rule 1: Mean of selected records should remain above the lower bound target spectra.
-            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
-            For Selection = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 1.3 * SaTarget(0.2Tp-1.5Tp) 
+            For num_components = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 1.0 * SaTarget(0.2Tp-1.5Tp) 
+            For num_components = 2: Sa_rec = (Sa_1**2+Sa_2**2)**0.5 - lower bound = 1.3 * SaTarget(0.2Tp-1.5Tp) 
 
         Rule 2: 
             No more than 3 records can be selected from the same event! In other words,
-            rec_eqID cannot be the same for more than 3 of the selected records.      
+            rec_eq_id cannot be the same for more than 3 of the selected records.      
 
         Rule 3: 
             At least 11 records (or pairs) must be selected.
 
         Parameters
         ----------
-        Lat: float, optional, the default is 41.0582.
+        lat: float, optional, the default is 41.0582.
             Site latitude
-        Long: float, optional, the default is 29.00951.
+        long: float, optional, the default is 29.00951.
             Site longitude
-        DD:  int, optional, the default is 2.
+        dd_level:  int, optional, the default is 2.
             Earthquake ground motion intensity level (1,2,3,4)
-        SiteClass: str, optional, the default is 'ZC'.
+        site_class: str, optional, the default is 'ZC'.
             Site soil class ('ZA','ZB','ZC','ZD','ZE')
-        Tp : float, optional, the default is 1.
+        predominant_period : float, optional, the default is 1.
             Predominant period of the structure. 
         
         Returns
@@ -2499,161 +2640,156 @@ class code_spectrum(_subclass_):
         """
 
         # Add selection settings to self
-        self.Lat = Lat
-        self.Long = Long
-        self.DD = DD
-        self.SiteClass = SiteClass
-        self.Tp = Tp
+        self.lat = lat
+        self.long = long
+        self.dd_level = dd_level
+        self.site_class = site_class
+        self.predominant_period = predominant_period
         self.code = 'TBEC 2018'
 
-        if self.nGM < 11:
-            print('Warning! nGM must be at least 11 according to TBEC 2018. Changing...')
-            self.nGM = 11
+        if self.num_records < 11:
+            print('Warning! Number of requested records must be at least 11 according to TBEC 2018. Changing...')
+            self.num_records = 11
 
-        if self.RecPerEvent > 3:
-            print('Warning! Limit for Record Per Event must be at most 3 according to TBEC 2018. Changing...')
-            self.RecPerEvent = 3
+        if self.max_rec_per_event > 3:
+            print('Warning! Limit for record per event must be at most 3 according to TBEC 2018. Changing...')
+            self.max_rec_per_event = 3
 
         # Set the period range
-        self.Tlower = 0.2 * Tp
-        self.Tupper = 1.5 * Tp
+        self.lower_bound_period = 0.2 * predominant_period
+        self.upper_bound_period = 1.5 * predominant_period
 
         # Match periods (periods for error computations)
-        self.T = self.database['Periods']
+        self.periods = self.database['Periods']
 
         # Determine the elastic design spectrum from the user-defined spectrum
         if self.target_path:
             data = np.loadtxt(self.target_path)
-            intfunc = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
-            target_spec = intfunc(self.T)
+            interp_func = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
+            target_spectrum = interp_func(self.periods)
 
         # Determine the elastic design spectrum from code
         else:
-            PGA, SDS, SD1, TL = SiteParam_tbec2018(Lat, Long, DD, SiteClass)
-            target_spec, _ = Sae_tbec2018(self.T, SDS, SD1, TL)
+            _, sds, sd1, tl = site_parameters_tbec2018(lat, long, dd_level, site_class)
+            target_spectrum, _ = sae_tbec2018(self.periods, sds, sd1, tl)
 
         # Consider the lower bound spectrum specified by the code as target spectrum
-        if self.selection == 1:
-            target_spec = 1.0 * target_spec
-        elif self.selection == 2:
-            target_spec = 1.3 * target_spec
-            self.Sa_def = 'SRSS'
+        if self.num_components == 1:
+            target_spectrum = 1.0 * target_spectrum
+        elif self.num_components == 2:
+            target_spectrum = 1.3 * target_spectrum
+            self.spectrum_definition = 'SRSS'
 
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID_, station_code = self._search_database()
+        sample_big, vs30, mag, rjb, mechanism, filename1, filename2, rsn, eq_ids, station_code = self._search_database()
 
         # Sample size of the filtered database
-        nBig = sampleBig.shape[0]
+        len_big = sample_big.shape[0]
 
         # Scale factors based on mse
-        scaleFac = np.array(
-            np.sum(np.matlib.repmat(target_spec, nBig, 1) * sampleBig, axis=1) / np.sum(sampleBig ** 2, axis=1))
+        scale_factors_big = np.array(np.sum(np.matlib.repmat(target_spectrum, len_big, 1) * sample_big, axis=1) / np.sum(sample_big ** 2, axis=1))
 
         # Find best matches to the target spectrum from ground-motion database
-        temp = (np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2
+        temp = (np.matlib.repmat(target_spectrum, len_big, 1) - sample_big) ** 2
         mse = temp.mean(axis=1)
 
         if self.database['Name'].startswith('ESM'):
-            d = {ni: indi for indi, ni in enumerate(set(eq_ID_.tolist()))}
-            eq_ID = np.asarray([d[ni] for ni in eq_ID_.tolist()])
+            d = {ni: indi for indi, ni in enumerate(set(eq_ids.tolist()))}
+            eq_ids_big = np.asarray([d[ni] for ni in eq_ids.tolist()])
         else:
-            eq_ID = eq_ID_.copy()
+            eq_ids_big = eq_ids.copy()
 
-        recID_sorted = np.argsort(mse)
-        recIDs = np.ones(self.nGM, dtype=int) * (-1)
-        eqIDs = np.ones(self.nGM, dtype=int) * (-1)
+        rec_id_sorted = np.argsort(mse)
+        rec_ids_small = np.ones(self.num_records, dtype=int) * (-1)
+        eq_ids_small = np.ones(self.num_records, dtype=int) * (-1)
         idx1 = 0
         idx2 = 0
-        while idx1 < self.nGM:  # not more than 3 of the records should be from the same event
-            tmp1 = recID_sorted[idx2]
+        while idx1 < self.num_records:  # not more than 3 of the records should be from the same event
+            tmp1 = rec_id_sorted[idx2]
             idx2 += 1
-            tmp2 = eq_ID[tmp1]
-            recIDs[idx1] = tmp1
-            eqIDs[idx1] = tmp2
-            if np.sum(eqIDs == tmp2) <= self.RecPerEvent:
+            tmp2 = eq_ids_big[tmp1]
+            rec_ids_small[idx1] = tmp1
+            eq_ids_small[idx1] = tmp2
+            if np.sum(eq_ids_small == tmp2) <= self.max_rec_per_event:
                 idx1 += 1
 
         # Initial selection results - based on MSE
-        finalScaleFac = scaleFac[recIDs]
-        sampleSmall = sampleBig[recIDs, :]
+        scale_factors_small = scale_factors_big[rec_ids_small]
+        sample_small = sample_big[rec_ids_small, :]
 
         # Must not be lower than target within the period range, find the indicies for this period range
-        idxs = np.where((self.database['Periods'] >= self.Tlower) * (self.database['Periods'] <= self.Tupper))[0]
+        idxs = np.where((self.database['Periods'] >= self.lower_bound_period) * (self.database['Periods'] <= self.upper_bound_period))[0]
 
-        if self.opt == 1:
-            self.rec_scale = finalScaleFac * np.max(
-                target_spec[idxs] / (finalScaleFac.reshape(-1, 1) * sampleSmall[:, idxs]).mean(axis=0))
+        if self.selection_algorithm == 1:
+            self.rec_scale_factors = scale_factors_small * np.max(target_spectrum[idxs] / (scale_factors_small.reshape(-1, 1) * sample_small[:, idxs]).mean(axis=0))
 
         # try to optimize scaling factor to make it closest as possible to 1
-        if self.opt == 2:
-            finalScaleFac = np.max(target_spec[idxs] / sampleSmall[:, idxs].mean(axis=0))
-            for i in range(self.nGM):  # Loop for nGM
+        if self.selection_algorithm == 2:
+            scale_factors_small = np.max(target_spectrum[idxs] / sample_small[:, idxs].mean(axis=0))
+            for i in range(self.num_records):  # Loop for num_records
                 # note the ID of the record which is removed
-                minID = recIDs[i]
-                # remove the i'th record search for a candidate, and consider critical periods for error calculations only
-                sampleSmall_reduced = np.delete(sampleSmall[:, idxs], i, 0)
-                recIDs = np.delete(recIDs, i)
-                eqIDs = np.delete(eqIDs, i)
-                # Try to add a new spectra to the subset list
-                minID, finalScaleFac = self._opt2(sampleSmall_reduced, finalScaleFac, target_spec[idxs], recIDs, eqIDs,
-                                                  minID, nBig, eq_ID, sampleBig[:, idxs], self.RecPerEvent)
+                min_id = rec_ids_small[i]
+                # remove the i'th record search for a candidate
+                sample_small = np.delete(sample_small, i, 0)
+                rec_ids_small = np.delete(rec_ids_small, i)
+                eq_ids_small = np.delete(eq_ids_small, i)
+                # Try to add a new spectra to the subset list and consider critical periods for error calculations only (idxs)
+                min_id, scale_factors_small = self._find_rec_smallest_sf(sample_small[:, idxs], scale_factors_small, target_spectrum[idxs], rec_ids_small, eq_ids_small, min_id, eq_ids_big, sample_big[:, idxs], self.max_rec_per_event)
                 # Add new element in the right slot
-                sampleSmall = np.concatenate(
-                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]), sampleSmall[i:, :]),
-                    axis=0)
-                recIDs = np.concatenate((recIDs[:i], np.array([minID]), recIDs[i:]))
-                eqIDs = np.concatenate((eqIDs[:i], np.array([eq_ID[minID]]), eqIDs[i:]))
-            self.rec_scale = np.ones(self.nGM) * float(finalScaleFac)
+                sample_small = np.concatenate((sample_small[:i, :], sample_big[min_id, :].reshape(1, sample_big.shape[1]), sample_small[i:, :]), axis=0)
+                rec_ids_small = np.concatenate((rec_ids_small[:i], np.array([min_id]), rec_ids_small[i:]))
+                eq_ids_small = np.concatenate((eq_ids_small[:i], np.array([eq_ids_big[min_id]]), eq_ids_small[i:]))
+            self.rec_scale_factors = np.ones(self.num_records) * float(scale_factors_small)
 
         # check the scaling
-        if np.any(self.rec_scale > self.maxScale) or np.any(self.rec_scale < 1 / self.maxScale):
+        if np.any(self.rec_scale_factors > self.max_scale_factor) or np.any(self.rec_scale_factors< 1 / self.max_scale_factor):
             raise ValueError('Scaling factor criteria is not satisfied',
                              'Please broaden your selection and scaling criteria or change the optimization scheme...')
 
-        recIDs = recIDs.tolist()
+        rec_ids_small = rec_ids_small.tolist()
         # Add selected record information to self
-        self.rec_Vs30 = Vs30[recIDs]
-        self.rec_Rjb = Rjb[recIDs]
-        self.rec_Mw = Mw[recIDs]
-        self.rec_fault = fault[recIDs]
-        self.rec_eqID = eq_ID_[recIDs]
-        self.rec_h1 = Filename_1[recIDs]
+        self.rec_vs30 = vs30[rec_ids_small]
+        self.rec_rjb = rjb[rec_ids_small]
+        self.rec_mag = mag[rec_ids_small]
+        self.rec_mech = mechanism[rec_ids_small]
+        self.rec_eq_id = eq_ids[rec_ids_small]
+        self.rec_file_h1 = filename1[rec_ids_small]
 
-        if self.selection == 2:
-            self.rec_h2 = Filename_2[recIDs]
+        if self.num_components == 2:
+            self.rec_file_h2 = filename2[rec_ids_small]
 
         if self.database['Name'] == 'NGA_W2':
-            self.rec_rsn = NGA_num[recIDs]
+            self.rec_rsn = rsn[rec_ids_small]
 
         if self.database['Name'] == 'ESM_2018':
-            self.rec_station_code = station_code[recIDs]
+            self.rec_station_code = station_code[rec_ids_small]
 
         rec_idxs = []
-        if self.selection == 1:
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-            for rec in self.rec_h1:
-                rec_idxs.append(np.where(Filename_1 == rec)[0][0])
-            rec_spec = SaKnown[rec_idxs, :]
-        elif self.selection == 2:
-            for rec in self.rec_h1:
+        if self.num_components == 1:
+            sa_known = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+            filename1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            for rec in self.rec_file_h1:
+                rec_idxs.append(np.where(filename1 == rec)[0][0])
+            rec_spec = sa_known[rec_idxs, :]
+        elif self.num_components == 2:
+            for rec in self.rec_file_h1:
                 rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
-            Sa_1 = self.database['Sa_1'][rec_idxs, :]
-            Sa_2 = self.database['Sa_2'][rec_idxs, :]
-            rec_spec = (Sa_1 ** 2 + Sa_2 ** 2) ** 0.5
+            sa1 = self.database['Sa_1'][rec_idxs, :]
+            sa2 = self.database['Sa_2'][rec_idxs, :]
+            rec_spec = (sa1 ** 2 + sa2 ** 2) ** 0.5
 
         # Save the results for whole spectral range
-        self.rec_spec = rec_spec
-        self.T = self.database['Periods']
+        self.rec_sa_ln = rec_spec
+        self.periods = self.database['Periods']
 
         if self.target_path:
-            self.target = intfunc(self.T)
+            self.target = interp_func(self.periods)
         else:
-            self.target, _ = Sae_tbec2018(self.T, SDS, SD1, TL)
+            self.target, _ = sae_tbec2018(self.periods, sds, sd1, tl)
 
         print('TBEC 2018 based ground motion record selection and amplitude scaling are finished...')
 
-    def asce7_16(self, Lat=34, Long=-118, RiskCat='II', SiteClass='C', T1_small=1, T1_big=1, Tlower=None, Tupper=None):
+    def select_asce7_16(self, lat=34, long=-118, risk_cat='II', site_class='C', fundamental_periods = [1, 1], lower_bound_period=None, upper_bound_period=None):
         """
         Details
         -------
@@ -2670,32 +2806,30 @@ class code_spectrum(_subclass_):
         Notes
         -----
         Rule 1: Mean of selected records should remain above the lower bound target spectra.
-            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * Sa_MCEr(Tlower-Tupper) 
-            For Selection = 2: Sa_rec = RotD100 - lower bound = 0.9 * Sa_MCEr(Tlower-Tupper)     
-            Tlower >= 0.2 * T1_small
-            Tupper >= 1.5 * T1_big
+            For num_components = 1: Sa_rec = (Sa1 or Sa2) - lower bound = 0.9 * Sa_MCEr(Tlower-Tupper)
+            For num_components = 2: Sa_rec = RotD100 - lower bound = 0.9 * Sa_MCEr(Tlower-Tupper)
+            lower_bound_period >= 0.2 * min(fundamental_periods)
+            upper_bound_period >= 1.5 * max(fundamental_periods)
             
         Rule 2: 
             At least 11 records (or pairs) must be selected.
 
         Parameters
         ----------
-        Lat: float, optional, the default is 41.0582.
+        lat : float, optional, the default is 41.0582.
             Site latitude
-        Long: float, optional, the default is 29.00951.
+        long : float, optional, the default is 29.00951.
             Site longitude
-        RiskCat:  str, the default is 'III'
+        risk_category :  str, the default is 'III'
             Risk category for structure ('I','II','III','IV')
-        SiteClass: str, optional, the default is 'C'.
+        site_class : str, optional, the default is 'C'.
             Site soil class ('A','B','C','D','E')
-        T1_small: float, the default is 1.
-            The smallest of first-mode periods in principal horizontal directions
-        T1_big: float, the default is 1.
-            The largest of first-mode periods in principal horizontal directions        
-        Tlower: float, the default is None.
-            The lower bound for period range, if None equal to 0.2*T1_small
-        Tupper: float, the default is None.
-            The upper bound for period range, if None equal to 2.0*T1_big
+        fundamental_periods : list, the default is [1, 1].
+            The first-mode periods in principal horizontal directions     
+        lower_bound_period: float, the default is None.
+            The lower bound for matching period range, if None equal to 0.2*min(fundamental_periods)
+        upper_bound_period: float, the default is None.
+            The upper bound for matching period range, if None equal to 2.0*max(fundamental_periods)
         
         Returns
         -------
@@ -2703,165 +2837,159 @@ class code_spectrum(_subclass_):
         """
 
         # Add selection settings to self
-        self.Lat = Lat
-        self.Long = Long
-        self.RiskCat = RiskCat
-        self.SiteClass = SiteClass
+        self.lat = lat
+        self.long = long
+        self.risk_category = risk_cat
+        self.site_class = site_class
         self.code = 'ASCE 7-16'
 
         # Section 16.2.3.1
-        if not Tlower:
-            Tlower = 0.2 * T1_small
-        elif Tlower < 0.2 * T1_small:
-            Tlower = 0.2 * T1_small
+        if not lower_bound_period:
+            lower_bound_period = 0.2 * min(fundamental_periods)
+        elif lower_bound_period < 0.2 * min(fundamental_periods):
+            lower_bound_period = 0.2 * min(fundamental_periods)
             print('Warning! Lower bound cannot be lower than 0.2 times the largest first-mode period according to '
                   'ASCE 7-16. Changing...')
-        if not Tupper:
-            Tupper = 2.0 * T1_big
-        elif Tupper < 1.5 * T1_big:
-            Tupper = 1.5 * T1_big
+        if not upper_bound_period:
+            upper_bound_period = 2.0 * max(fundamental_periods)
+        elif upper_bound_period < 1.5 * max(fundamental_periods):
+            upper_bound_period = 1.5 * max(fundamental_periods)
             print('Warning! Upper bound cannot be lower than 1.5 times the smallest first-mode period according to '
                   'ASCE 7-16. Changing...')
-        self.Tlower = Tlower
-        self.Tupper = Tupper
+        self.lower_bound_period = lower_bound_period
+        self.upper_bound_period = upper_bound_period
 
         # Section 16.2.2
-        if self.nGM < 11:
-            print('Warning! nGM must be at least 11 according to ASCE 7-16. Changing...')
-            self.nGM = 11
+        if self.num_records < 11:
+            print('Warning! Number of records must be at least 11 according to ASCE 7-16. Changing...')
+            self.num_records = 11
 
         # Match periods (periods for error computations)
-        self.T = self.database['Periods']
+        self.periods = self.database['Periods']
 
         # Determine the elastic design spectrum from the user-defined spectrum
         if self.target_path:
             data = np.loadtxt(self.target_path)
-            intfunc = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
-            target_spec = intfunc(self.T)
+            interp_func = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
+            target_spectrum = interp_func(self.periods)
 
         # Determine the elastic design spectrum from code, Section 16.2.1
         else:
-            SDS, SD1, TL = SiteParam_asce7_16(Lat, Long, RiskCat, SiteClass)  # Retrieve site parameters
-            target_spec = 1.5 * Sae_asce7_16(self.T, SDS, SD1,
-                                             TL)  # Retrive the design spectrum and multiply by 1.5 to get MCER
+            sds, sd1, tl = site_parameters_asce7_16(lat, long, risk_cat, site_class)  # Retrieve site parameters
+            target_spectrum = 1.5 * sae_asce7_16(self.periods, sds, sd1, tl)  # Retrive the design spectrum and multiply by 1.5 to get MCER
 
         # Consider the lower bound spectrum specified by the code as target spectrum, Section 16.2.3.2
-        target_spec = 0.9 * target_spec
-        if self.selection == 2:
-            self.Sa_def = 'RotD100'
+        target_spectrum = 0.9 * target_spectrum
+        if self.num_components == 2:
+            self.spectrum_definition = 'RotD100'
 
             # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID_, station_code = self._search_database()
+        sample_big, vs30, mag, rjb, mechanism, filename1, filename2, rsn, eq_ids, station_code = self._search_database()
 
         # Sample size of the filtered database
-        nBig = sampleBig.shape[0]
+        len_big = sample_big.shape[0]
 
         # Scale factors based on mse
-        scaleFac = np.array(
-            np.sum(np.matlib.repmat(target_spec, nBig, 1) * sampleBig, axis=1) / np.sum(sampleBig ** 2, axis=1))
+        scale_factors_big = np.array(np.sum(np.matlib.repmat(target_spectrum, len_big, 1) * sample_big, axis=1) / np.sum(sample_big ** 2, axis=1))
 
         # Find best matches to the target spectrum from ground-motion database
-        temp = (np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2
+        temp = (np.matlib.repmat(target_spectrum, len_big, 1) - sample_big) ** 2
         mse = temp.mean(axis=1)
 
         if self.database['Name'].startswith('ESM'):
-            d = {ni: indi for indi, ni in enumerate(set(eq_ID_.tolist()))}
-            eq_ID = np.asarray([d[ni] for ni in eq_ID_.tolist()])
+            d = {ni: indi for indi, ni in enumerate(set(eq_ids.tolist()))}
+            eq_ids_big = np.asarray([d[ni] for ni in eq_ids.tolist()])
         else:
-            eq_ID = eq_ID_.copy()
+            eq_ids_big = eq_ids.copy()
 
-        recID_sorted = np.argsort(mse)
-        recIDs = np.ones(self.nGM, dtype=int) * (-1)
-        eqIDs = np.ones(self.nGM, dtype=int) * (-1)
+        rec_id_sorted = np.argsort(mse)
+        rec_ids_small = np.ones(self.num_records, dtype=int) * (-1)
+        eq_ids_small = np.ones(self.num_records, dtype=int) * (-1)
         idx1 = 0
         idx2 = 0
-        while idx1 < self.nGM:  # not more than 3 of the records should be from the same event
-            tmp1 = recID_sorted[idx2]
+        while idx1 < self.num_records:  # not more than 3 of the records should be from the same event
+            tmp1 = rec_id_sorted[idx2]
             idx2 += 1
-            tmp2 = eq_ID[tmp1]
-            recIDs[idx1] = tmp1
-            eqIDs[idx1] = tmp2
-            if np.sum(eqIDs == tmp2) <= self.RecPerEvent:
+            tmp2 = eq_ids_big[tmp1]
+            rec_ids_small[idx1] = tmp1
+            eq_ids_small[idx1] = tmp2
+            if np.sum(eq_ids_small == tmp2) <= self.max_rec_per_event:
                 idx1 += 1
 
         # Initial selection results - based on MSE
-        finalScaleFac = scaleFac[recIDs]
-        sampleSmall = sampleBig[recIDs, :]
+        scale_factors_small = scale_factors_big[rec_ids_small]
+        sample_small = sample_big[rec_ids_small, :]
 
         # Must not be lower than target within the period range, find the indicies for this period range
-        idxs = np.where((self.database['Periods'] >= self.Tlower) * (self.database['Periods'] <= self.Tupper))[0]
+        idxs = np.where((self.database['Periods'] >= self.lower_bound_period) * (self.database['Periods'] <= self.upper_bound_period))[0]
 
-        if self.opt == 1:
-            self.rec_scale = finalScaleFac * np.max(
-                target_spec[idxs] / (finalScaleFac.reshape(-1, 1) * sampleSmall[:, idxs]).mean(axis=0))
+        if self.selection_algorithm == 1:
+            self.rec_scale_factors = scale_factors_small * np.max(target_spectrum[idxs] / (scale_factors_small.reshape(-1, 1) * sample_small[:, idxs]).mean(axis=0))
 
         # try to optimize scaling factor to make it closest as possible to 1
-        if self.opt == 2:
-            finalScaleFac = np.max(target_spec[idxs] / sampleSmall[:, idxs].mean(axis=0))
-            for i in range(self.nGM):  # Loop for nGM
+        if self.selection_algorithm == 2:
+            scale_factors_small = np.max(target_spectrum[idxs] / sample_small[:, idxs].mean(axis=0))
+            for i in range(self.num_records):  # Loop for num_records
                 # note the ID of the record which is removed
-                minID = recIDs[i]
-                # remove the i'th record search for a candidate, and consider critical periods for error calculations only
-                sampleSmall_reduced = np.delete(sampleSmall[:, idxs], i, 0)
-                recIDs = np.delete(recIDs, i)
-                eqIDs = np.delete(eqIDs, i)
-                # Try to add a new spectra to the subset list
-                minID, finalScaleFac = self._opt2(sampleSmall_reduced, finalScaleFac, target_spec[idxs], recIDs, eqIDs,
-                                                  minID, nBig, eq_ID, sampleBig[:, idxs], self.RecPerEvent)
+                min_id = rec_ids_small[i]
+                # remove the i'th record search for a candidate 
+                sample_small = np.delete(sample_small, i, 0)
+                rec_ids_small = np.delete(rec_ids_small, i)
+                eq_ids_small = np.delete(eq_ids_small, i)
+                # Try to add a new spectra to the subset list and consider critical periods for error calculations only (idxs)
+                min_id, scale_factors_small = self._find_rec_smallest_sf(sample_small[:, idxs], scale_factors_small, target_spectrum[idxs], rec_ids_small, eq_ids_small, min_id, eq_ids_big, sample_big[:, idxs], self.max_rec_per_event)
                 # Add new element in the right slot
-                sampleSmall = np.concatenate(
-                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]), sampleSmall[i:, :]),
-                    axis=0)
-                recIDs = np.concatenate((recIDs[:i], np.array([minID]), recIDs[i:]))
-                eqIDs = np.concatenate((eqIDs[:i], np.array([eq_ID[minID]]), eqIDs[i:]))
-            self.rec_scale = np.ones(self.nGM) * float(finalScaleFac)
+                sample_small = np.concatenate((sample_small[:i, :], sample_big[min_id, :].reshape(1, sample_big.shape[1]), sample_small[i:, :]), axis=0)
+                rec_ids_small = np.concatenate((rec_ids_small[:i], np.array([min_id]), rec_ids_small[i:]))
+                eq_ids_small = np.concatenate((eq_ids_small[:i], np.array([eq_ids_big[min_id]]), eq_ids_small[i:]))
+            self.rec_scale_factors = np.ones(self.num_records) * float(scale_factors_small)
 
         # check the scaling
-        if np.any(self.rec_scale > self.maxScale) or np.any(self.rec_scale < 1 / self.maxScale):
+        if np.any(self.rec_scale_factors > self.max_scale_factor) or np.any(self.rec_scale_factors < 1 / self.max_scale_factor):
             raise ValueError('Scaling factor criteria is not satisfied',
                              'Please broaden your selection and scaling criteria or change the optimization scheme...')
-        recIDs = recIDs.tolist()
+        rec_ids_small = rec_ids_small.tolist()
         # Add selected record information to self
-        self.rec_Vs30 = Vs30[recIDs]
-        self.rec_Rjb = Rjb[recIDs]
-        self.rec_Mw = Mw[recIDs]
-        self.rec_fault = fault[recIDs]
-        self.rec_eqID = eq_ID_[recIDs]
-        self.rec_h1 = Filename_1[recIDs]
+        self.rec_vs30 = vs30[rec_ids_small]
+        self.rec_rjb = rjb[rec_ids_small]
+        self.rec_mag = mag[rec_ids_small]
+        self.rec_mech = mechanism[rec_ids_small]
+        self.rec_eq_id = eq_ids[rec_ids_small]
+        self.rec_file_h1 = filename1[rec_ids_small]
 
-        if self.selection == 2:
-            self.rec_h2 = Filename_2[recIDs]
+        if self.num_components == 2:
+            self.rec_file_h2 = filename2[rec_ids_small]
 
         if self.database['Name'] == 'NGA_W2':
-            self.rec_rsn = NGA_num[recIDs]
+            self.rec_rsn = rsn[rec_ids_small]
 
         if self.database['Name'] == 'ESM_2018':
-            self.rec_station_code = station_code[recIDs]
+            self.rec_station_code = station_code[rec_ids_small]
 
         rec_idxs = []
-        if self.selection == 1:
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-            for rec in self.rec_h1:
-                rec_idxs.append(np.where(Filename_1 == rec)[0][0])
-            rec_spec = SaKnown[rec_idxs, :]
-        elif self.selection == 2:
-            for rec in self.rec_h1:
+        if self.num_components == 1:
+            sa_known = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+            filename1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            for rec in self.rec_file_h1:
+                rec_idxs.append(np.where(filename1 == rec)[0][0])
+            rec_spec = sa_known[rec_idxs, :]
+        elif self.num_components == 2:
+            for rec in self.rec_file_h1:
                 rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
             rec_spec = self.database['Sa_RotD100'][rec_idxs, :]
 
         # Save the results for whole spectral range
-        self.rec_spec = rec_spec
-        self.T = self.database['Periods']
+        self.rec_sa_ln = rec_spec
+        self.periods = self.database['Periods']
 
         if self.target_path:
-            self.target = intfunc(self.T)
+            self.target = interp_func(self.periods)
         else:
-            self.target = 1.5 * Sae_asce7_16(self.T, SDS, SD1, TL)
+            self.target = 1.5 * sae_asce7_16(self.periods, sds, sd1, tl)
 
         print('ASCE 7-16 based ground motion record selection and amplitude scaling are finished...')
 
-    def ec8_part1(self, ag=0.2, xi=0.05, ImpClass='II', Type='Type1', SiteClass='C', Tp=1):
+    def select_ec8_part1(self, ag=0.2, xi=0.05, importance_class='II', target_type='Type1', site_class='C', predominant_period=1):
         """
         Details
         -------
@@ -2887,8 +3015,8 @@ class code_spectrum(_subclass_):
             Not a bad assumption since it is very close to PGA.
 
         Rule 3 (c): Mean of selected records should remain above the lower bound target spectrum.
-            For selection = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
-            For Selection = 2: Sa_rec = (Sa_1+Sa_2)*0.5 - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
+            For num_components = 1: Sa_rec = (Sa_1 or Sa_2) - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
+            For num_components = 2: Sa_rec = (Sa_1 + Sa_2) * 0.5 - lower bound = 0.9 * SaTarget(0.2Tp-2.0Tp)
 
         Parameters
         ----------
@@ -2896,13 +3024,13 @@ class code_spectrum(_subclass_):
             Peak ground acceleration [g]
         xi: float, optional, the default is 0.05.
             Damping
-        ImpClass: str, the default is 'II'.
+        importance_class: str, the default is 'II'.
             Importance class ('I','II','III','IV')
-        Type: str, optional, the default is 'Type1'
+        target_type: str, optional, the default is 'Type1'
             Type of spectrum (Option: 'Type1' or 'Type2')
-        SiteClass: str, optional, the default is 'B'
+        site_class: str, optional, the default is 'B'
             Soil Class (Options: 'A', 'B', 'C', 'D' or 'E')
-        Tp : float, optional, the default is 1.
+        predominant_period : float, optional, the default is 1.
             Predominant period of the structure. 
         
         Returns
@@ -2911,144 +3039,139 @@ class code_spectrum(_subclass_):
         """
 
         # Add selection settings to self
-        self.Tp = Tp
+        self.predominant_period = predominant_period
         self.ag = ag
-        self.ImpClass = ImpClass
-        self.Type = Type
-        self.SiteClass = SiteClass
+        self.importance_class = importance_class
+        self.target_type = target_type
+        self.site_class = site_class
         self.code = 'EC8-Part1'
 
         # Set the period range
-        self.Tlower = 0.2 * Tp
-        self.Tupper = 2.0 * Tp
+        self.lower_bound_period = 0.2 * predominant_period
+        self.upper_bound_period = 2.0 * predominant_period
 
         # Match periods (periods for error computations)
-        self.T = self.database['Periods']
+        self.periods = self.database['Periods']
 
         # Determine the elastic design spectrum from the user-defined spectrum
         if self.target_path:
             data = np.loadtxt(self.target_path)
-            func = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
-            target_spec = func(self.T)
+            interp_funct = interpolate.interp1d(data[:, 0], data[:, 1], kind='linear', fill_value='extrapolate')
+            target_spectrum = interp_funct(self.periods)
 
         # Determine the elastic design spectrum from code
         else:
-            target_spec = Sae_ec8_part1(ag, xi, self.T, ImpClass, Type, SiteClass)
+            target_spectrum = sae_ec8_part1(ag, xi, self.periods, importance_class, target_type, site_class)
 
         # Consider the lower bound spectrum specified by the code as target spectrum
-        target_spec = 0.9 * target_spec  # scale down except for Sa(T[0]) or PGA
-        if self.selection == 2:
-            self.Sa_def = 'ArithmeticMean'
+        target_spectrum = 0.9 * target_spectrum  # scale down except for Sa(T[0]) or PGA
+        if self.num_components == 2:
+            self.spectrum_definition = 'ArithmeticMean'
 
         # Search the database and filter
-        sampleBig, Vs30, Mw, Rjb, fault, Filename_1, Filename_2, NGA_num, eq_ID_, station_code = self._search_database()
+        sample_big, vs30, mag, rjb, mechanism, filename1, filename2, rsn, eq_ids, station_code = self._search_database()
 
         # Sample size of the filtered database
-        nBig = sampleBig.shape[0]
+        len_big = sample_big.shape[0]
 
         # Scale factors based on mse
-        scaleFac = np.array(
-            np.sum(np.matlib.repmat(target_spec, nBig, 1) * sampleBig, axis=1) / np.sum(sampleBig ** 2, axis=1))
+        scale_factors_big = np.array(np.sum(np.matlib.repmat(target_spectrum, len_big, 1) * sample_big, axis=1) / np.sum(sample_big ** 2, axis=1))
 
         # Find best matches to the target spectrum from ground-motion database
-        temp = (np.matlib.repmat(target_spec, nBig, 1) - sampleBig) ** 2
+        temp = (np.matlib.repmat(target_spectrum, len_big, 1) - sample_big) ** 2
         mse = temp.mean(axis=1)
 
         if self.database['Name'].startswith('ESM'):
-            d = {ni: indi for indi, ni in enumerate(set(eq_ID_.tolist()))}
-            eq_ID = np.asarray([d[ni] for ni in eq_ID_.tolist()])
+            d = {ni: indi for indi, ni in enumerate(set(eq_ids.tolist()))}
+            eq_ids_big = np.asarray([d[ni] for ni in eq_ids.tolist()])
         else:
-            eq_ID = eq_ID_.copy()
+            eq_ids_big = eq_ids.copy()
 
-        recID_sorted = np.argsort(mse)
-        recIDs = np.ones(self.nGM, dtype=int) * (-1)
-        eqIDs = np.ones(self.nGM, dtype=int) * (-1)
+        rec_id_sorted = np.argsort(mse)
+        rec_ids_small = np.ones(self.num_records, dtype=int) * (-1)
+        eq_ids_small = np.ones(self.num_records, dtype=int) * (-1)
         idx1 = 0
         idx2 = 0
-        while idx1 < self.nGM:  # not more than 3 of the records should be from the same event
-            tmp1 = recID_sorted[idx2]
+        while idx1 < self.num_records:  # not more than 3 of the records should be from the same event
+            tmp1 = rec_id_sorted[idx2]
             idx2 += 1
-            tmp2 = eq_ID[tmp1]
-            recIDs[idx1] = tmp1
-            eqIDs[idx1] = tmp2
-            if np.sum(eqIDs == tmp2) <= self.RecPerEvent:
+            tmp2 = eq_ids_big[tmp1]
+            rec_ids_small[idx1] = tmp1
+            eq_ids_small[idx1] = tmp2
+            if np.sum(eq_ids_small == tmp2) <= self.max_rec_per_event:
                 idx1 += 1
 
         # Initial selection results - based on MSE
-        finalScaleFac = scaleFac[recIDs]
-        sampleSmall = sampleBig[recIDs, :]
-        target_spec[0] = target_spec[0] / 0.9  # scale up for Sa(T[0]) or PGA
+        scale_factors_small = scale_factors_big[rec_ids_small]
+        sample_small = sample_big[rec_ids_small, :]
+        target_spectrum[0] = target_spectrum[0] / 0.9  # scale up for Sa(T[0]) or PGA
 
         # Must not be lower than target within the period range, find the indicies for this period range
-        idxs = np.where((self.database['Periods'] >= self.Tlower) * (self.database['Periods'] <= self.Tupper))[0]
+        idxs = np.where((self.database['Periods'] >= self.lower_bound_period) * (self.database['Periods'] <= self.upper_bound_period))[0]
         idxs = np.append(0, idxs)  # Add Sa(T=0) or PGA, approximated as Sa(T=0.01)
 
-        if self.opt == 1:
-            self.rec_scale = finalScaleFac * np.max(
-                target_spec[idxs] / (finalScaleFac.reshape(-1, 1) * sampleSmall[:, idxs]).mean(axis=0))
+        if self.selection_algorithm == 1:
+            self.rec_scale_factors = scale_factors_small * np.max(target_spectrum[idxs] / (scale_factors_small.reshape(-1, 1) * sample_small[:, idxs]).mean(axis=0))
 
         # try to optimize scaling factor to make it closest as possible to 1
-        if self.opt == 2:
-            finalScaleFac = np.max(target_spec[idxs] / sampleSmall[:, idxs].mean(axis=0))
-            for i in range(self.nGM):  # Loop for nGM
+        if self.selection_algorithm == 2:
+            scale_factors_small = np.max(target_spectrum[idxs] / sample_small[:, idxs].mean(axis=0))
+            for i in range(self.num_records):  # Loop for num_records
                 # note the ID of the record which is removed
-                minID = recIDs[i]
-                # remove the i'th record search for a candidate, and consider critical periods for error calculations only
-                sampleSmall_reduced = np.delete(sampleSmall[:, idxs], i, 0)
-                recIDs = np.delete(recIDs, i)
-                eqIDs = np.delete(eqIDs, i)
-                # Try to add a new spectra to the subset list
-                minID, finalScaleFac = self._opt2(sampleSmall_reduced, finalScaleFac, target_spec[idxs], recIDs, eqIDs,
-                                                  minID, nBig, eq_ID, sampleBig[:, idxs], self.RecPerEvent)
+                min_id = rec_ids_small[i]
+                # remove the i'th record search for a candidate
+                sample_small = np.delete(sample_small, i, 0)
+                rec_ids_small = np.delete(rec_ids_small, i)
+                eq_ids_small = np.delete(eq_ids_small, i)
+                # Try to add a new spectra to the subset list and consider critical periods for error calculations only (idxs)
+                min_id, scale_factors_small = self._find_rec_smallest_sf(sample_small[:, idxs], scale_factors_small, target_spectrum[idxs], rec_ids_small, eq_ids_small, min_id, eq_ids_big, sample_big[:, idxs], self.max_rec_per_event)
                 # Add new element in the right slot
-                sampleSmall = np.concatenate(
-                    (sampleSmall[:i, :], sampleBig[minID, :].reshape(1, sampleBig.shape[1]), sampleSmall[i:, :]),
-                    axis=0)
-                recIDs = np.concatenate((recIDs[:i], np.array([minID]), recIDs[i:]))
-                eqIDs = np.concatenate((eqIDs[:i], np.array([eq_ID[minID]]), eqIDs[i:]))
-            self.rec_scale = np.ones(self.nGM) * float(finalScaleFac)
+                sample_small = np.concatenate((sample_small[:i, :], sample_big[min_id, :].reshape(1, sample_big.shape[1]), sample_small[i:, :]), axis=0)
+                rec_ids_small = np.concatenate((rec_ids_small[:i], np.array([min_id]), rec_ids_small[i:]))
+                eq_ids_small = np.concatenate((eq_ids_small[:i], np.array([eq_ids_big[min_id]]), eq_ids_small[i:]))
+            self.rec_scale_factors = np.ones(self.num_records) * float(scale_factors_small)
 
         # check the scaling
-        if np.any(self.rec_scale > self.maxScale) or np.any(self.rec_scale < 1 / self.maxScale):
+        if np.any(self.rec_scale_factors > self.max_scale_factor) or np.any(self.rec_scale_factors< 1 / self.max_scale_factor):
             raise ValueError('Scaling factor criteria is not satisfied',
                              'Please broaden your selection and scaling criteria or change the optimization scheme...')
 
-        recIDs = recIDs.tolist()
+        rec_ids_small = rec_ids_small.tolist()
         # Add selected record information to self
-        self.rec_Vs30 = Vs30[recIDs]
-        self.rec_Rjb = Rjb[recIDs]
-        self.rec_Mw = Mw[recIDs]
-        self.rec_fault = fault[recIDs]
-        self.rec_eqID = eq_ID[recIDs]
-        self.rec_h1 = Filename_1[recIDs]
+        self.rec_vs30 = vs30[rec_ids_small]
+        self.rec_rjb = rjb[rec_ids_small]
+        self.rec_mag = mag[rec_ids_small]
+        self.rec_mech = mechanism[rec_ids_small]
+        self.rec_eq_id = eq_ids_big[rec_ids_small]
+        self.rec_file_h1 = filename1[rec_ids_small]
 
-        if self.selection == 2:
-            self.rec_h2 = Filename_2[recIDs]
+        if self.num_components == 2:
+            self.rec_file_h2 = filename2[rec_ids_small]
 
         if self.database['Name'] == 'NGA_W2':
-            self.rec_rsn = NGA_num[recIDs]
+            self.rec_rsn = rsn[rec_ids_small]
 
         if self.database['Name'] == 'ESM_2018':
-            self.rec_station_code = station_code[recIDs]
+            self.rec_station_code = station_code[rec_ids_small]
 
         rec_idxs = []
-        if self.selection == 1:
-            SaKnown = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
-            Filename_1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
-            for rec in self.rec_h1:
-                rec_idxs.append(np.where(Filename_1 == rec)[0][0])
-            self.rec_spec = SaKnown[rec_idxs, :]
+        if self.num_components == 1:
+            sa_known = np.append(self.database['Sa_1'], self.database['Sa_2'], axis=0)
+            filename1 = np.append(self.database['Filename_1'], self.database['Filename_2'], axis=0)
+            for rec in self.rec_file_h1:
+                rec_idxs.append(np.where(filename1 == rec)[0][0])
+            self.rec_sa_ln = sa_known[rec_idxs, :]
 
-        elif self.selection == 2:
-            for rec in self.rec_h1:
+        elif self.num_components == 2:
+            for rec in self.rec_file_h1:
                 rec_idxs.append(np.where(self.database['Filename_1'] == rec)[0][0])
-            self.rec_spec = 0.5 * (self.database['Sa_1'][rec_idxs, :] + self.database['Sa_2'][rec_idxs, :])
+            self.rec_sa_ln = 0.5 * (self.database['Sa_1'][rec_idxs, :] + self.database['Sa_2'][rec_idxs, :])
 
         # Save the results for whole spectral range
-        self.T = self.database['Periods']
+        self.periods = self.database['Periods']
         if self.target_path:
-            self.target = func(self.T)
+            self.target = interp_funct(self.periods)
         else:
-            self.target = Sae_ec8_part1(ag, xi, self.T, ImpClass, Type, SiteClass)
+            self.target = sae_ec8_part1(ag, xi, self.periods, importance_class, target_type, site_class)
 
         print('EC8 - Part 1 based ground motion record selection and amplitude scaling are finished...')

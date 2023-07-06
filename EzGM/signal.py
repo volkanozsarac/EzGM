@@ -26,16 +26,16 @@ def baseline_correction(values, dt, polynomial_type):
         
     Parameters
     ----------
-    values: numpy.array
+    values : numpy.ndarray
         Input signal values.
-    dt: float          
+    dt : float          
         Sampling interval.
-    polynomial_type: str
+    polynomial_type : str
         Type of baseline correction 'Constant', 'Linear', 'Quadratic', 'Cubic'.
         
     Returns
     -------
-    values_corrected: numpy.array
+    values_corrected : numpy.ndarray
         Corrected signal values
     """
 
@@ -74,24 +74,24 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, filter_typ
 
     Parameters
     ----------
-    values: numpy.array
+    values : numpy.ndarray
         Input signal.
-    dt: float
+    dt : float
         Sampling interval.
-    cut_off: float, tuple, list, numpy.array, optional (The default is (0.1, 25)
+    cut_off : float, tuple, list, numpy.ndarray, optional (The default is (0.1, 25)
         Cut off frequencies for the filter (Hz).
         For lowpass and highpass filters this parameters is a float e.g. 25 or 0.1
         For bandpass or bandstop filters this parameter is a tuple or list e.g. (0.1, 25)
-    filter_type: str, optional (The default is 'lowpass')
+    filter_type : str, optional (The default is 'lowpass')
         The type of filter {'lowpass', 'highpass', 'bandpass', 'bandstop'}.
-    filter_order: int, optional (The default is 4)
+    filter_order : int, optional (The default is 4)
         Order of the Butterworth filter.
-    alpha_window: float, optional (The default is 0.0)
+    alpha_window : float, optional (The default is 0.0)
         Shape parameter of the Tukey window
 
     Returns
     -------
-    values_filtered: numpy.array
+    values_filtered : numpy.ndarray
         Filtered signal values.
     """
 
@@ -101,19 +101,19 @@ def butterworth_filter(values, dt, cut_off=(0.1, 25), filter_order=4, filter_typ
     sampling_rate = 1.0 / dt  # Sampling rate
     nyq_freq = sampling_rate * 0.5  # Nyquist frequency
     wn = cut_off / nyq_freq  # The critical frequency or frequencies. For lowpass and highpass filters,
-    Lpad = round(len(values) /2)  # Half of signal length
+    pad_length = round(len(values) /2)  # Half of signal length
     w = windows.tukey(len(values), alpha_window)  # This is the window
     values = w * values  # Apply the tapered cosine window
-    values = np.append(np.append(np.zeros(Lpad), values), np.zeros(Lpad))  # Add zero pads to start and end
+    values = np.append(np.append(np.zeros(pad_length), values), np.zeros(pad_length))  # Add zero pads to start and end
     # Wn is a scalar; for bandpass and bandstop filters, Wn is a length-2 sequence.
     b, a = butter(filter_order, wn, filter_type)  # Numerator (b) and denominator (a) polynomials of the IIR filter.
     values = filtfilt(b, a, values)  # Filtering data with an IIR or FIR filter.
-    values_filtered = values[Lpad: -Lpad]  # removing extra zeros
+    values_filtered = values[pad_length: -pad_length]  # removing extra zeros
 
     return values_filtered
 
 
-def sdof_ltha(Ag, dt, T, xi, m=1):
+def sdof_ltha(ag, dt, periods, xi, m=1):
     """
     Details
     -------
@@ -137,47 +137,47 @@ def sdof_ltha(Ag, dt, T, xi, m=1):
     
     Parameters
     ----------
-    Ag: numpy.array    
+    ag : numpy.ndarray    
         Acceleration values.
-    dt: float
+    dt : float
         Time step [sec]
-    T:  float, numpy.array.
+    periods :  float, numpy.ndarray.
         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
-    xi: float
+    xi : float
         Damping ratio, e.g. 0.05 for 5%.
-    m:  float
+    m :  float
         Mass of SDOF system.
         
     Returns
     -------
-    u: numpy.array       
+    u : numpy.ndarray       
         Relative displacement response history.
-    v: numpy.array   
+    v : numpy.ndarray   
         Relative velocity response history.
-    ac: numpy.array 
+    ac : numpy.ndarray 
         Relative acceleration response history.
-    ac_tot: numpy.array 
+    ac_tot : numpy.ndarray 
         Total acceleration response history.
     """
 
-    if isinstance(T, (int, float)):
-        T = np.array([T])
-    if isinstance(T, list):
-        T = np.array(T)
-    elif isinstance(T, numpy.ndarray):
-        T = T
+    if isinstance(periods, (int, float)):
+        periods = np.array([periods])
+    if isinstance(periods, list):
+        periods = np.array(periods)
+    elif isinstance(periods, numpy.ndarray):
+        periods = periods
 
     # Get the length of acceleration history array
-    n1 = max(Ag.shape)
+    n1 = max(ag.shape)
     # Get the length of period array
-    n2 = max(T.shape)
-    T = T.reshape((1, n2))
+    n2 = max(periods.shape)
+    periods = periods.reshape((1, n2))
 
     # Assign the external force
-    p = -m * Ag
+    p = -m * ag
 
     # Calculate system properties which depend on period
-    fn = 1 / T  # frequency
+    fn = 1 / periods  # frequency
     wn = 2 * np.pi * fn  # circular natural frequency
     k = m * wn ** 2  # actual stiffness
     c = 2 * m * wn * xi  # actual damping coefficient
@@ -187,7 +187,7 @@ def sdof_ltha(Ag, dt, T, xi, m=1):
     # Use linear acceleration method for dt/T<=0.55
     Beta = np.ones((1, n2)) * 1 / 6
     # Use average acceleration method for dt/T>0.55
-    Beta[np.where(dt / T > 0.55)] = 1 / 4
+    Beta[np.where(dt / periods > 0.55)] = 1 / 4
 
     # Compute the constants used in Newmark's integration
     a1 = Gamma / (Beta * dt)
@@ -210,7 +210,7 @@ def sdof_ltha(Ag, dt, T, xi, m=1):
     u[0] = 0
     v[0] = 0
     ac[0] = (p[0] - c * v[0] - k * u[0]) / m
-    ac_tot[0] = ac[0] + Ag[0]
+    ac_tot[0] = ac[0] + ag[0]
 
     for i in range(n1 - 1):
         dpf = (p[i + 1] - p[i]) + a * v[i] + b * ac[i]
@@ -222,12 +222,12 @@ def sdof_ltha(Ag, dt, T, xi, m=1):
         u[i + 1] = u[i] + du
         v[i + 1] = v[i] + dv
         ac[i + 1] = ac[i] + da
-        ac_tot[i + 1] = ac[i + 1] + Ag[i + 1]
+        ac_tot[i + 1] = ac[i + 1] + ag[i + 1]
 
     return u, v, ac, ac_tot
 
 
-def get_parameters(Ag, dt, T, xi):
+def get_parameters(ag, dt, periods, xi):
     """
     Details
     -------
@@ -241,148 +241,147 @@ def get_parameters(Ag, dt, T, xi):
         
     Parameters
     ----------
-    Ag: numpy.array    
+    ag : numpy.ndarray    
         Acceleration values [m/s2].
-    dt: float
+    dt : float
         Time step [sec]
-    T:  float, numpy.array.
+    periods :  float, numpy.ndarray.
         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
-    xi: float
+    xi : float
         Damping ratio, e.g. 0.05 for 5%.
         
     Returns
     -------
-    param: dictionary
-        Contains the following intensity measures:
-        PSa: numpy.array
+    param : dictionary
+        Contains the following intensity measures (keys as strings):
+        PSa : numpy.ndarray
             Elastic pseudo-acceleration response spectrum [m/s2].
-        PSv: numpy.array
+        PSv : numpy.ndarray
             Elastic pseudo-velocity response spectrum [m/s].
-        Sd: numpy.array
+        Sd : numpy.ndarray
             Elastic relative displacement response spectrum [m].
-        Sv: numpy.array
+        Sv : numpy.ndarray
             Elastic relative velocity response spectrum [m/s].
-        Sa_r: numpy.array
+        Sa_r : numpy.ndarray
             Elastic relative acceleration response spectrum [m/s2].
-        Sa_a: numpy.array
+        Sa_a : numpy.ndarray
             Elastic absolute acceleration response spectrum [m/s2].
-        Ei_r: numpy.array
+        Ei_r : numpy.ndarray
             Relative input energy spectrum for elastic system [N.m].
-        Ei_a: numpy.array
+        Ei_a : numpy.ndarray
             Absolute input energy spectrum for elastic system [N.m].
-        Periods: numpy.array 
+        Periods : numpy.ndarray 
             Periods where spectral values are calculated [sec].
-        FAS: numpy.array 
+        FAS : numpy.ndarray 
             Fourier amplitude spectra.
-        PAS: numpy.array 
+        PAS : numpy.ndarray 
             Power amplitude spectra.
-        PGA: float
+        PGA : float
             Peak ground acceleration [m/s2].
-        PGV: float
+        PGV : float
             Peak ground velocity [m/s].
-        PGD: float
+        PGD : float
             Peak ground displacement [m].
-        Aint: numpy.array 
+        Aint : numpy.ndarray 
             Arias intensity ratio vector with time [m/s].
-        Arias: float 
+        Arias : float 
             Maximum value of arias intensity ratio [m/s].
-        HI: float
+        HI : float
             Housner intensity ratio [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        CAV: float
+        CAV : float
             Cumulative absolute velocity [m/s]        
-        t_5_75: list
+        t_5_75 : list
             Significant duration time vector between 5% and 75% of energy release (from Aint).
-        D_5_75: float
+        D_5_75 : float
             Significant duration between 5% and 75% of energy release (from Aint).
-        t_5_95: list    
+        t_5_95 : list    
             Significant duration time vector between 5% and 95% of energy release (from Aint).
-        D_5_95: float
+        D_5_95 : float
             Significant duration between 5% and 95% of energy release (from Aint).
-        t_bracketed: list 
+        t_bracketed : list 
             Bracketed duration time vector (acc>0.05g).
             Not applicable, in case of low intensity records, thus, equal to -1.
-        D_bracketed: float
+        D_bracketed : float
             Bracketed duration (acc>0.05g)
         t_uniform: list 
             Uniform duration time vector (acc>0.05g)
             Not applicable, in case of low intensity records, thus, equal to -1.
-        D_uniform: float 
+        D_uniform : float 
             Uniform duration (acc>0.05g)
-        Tm: float
+        Tm : float
             Mean period.
-        Tp: float             
+        Tp : float             
             Predominant Period.
-        aRMS: float 
+        aRMS : float 
             Root mean square root of acceleration [m/s2].
-        vRMS: float
+        vRMS : float
             Root mean square root of velocity [m/s].
-        dRMS: float  
+        dRMS : float  
             Root mean square root of displacement [m].
-        Ic: float
+        Ic : float
             Characteristic intensity.
             End time might which is used herein, is not always a good choice.
-        ASI: float   
+        ASI : float   
             Acceleration spectrum intensity [m/s].
             Requires T to be defined between (0.1-0.5 sec), otherwise not applicable, and equal to -1.
-        MASI: float 
+        MASI : float 
             Modified acceleration spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        VSI: float
+        VSI : float
             Velocity spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        VSI: float
+        VSI : float
             Velocity spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
     """
     # TODO: there are bunch of other IMs which can be computed. Add them here.
-
-    g = 9.81
-
-    if isinstance(T, (int, float)):
-        T = np.array([T])
-    if isinstance(T, list):
-        T = np.array(T)
-    elif isinstance(T, numpy.ndarray):
-        T = T
+    
+    # CONSTANTS
+    G = 9.81 # Gravitational acceleration (m/s2)
+    M = 1 # Unit mass (kg)
 
     # INITIALIZATION
-    T = T[T != 0]  # do not use T = zero for response spectrum calculations
-    param = {'Periods': T}
+    if isinstance(periods, (int, float)):
+        periods = np.array([periods])
+    if isinstance(periods, list):
+        periods = np.array(periods)
+    elif isinstance(periods, numpy.ndarray):
+        periods = periods
+    periods = periods[periods != 0]  # do not use T = zero for response spectrum calculations
+    param = {'Periods': periods}
 
     # GET SPECTRAL VALUES
     # Get the length of acceleration history array
-    n1 = max(Ag.shape)
+    n1 = max(ag.shape)
     # Get the length of period array
-    n2 = max(T.shape)
+    n2 = max(periods.shape)
     # Create the time array
     t = dt * np.arange(0, n1, 1)
     # Get ground velocity and displacement through integration
-    Vg = cumtrapz(Ag, t, initial=0)
-    Dg = cumtrapz(Vg, t, initial=0)
-    # Mass (kg)
-    m = 1
+    vg = cumtrapz(ag, t, initial=0)
+    dg = cumtrapz(vg, t, initial=0)
     # Carry out linear time history analyses for SDOF system
-    u, v, ac, ac_tot = sdof_ltha(Ag, dt, T, xi, m)
+    u, v, ac, ac_tot = sdof_ltha(ag, dt, periods, xi, M)
     # Calculate the spectral values
     param['Sd'] = np.max(np.abs(u), axis=0)
     param['Sv'] = np.max(np.abs(v), axis=0)
     param['Sa_r'] = np.max(np.abs(ac), axis=0)
     param['Sa_a'] = np.max(np.abs(ac_tot), axis=0)
-    param['PSv'] = (2 * np.pi / T) * param['Sd']
-    param['PSa'] = ((2 * np.pi / T) ** 2) * param['Sd']
-    ei_r = cumtrapz(-numpy.matlib.repmat(Ag, n2, 1).T, u, axis=0, initial=0) * m
-    ei_a = cumtrapz(-numpy.matlib.repmat(Dg, n2, 1).T, ac_tot, axis=0, initial=0) * m
+    param['PSv'] = (2 * np.pi / periods) * param['Sd']
+    param['PSa'] = ((2 * np.pi / periods) ** 2) * param['Sd']
+    ei_r = cumtrapz(-numpy.matlib.repmat(ag, n2, 1).T, u, axis=0, initial=0) * M
+    ei_a = cumtrapz(-numpy.matlib.repmat(dg, n2, 1).T, ac_tot, axis=0, initial=0) * M
     param['Ei_r'] = ei_r[-1]
     param['Ei_a'] = ei_a[-1]
 
     # GET PEAK GROUND ACCELERATION, VELOCITY AND DISPLACEMENT
-    param['PGA'] = np.max(np.abs(Ag))
-    param['PGV'] = np.max(np.abs(Vg))
-    param['PGD'] = np.max(np.abs(Dg))
+    param['PGA'] = np.max(np.abs(ag))
+    param['PGV'] = np.max(np.abs(vg))
+    param['PGD'] = np.max(np.abs(dg))
 
     # GET ARIAS INTENSITY
-    Aint = np.cumsum(Ag ** 2) * np.pi * dt / (2 * g)
+    Aint = np.cumsum(ag ** 2) * np.pi * dt / (2 * G)
     param['Arias'] = Aint[-1]
     temp = np.zeros((len(Aint), 2))
     temp[:, 0] = t
@@ -391,9 +390,9 @@ def get_parameters(Ag, dt, T, xi):
 
     # GET HOUSNER INTENSITY
     try:
-        index1 = np.where(T == 0.1)[0][0]
-        index2 = np.where(T == 2.5)[0][0]
-        param['HI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
+        index1 = np.where(periods == 0.1)[0][0]
+        index2 = np.where(periods == 2.5)[0][0]
+        param['HI'] = np.trapz(param['PSv'][index1:index2], periods[index1:index2])
     except:
         param['HI'] = -1
 
@@ -415,7 +414,7 @@ def get_parameters(Ag, dt, T, xi):
 
     # BRACKETED DURATION (0.05g)
     try:
-        mask = np.abs(Ag) >= 0.05 * g
+        mask = np.abs(ag) >= 0.05 * G
         # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
         indices = np.where(mask)[0]
         t1 = round(t[indices[0]], 3)
@@ -428,7 +427,7 @@ def get_parameters(Ag, dt, T, xi):
 
     # UNIFORM DURATION (0.05g)
     try:
-        mask = np.abs(Ag) >= 0.05 * g
+        mask = np.abs(ag) >= 0.05 * G
         # mask = np.abs(Ag) >= 0.05 * np.max(np.abs(Ag))
         indices = np.where(mask)[0]
         t_treshold = t[indices]
@@ -440,63 +439,63 @@ def get_parameters(Ag, dt, T, xi):
         param['D_uniform'] = 0
 
     # CUMULATVE ABSOLUTE VELOCITY
-    param['CAV'] = np.trapz(np.abs(Ag), t)
+    param['CAV'] = np.trapz(np.abs(ag), t)
 
     # CHARACTERISTIC INTENSITY, ROOT MEAN SQUARE OF ACC, VEL, DISP
     Td = t[-1]  # note this might not be the best indicative, different Td might be chosen
-    param['aRMS'] = np.sqrt(np.trapz(Ag ** 2, t) / Td)
-    param['vRMS'] = np.sqrt(np.trapz(Vg ** 2, t) / Td)
-    param['dRMS'] = np.sqrt(np.trapz(Dg ** 2, t) / Td)
+    param['aRMS'] = np.sqrt(np.trapz(ag ** 2, t) / Td)
+    param['vRMS'] = np.sqrt(np.trapz(vg ** 2, t) / Td)
+    param['dRMS'] = np.sqrt(np.trapz(dg ** 2, t) / Td)
     param['Ic'] = param['aRMS'] ** 1.5 * np.sqrt(Td)
 
     # ACCELERATION AND VELOCITY SPECTRUM INTENSITY
     try:
-        index3 = np.where(T == 0.5)[0][0]
-        param['ASI'] = np.trapz(param['PSa'][index1:index3], T[index1:index3])
+        index3 = np.where(periods == 0.5)[0][0]
+        param['ASI'] = np.trapz(param['PSa'][index1:index3], periods[index1:index3])
     except:
         param['ASI'] = -1
     try:
-        param['MASI'] = np.trapz(param['PSa'][index1:index2], T[index1:index2])
-        param['VSI'] = np.trapz(param['PSv'][index1:index2], T[index1:index2])
+        param['MASI'] = np.trapz(param['PSa'][index1:index2], periods[index1:index2])
+        param['VSI'] = np.trapz(param['PSv'][index1:index2], periods[index1:index2])
     except:
         param['MASI'] = -1
         param['VSI'] = -1
 
     # GET FOURIER AMPLITUDE AND POWER AMPLITUDE SPECTRUM
     # Number of sample points, add zeropads
-    N = 2 ** int(np.ceil(np.log2(len(Ag))))
-    Famp = fft(Ag, N)
-    Famp = np.abs(fftshift(Famp)) * dt
-    freq = fftfreq(N, dt)
+    freq_len = 2 ** int(np.ceil(np.log2(len(ag))))
+    famp = fft(ag, freq_len)
+    famp = np.abs(fftshift(famp)) * dt
+    freq = fftfreq(freq_len, dt)
     freq = fftshift(freq)
-    Famp = Famp[freq > 0]
+    famp = famp[freq > 0]
     freq = freq[freq > 0]
-    Pamp = Famp ** 2 / (np.pi * t[-1] * param['aRMS'] ** 2)
-    FAS = np.zeros((len(Famp), 2))
-    FAS[:, 0] = freq
-    FAS[:, 1] = Famp
-    PAS = np.zeros((len(Famp), 2))
-    PAS[:, 0] = freq
-    PAS[:, 1] = Pamp
-    param['FAS'] = FAS
-    param['PAS'] = FAS
+    pamp = famp ** 2 / (np.pi * t[-1] * param['aRMS'] ** 2)
+    fas = np.zeros((len(famp), 2))
+    fas[:, 0] = freq
+    fas[:, 1] = famp
+    pas = np.zeros((len(famp), 2))
+    pas[:, 0] = freq
+    pas[:, 1] = pamp
+    param['FAS'] = fas
+    param['PAS'] = fas
 
     # MEAN PERIOD
     mask = (freq > 0.25) * (freq < 20)
     indices = np.where(mask)[0]
     fi = freq[indices]
-    Ci = Famp[indices]
+    Ci = famp[indices]
     param['Tm'] = np.sum(Ci ** 2 / fi) / np.sum(Ci ** 2)
 
     # PREDOMINANT PERIOD
     mask = param['PSa'] == max(param['PSa'])
     indices = np.where(mask)[0]
-    param['Tp'] = T[indices]
+    param['Tp'] = periods[indices]
 
     return param
 
 
-def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
+def get_sa_rotdxx(ag1, ag2, dt, periods, xi, xx):
     """
     Details
     -------
@@ -512,13 +511,13 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
         
     Parameters
     ----------
-    Ag1: numpy.array    
+    ag1: numpy.ndarray    
          Acceleration values of 1st horizontal ground motion component.
-    Ag2: numpy.array    
+    ag2: numpy.ndarray    
          Acceleration values of 2nd horizontal ground motion component.
     dt:  float
          Time step [sec].
-    T:   float, numpy.array
+    periods:   float, numpy.ndarray
          Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
     xi:  float
          Damping ratio, e.g. 0.05 for 5%.
@@ -527,53 +526,52 @@ def RotDxx_spectrum(Ag1, Ag2, dt, T, xi, xx):
         
     Returns
     -------
-    Sa_RotDxx: numpy.array 
+    Sa_RotDxx: numpy.ndarray 
         RotDxx Spectra.
     """
 
-    if isinstance(T, (int, float)):
-        T = np.array([T])
-    if isinstance(T, list):
-        T = np.array(T)
-    elif isinstance(T, numpy.ndarray):
-        T = T
+    # CONSTANTS
+    M = 1 # Unit mass (kg)
 
-    T = T[T != 0]  # do not use T = zero for response spectrum calculations
+    # INITIALIZATION
+    if isinstance(periods, (int, float)):
+        periods = np.array([periods])
+    if isinstance(periods, list):
+        periods = np.array(periods)
+    elif isinstance(periods, numpy.ndarray):
+        periods = periods
+    periods = periods[periods != 0]  # do not use T = zero for response spectrum calculations
 
     # Verify if the length of arrays are the same
-    if len(Ag1) == len(Ag2):
+    if len(ag1) == len(ag2):
         pass
-    elif len(Ag1) > len(Ag2):
-        Ag2 = np.append(Ag2, np.zeros(len(Ag1) - len(Ag2)))
-    elif len(Ag2) > len(Ag1):
-        Ag1 = np.append(Ag1, np.zeros(len(Ag2) - len(Ag1)))
+    elif len(ag1) > len(ag2):
+        ag2 = np.append(ag2, np.zeros(len(ag1) - len(ag2)))
+    elif len(ag2) > len(ag1):
+        ag1 = np.append(ag1, np.zeros(len(ag2) - len(ag1)))
 
     # Get the length of period array 
-    n2 = max(T.shape)
-
-    # Mass (kg)
-    m = 1
+    n2 = max(periods.shape)
 
     # Carry out linear time history analyses for SDOF system
-    u1, _, _, _ = sdof_ltha(Ag1, dt, T, xi, m)
-    u2, _, _, _ = sdof_ltha(Ag2, dt, T, xi, m)
+    u1, _, _, _ = sdof_ltha(ag1, dt, periods, xi, M)
+    u2, _, _, _ = sdof_ltha(ag2, dt, periods, xi, M)
 
     # RotD definition is taken from Boore 2010.
-    Rot_Disp = np.zeros((180, n2))
+    rot_disp = np.zeros((180, n2))
     for theta in range(0, 180, 1):
-        Rot_Disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
+        rot_disp[theta] = np.max(np.abs(u1 * np.cos(np.deg2rad(theta)) + u2 * np.sin(np.deg2rad(theta))), axis=0)
 
     # Pseudo-acceleration
-    Rot_Acc = Rot_Disp * (2 * np.pi / T) ** 2
+    rot_acc = rot_disp * (2 * np.pi / periods) ** 2
     if isinstance(xx, list):
-        Sa_RotDxx = [np.percentile(Rot_Acc, value, axis=0) for value in xx]
+        Sa_RotDxx = [np.percentile(rot_acc, value, axis=0) for value in xx]
     else:
-        Sa_RotDxx = np.percentile(Rot_Acc, xx, axis=0)
-    Periods = T
+        Sa_RotDxx = np.percentile(rot_acc, xx, axis=0)
 
-    return Periods, Sa_RotDxx
+    return periods, Sa_RotDxx
 
-def get_fiv3(Ag, dt, T, alpha = 0.7, beta = 0.85):
+def get_fiv3(ag, dt, periods, alpha = 0.7, beta = 0.85):
     """
     Details
     -------
@@ -586,11 +584,11 @@ def get_fiv3(Ag, dt, T, alpha = 0.7, beta = 0.85):
 
     Parameters
     ----------
-    Ag: numpy.array    
+    ag: numpy.ndarray    
         Acceleration values.
     dt: float
         Time step [sec]
-    T:  float, numpy.array.
+    periods:  float, numpy.ndarray.
         Considered period array e.g. 0 sec, 0.1 sec ... 4 sec.
     alpha : float
         Period factor, by default 0.7
@@ -599,37 +597,35 @@ def get_fiv3(Ag, dt, T, alpha = 0.7, beta = 0.85):
 
     Returns
     ----------
-    fiv3: numpy.array 
+    fiv3: numpy.ndarray 
         filtered incremental velocity, FIV3 as per Eq. (3) of Davalos and Miranda (2019)
     """
     
-    if isinstance(T, (int, float)):
-        T = np.array([T])
-    if isinstance(T, list):
-        T = np.array(T)
-    elif isinstance(T, numpy.ndarray):
-        T = T
+    if isinstance(periods, (int, float)):
+        periods = np.array([periods])
+    if isinstance(periods, list):
+        periods = np.array(periods)
+    elif isinstance(periods, numpy.ndarray):
+        periods = periods
 
-    T = T[T != 0]  # do not use T = zero for response spectrum calculations
+    periods = periods[periods != 0]  # do not use T = zero for response spectrum calculations
 
     # Time series of the signal
-    t = dt * np.arange(0, len(Ag), 1)
+    t = dt * np.arange(0, len(ag), 1)
 
     # FIV3 array
     fiv3 = []
 
     # apply a 2nd order Butterworth low pass filter to the ground motion
-    for tn in T:
+    for tn in periods:
         wn = beta / tn / (0.5 / dt)
         b, a = butter(2, wn, 'lowpass')
-        ugf = filtfilt(b, a, Ag)
+        ugf = filtfilt(b, a, ag)
 
         # filtered incremental velocity (FIV)
-        ugf_pc = np.zeros(
-            (np.sum(t < t[-1] - alpha * tn), int(np.floor(alpha * tn / dt))))
+        ugf_pc = np.zeros((np.sum(t < t[-1] - alpha * tn), int(np.floor(alpha * tn / dt))))
         for i in range(int(np.floor(alpha * tn / dt))):
             ugf_pc[:, i] = ugf[np.where(t < t[-1] - alpha * tn)[0] + i]
-
         fiv = dt * trapz(ugf_pc, axis=1)
 
         # Find the peaks and troughs of the FIV array

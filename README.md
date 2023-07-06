@@ -24,7 +24,7 @@ The package has three different modules:
    e.g. *ESM_2018.zip* for database *ESM_2018*. 
    <br /> In case of publicly available databases, users can also download the records directly by using the associated methods since the records are not generally available beforehand.
    To use *ESM_2018* database, users must have access token (path/to/current/directory/token.txt) from https://esm-db.eu. The token
-   can be retrieved using EzGM as well (see Example 1). In order to use *NGA_W2* database, users must have account obtained from https://ngawest2.berkeley.edu.
+   can be retrieved directly using EzGM as well if the user credentials are provided. In order to use *NGA_W2* database, users must have account obtained from https://ngawest2.berkeley.edu.
 2. **EzGM.utility** can be used to post-process results of probabilistic seismic hazard analysis (PSHA) from OpenQuake.Engine. Its methods can be used to read and visualize seismic hazard curves and seismic disaggregation results. The module can be particularly useful
 while performing conditional spectrum (CS) based record selection for multiple-stripe analysis (MSA) (see Example 3).
 3. **EzGM.signal** can be used to process ground motion records. It contains methods for filtering, baseline correction, and intensity measure calculations (see Example 4).

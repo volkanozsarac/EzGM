@@ -3,16 +3,15 @@
 # Upon Carrying out Probabilistic Seismic Hazard Analyss (PSHA) via OpenQuake    #
 ##################################################################################
 
-from EzGM.selection import conditional_spectrum
-from EzGM.utility import run_time, create_dir, hazard_curve, disagg_MR, disagg_MReps, check_gmpe_attributes, get_esm_token
+from EzGM.selection import ConditionalSpectrum
+from EzGM.utility import run_time, make_dir, hazard_curve, disaggregation_mag_dist, disaggregation_mag_dist_eps, check_gmpe_attributes, get_esm_token
 from time import time
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 start_time = time()
 
-# %% Hazard Analysis via OpenQuake
+# Hazard Analysis via OpenQuake
 # Set path to OpenQuake model .ini file path
 parent_path = os.path.dirname(os.path.realpath(""))
 oq_model = os.path.join(parent_path,'input files','OQ_Model') # this is the folder where oq model is located
@@ -41,10 +40,10 @@ with open(os.path.join(oq_model,oq_ini)) as f:
             exec(line.strip())
 
 # Create the export directory for analysis results
-create_dir(results_dir)
+make_dir(results_dir)
 
 # Create the directory for processed results
-create_dir(post_dir)
+make_dir(post_dir)
 
 # Run the analysis via system command
 cwd = os.getcwd() # Current working directory
@@ -56,25 +55,26 @@ os.chdir(cwd) # go back to the previous working directory
 hazard_curve(poes, results_dir, post_dir, show=0)
 
 # Extract and plot disaggregation results by M and R
-disagg_MR(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3, show=0)
+disaggregation_mag_dist(mag_bin_width, distance_bin_width, results_dir, post_dir, num_rows=3, show=0)
 
 # Extract and plot disaggregation results by M, R and epsilon
-disagg_MReps(mag_bin_width, distance_bin_width, results_dir, post_dir, n_rows=3, show=0)
+disaggregation_mag_dist_eps(mag_bin_width, distance_bin_width, results_dir, post_dir, num_rows=3, show=0)
 
-# Get ESM token for ESM database.
-get_esm_token('example_username@email.com', pwd = 'example_password123456')
+# Get token once to avoid repetitive download of it
+token = get_esm_token(username='example_username@email.com', password='example_password123456')
 
 # Check attributes of ground motion prediction equation BooreEtAl2014
 check_gmpe_attributes(gmpe='BooreEtAl2014')
 
-# %% Record Selection
+# Get list of IMs
 ims = []
 for file in os.listdir(post_dir):
     if file.startswith('imls'):
         ims.append(file.split('_')[1].split('.out')[0])
 
-for im in ims:  # for each im in the im list
-    # read hazard and disaggregation info
+# Start selecting records for each IM in the IM list
+for im in ims: 
+    # Read hazard and disaggregation info
     imls = np.loadtxt(os.path.join(post_dir, 'imls_' + im + '.out'))
     mean_mags = np.loadtxt(os.path.join(post_dir, 'mean_mags_' + im + '.out'))
     mean_dists = np.loadtxt(os.path.join(post_dir, 'mean_dists_' + im + '.out'))
@@ -93,31 +93,34 @@ for im in ims:  # for each im in the im list
         hconts = disagg[:, 2].tolist()
         rakes = [0.0]*len(mags)
         
-        # 1.) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
-        cs = conditional_spectrum(database='NGA_W2', outdir=os.path.join('EzGM_Outputs_' + im, 'POE-' + str(poes[i]) + '-in-50-years'))
+        # 1) Initialize the conditional_spectrum object for record selection, check which parameters are required for the gmpe you are using.
+        cs = ConditionalSpectrum(database='ESM_2018', output_directory=os.path.join('EzGM_Outputs_' + im, 'POE-' + str(poes[i]) + '-in-50-years'))
 
-        # 2.) Create target spectrum
-        cs.create(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', selection=1, Sa_def='RotD50', 
+        # 2) Create target spectrum
+        cs.create(Tstar=np.arange(0.1, 1.1, 0.1), gmpe='BooreEtAl2014', num_components=1, spectrum_definition='RotD50', 
                   site_param={'vs30': reference_vs30_value}, rup_param={'rake': rakes, 'mag': mags},
-                  dist_param={'rjb': dists}, Hcont=hconts, T_Tgt_range=[0.05, 2.5],
-                  im_Tstar=imls[i], epsilon=None, cond=1, useVar=1, corr_func='baker_jayaram')
+                  dist_param={'rjb': dists}, hz_cont=hconts, period_range=[0.05, 2.5],
+                  im_Tstar=imls[i], epsilon=None, use_variance=1, correlation_model='baker_jayaram')
 
-        # 3.) Select the ground motions
-        cs.select(nGM=25, isScaled=1, maxScale=2.5,
-                  Mw_lim=None, Vs30_lim=None, Rjb_lim=None, fault_lim=None, nTrials=20,
-                  weights=[1, 2, 0.3], seedValue=0, nLoop=2, penalty=3, tol=10)
+        # 3) Select the ground motions
+        cs.select(num_records=25, is_scaled=1, max_scale_factor=2.5,
+                  mag_limits=None, vs30_limits=None, rjb_limits=None, mech_limits=None, num_simulations=20,
+                  error_weights=[1, 2, 0.3], seed_value=0, num_greedy_loops=2, penalty=3, tolerance=10)
 
         # Plot the target spectrum, simulated spectra and spectra of selected records
-        cs.plot(tgt=0, sim=0, rec=1, save=1, show=0)
+        cs.plot(target=0, simulations=0, records=1, save=1, show=0)
 
-        # 4.) If database == 'NGA_W2' you can first download the records via nga_download method
-        # from NGA-West2 Database [http://ngawest2.berkeley.edu/] and then use write method
-        # cs.ngaw2_download(username = 'example_username@email.com', pwd = 'example_password123456', sleeptime = 2, browser = 'chrome')
+        # 4) First the records can be downloaded via download method. 
+        # If database='ESM_2018' either available token path or valid credentials must be provided. 
+        # Token can be retrieved manually by the user or externally using utility.get_esm_token method. 
+        # In this case, the token will be retrieved for previously externally downloaded token, and 
+        # the records will be retrieved from [https://esm-db.eu]. 
+        # If you already have record database elsewhere you can ignore and comment this part
+        cs.download(token_path=token)
 
-        # 5.) If you have records already inside recs_f\database.zip\database or
-        # downloaded records for database = NGA_W2 case, write whatever you want,
-        # the object itself, selected and scaled time histories
-        cs.write(obj=1, recs=0, recs_f='')
+        # 5) If you have records already inside zip_parent_path\database.zip\database or downloaded records,
+        # write whatever you want, the object itself, selected and scaled time histories
+        cs.write(object=1, records=0, zip_parent_path='')
 
 # Calculate the total time passed
 run_time(start_time)

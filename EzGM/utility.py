@@ -27,6 +27,18 @@ import json
 from openquake.hazardlib import gsim, nrml
 from openquake.baselib.node import Node
 
+SMALL_SIZE = 15
+MEDIUM_SIZE = 16
+BIG_SIZE = 18
+BIGGER_SIZE = 20
+
+plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+plt.rc('axes', labelsize=BIG_SIZE)  # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)  # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # FUNCTIONS TO POST-PROCESS OPENQUAKE PSHA RESULTS
 # ---------------------------------------------------------------------
@@ -48,7 +60,7 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
         Save outputs to a pickle file.
     filename : str, optional
         filename to process.
-    show: int
+    show : int
         flag to show figure (1 or 0)
 
     Returns
@@ -150,7 +162,7 @@ def hazard_curve(poes, path_hazard_results, output_dir='Post_Outputs', filename=
         np.savetxt(fname, haz_cur)
 
 
-def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows=1, filename='Mag_Dist', show=1):
+def disaggregation_mag_dist(mag_bin, dist_bin, path_disagg_results, output_dir='Post_Outputs', num_rows=1, filename='Mag_Dist', show=1):
     """
     Details
     -------
@@ -158,19 +170,19 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
 
     Parameters
     ----------
-    Mbin : int, float
+    mag_bin : int, float
         magnitude bin used in disaggregation.
-    dbin : int, float
+    dist_bin : int, float
         distance bin used in disaggregation.
     path_disagg_results: str
         Path to the disaggregation results.
     output_dir: str, optional
         Save outputs to a pickle file.
-    n_rows : int, optional
+    num_rows : int, optional
         total number of rows for subplots.
     filename : str, optional
         filename to process.
-    show: int
+    show : int
         flag to show figure (1 or 0)
 
     Returns
@@ -198,12 +210,12 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
             inv_t = float(list(filter(lambda x: 'investigation_time=' in x, ff))[0].replace(" investigation_time=", ""))
             ims = np.unique(df['imt'])
             for imt in ims:
-                M, R = [], []
+                mag, dist = [], []
                 hz_cont = []
-                Tr = []
+                return_period = []
                 modeLst, meanLst = [], []
                 for poe in poes:
-                    Tr.append(round(-inv_t / np.log(1 - poe)))
+                    return_period.append(round(-inv_t / np.log(1 - poe)))
                     data = {}
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
@@ -218,35 +230,35 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                     meanLst.append([np.sum(data['mag'] * data['hz_cont']), np.sum(data['dist'] * data['hz_cont'])])
 
                     # Report the individual magnitude and distance bins
-                    M.append(data['mag'])
-                    R.append(data['dist'])
+                    mag.append(data['mag'])
+                    dist.append(data['dist'])
 
-                n_Tr = len(Tr)
+                len_return_period = len(return_period)
                 mean_mags = []
                 mean_dists = []
                 mod_mags = []
                 mod_dists = []
 
-                n_cols = int(np.floor(n_Tr / n_rows))
-                if np.mod(n_Tr, n_rows):
-                    n_cols += 1
+                num_cols = int(np.floor(len_return_period / num_rows))
+                if np.mod(len_return_period, num_rows):
+                    num_cols += 1
 
                 fig = plt.figure(figsize=(19.2, 10.8))
-                for i in range(n_Tr):
+                for i in range(len_return_period):
                     # Save disaggregation results
-                    disagg_results = np.array([M[i], R[i], hz_cont[i]]).T
+                    disagg_results = np.array([mag[i], dist[i], hz_cont[i]]).T
                     disagg_results = disagg_results[disagg_results[:,2] != 0]
                     fname = os.path.join(output_dir, 'MagDist_poe_' + str(poes[i]) + '_' + imt + '.out')
                     np.savetxt(fname, disagg_results)
 
-                    ax1 = fig.add_subplot(n_rows, n_cols, i + 1, projection='3d')
+                    ax1 = fig.add_subplot(num_rows, num_cols, i + 1, projection='3d')
 
-                    X = R[i]
-                    Y = M[i]
-                    Z = np.zeros(len(X))
+                    x = dist[i]
+                    y = mag[i]
+                    z = np.zeros(len(x))
 
-                    dx = np.ones(len(X)) * dbin / 2
-                    dy = np.ones(len(Y)) * Mbin / 2
+                    dx = np.ones(len(x)) * dist_bin / 2
+                    dy = np.ones(len(y)) * mag_bin / 2
                     dz = hz_cont[i] * 100
 
                     # here we may make the colormap based on epsilon instead of hazard contribution
@@ -254,20 +266,20 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                     min_height = np.min(dz)
                     # scale each z to [0,1], and get their rgb values
                     rgba = [cmap((k - min_height) / max_height) for k in dz]
-                    ax1.bar3d(X, Y, Z, dx, dy, dz, color=rgba, zsort='average', alpha=0.7, shade=True)
+                    ax1.bar3d(x, y, z, dx, dy, dz, color=rgba, zsort='average', alpha=0.7, shade=True)
 
-                    ax1.set_xlabel('R [km]')
-                    ax1.set_ylabel('$M_{w}$')
-                    if np.mod(i + 1, n_cols) == 1:
+                    ax1.set_xlabel('R [km]', labelpad=10)
+                    ax1.set_ylabel('$M_{w}$', labelpad=10)
+                    if np.mod(i + 1, num_cols) == 1:
                         ax1.set_zlabel('Hazard Contribution [%]')
                         ax1.zaxis.set_rotate_label(False)  # disable automatic rotation
                         ax1.set_zlabel('Hazard Contribution [%]', rotation=90)
                     ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
                     plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km'
-                              % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
+                              % ("{:.0f}".format(return_period[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
                                  "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
-                              fontsize=11, loc='right', verticalalignment='top', y=0.95)
+                              fontsize=16, loc='right', verticalalignment='top', y=0.95)
 
                     mean_mags.append(meanLst[i][0])
                     mean_dists.append(meanLst[i][1])
@@ -295,27 +307,27 @@ def disagg_MR(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows
                 plt.close(fig)
 
 
-def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_rows=1, filename='Mag_Dist_Eps', show=1):
+def disaggregation_mag_dist_eps(mag_bin, dist_bind, path_disagg_results, output_dir='Post_Outputs', num_rows=1, filename='Mag_Dist_Eps', show=1):
     """
     Details
     -------
-    This script will save disaggregation plots including M, R and eps.
+    This script will save disaggregation plots including M, R and epsilon.
 
     Parameters
     ----------
-    Mbin : int, float
+    mag_bin : int, float
         magnitude bin used in disaggregation.
-    dbin : int, float
+    dist_bin : int, float
         distance bin used in disaggregation.
     path_disagg_results: str
         Path to the hazard results
     output_dir: str, optional
         Save outputs to a pickle file
-    n_rows : int, optional
+    num_rows : int, optional
         total number of rows for subplots.
     filename : str, optional
         filename to process.
-    show: int
+    show : int
         flag to show figure (1 or 0)
 
     Returns
@@ -346,12 +358,12 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
             inv_t = float(list(filter(lambda x: 'investigation_time=' in x, ff))[0].replace(" investigation_time=", ""))
             ims = np.unique(df['imt'])
             for imt in ims:
-                modeLst, meanLst = [], []
-                Tr = []
+                mod_list, mean_list = [], []
+                return_period = []
                 hz_cont = []
-                M, R, eps = [], [], []
+                mag, dist, eps = [], [], []
                 for poe in poes:
-                    Tr.append(round(-inv_t / np.log(1 - poe)))
+                    return_period.append(round(-inv_t / np.log(1 - poe)))
                     data = {}
                     data['mag'] = df['mag'][(df['poe'] == poe) & (df['imt'] == imt)]
                     data['dist'] = df['dist'][(df['poe'] == poe) & (df['imt'] == imt)]
@@ -362,80 +374,79 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
                     data = pd.DataFrame(data)
                     data_reduced = data.groupby(['mag', 'dist']).agg(['sum'])[('hz_cont', 'sum')].reset_index().droplevel(1, axis=1)
                     # Compute the modal value (highest poe)
-                    mode = data_reduced.sort_values(by='hz_cont', ascending=False)[0:1]
-                    modeLst.append([mode['mag'].values[0], mode['dist'].values[0]])
+                    mod = data_reduced.sort_values(by='hz_cont', ascending=False)[0:1]
+                    mod_list.append([mod['mag'].values[0], mod['dist'].values[0]])
                     # Compute the mean value
-                    meanLst.append([np.sum(data_reduced['mag'] * data_reduced['hz_cont']), np.sum(data_reduced['dist'] * data_reduced['hz_cont'])])
+                    mean_list.append([np.sum(data_reduced['mag'] * data_reduced['hz_cont']), np.sum(data_reduced['dist'] * data_reduced['hz_cont'])])
 
                     # Report the individual magnitude and distance bins
-                    M.append(np.array(data['mag']))
-                    R.append(np.array(data['dist']))
+                    mag.append(np.array(data['mag']))
+                    dist.append(np.array(data['dist']))
                     eps.append(np.array(data['eps']))
 
-                n_Tr = len(Tr)
+                len_return_period = len(return_period)
                 mean_mags = []
                 mean_dists = []
                 mod_mags = []
                 mod_dists = []
-                n_eps = len(np.unique(np.asarray(eps)))
+                num_eps = len(np.unique(np.asarray(eps)))
                 min_eps = np.min(np.unique(np.asarray(eps)))  # get range of colorbars so we can normalize
                 max_eps = np.max(np.unique(np.asarray(eps)))
 
-                n_cols = int(np.floor(n_Tr / n_rows))
-                if np.mod(n_Tr, n_rows):
-                    n_cols += 1
+                num_cols = int(np.floor(len_return_period / num_rows))
+                if np.mod(len_return_period, num_rows):
+                    num_cols += 1
 
                 fig = plt.figure(figsize=(19.2, 10.8))
-                for i in range(n_Tr):
-                    ax1 = fig.add_subplot(n_rows, n_cols, i + 1, projection='3d')
+                for i in range(len_return_period):
+                    ax1 = fig.add_subplot(num_rows, num_cols, i + 1, projection='3d')
                     # Save disaggregation results
-                    disagg_results = np.array([M[i], R[i], eps[i], hz_cont[i]]).T
+                    disagg_results = np.array([mag[i], dist[i], eps[i], hz_cont[i]]).T
                     disagg_results = disagg_results[disagg_results[:, 3] != 0]
                     fname = os.path.join(output_dir, 'MagDistEps_poe_' + str(poes[i]) + '_' + imt + '.out')
                     np.savetxt(fname, disagg_results)
-                    mean_mags.append(meanLst[i][0])
-                    mean_dists.append(meanLst[i][1])
-                    mod_mags.append(modeLst[i][0])
-                    mod_dists.append(modeLst[i][1])
+                    mean_mags.append(mean_list[i][0])
+                    mean_dists.append(mean_list[i][1])
+                    mod_mags.append(mod_list[i][0])
+                    mod_dists.append(mod_list[i][1])
 
                     # scale each eps to [0,1], and get their rgb values
                     rgba = [cmap((k - min_eps) / max_eps / 2) for k in (np.unique(np.asarray(eps)))]
-                    num_triads_M_R_eps = len(R[i])
-                    Z = np.zeros(int(num_triads_M_R_eps / n_eps))
+                    num_triads_M_R_eps = len(dist[i])
+                    z = np.zeros(int(num_triads_M_R_eps / num_eps))
 
-                    for l in range(n_eps):
-                        X = np.array(R[i][np.arange(l, num_triads_M_R_eps, n_eps)])
-                        Y = np.array(M[i][np.arange(l, num_triads_M_R_eps, n_eps)])
+                    for l in range(num_eps):
+                        x = np.array(dist[i][np.arange(l, num_triads_M_R_eps, num_eps)])
+                        y = np.array(mag[i][np.arange(l, num_triads_M_R_eps, num_eps)])
 
-                        dx = np.ones(int(num_triads_M_R_eps / n_eps)) * dbin / 2
-                        dy = np.ones(int(num_triads_M_R_eps / n_eps)) * Mbin / 2
-                        dz = np.array(hz_cont[i][np.arange(l, num_triads_M_R_eps, n_eps)]) * 100
+                        dx = np.ones(int(num_triads_M_R_eps / num_eps)) * dist_bind / 2
+                        dy = np.ones(int(num_triads_M_R_eps / num_eps)) * mag_bin / 2
+                        dz = np.array(hz_cont[i][np.arange(l, num_triads_M_R_eps, num_eps)]) * 100
 
-                        ax1.bar3d(X, Y, Z, dx, dy, dz, color=rgba[l], zsort='average', alpha=0.7, shade=True)
-                        Z += dz  # add the height of each bar to know where to start the next
+                        ax1.bar3d(x, y, z, dx, dy, dz, color=rgba[l], zsort='average', alpha=0.7, shade=True)
+                        z += dz  # add the height of each bar to know where to start the next
 
-                    ax1.set_xlabel('R [km]')
-                    ax1.set_ylabel('$M_{w}$')
-                    if np.mod(i + 1, n_cols) == 1:
+                    ax1.set_xlabel('R [km]', labelpad=10)
+                    ax1.set_ylabel('$M_{w}$', labelpad=10)
+                    if np.mod(i + 1, num_cols) == 1:
                         ax1.set_zlabel('Hazard Contribution [%]')
                         ax1.zaxis.set_rotate_label(False)  # disable automatic rotation
                         ax1.set_zlabel('Hazard Contribution [%]', rotation=90)
                     ax1.zaxis._axinfo['juggled'] = (1, 2, 0)
 
                     plt.title('$T_{R}$=%s years\n$M_{mod}$=%s, $R_{mod}$=%s km\n$M_{mean}$=%s, $R_{mean}$=%s km'
-                              % ("{:.0f}".format(Tr[i]), "{:.2f}".format(modeLst[i][0]), "{:.0f}".format(modeLst[i][1]),
-                                 "{:.2f}".format(meanLst[i][0]), "{:.0f}".format(meanLst[i][1])),
-                              fontsize=11, loc='right', verticalalignment='top', y=0.95)
+                              % ("{:.0f}".format(return_period[i]), "{:.2f}".format(mod_list[i][0]), "{:.0f}".format(mod_list[i][1]),
+                                 "{:.2f}".format(mean_list[i][0]), "{:.0f}".format(mean_list[i][1])),
+                              fontsize=16, loc='right', verticalalignment='top', y=0.95)
 
-                    mags.append(meanLst[i][0])
-                    dists.append(meanLst[i][1])
+                    mags.append(mean_list[i][0])
+                    dists.append(mean_list[i][1])
 
                 legend_elements = []
-                for j in range(n_eps):
-                    legend_elements.append(Patch(facecolor=rgba[n_eps - j - 1],
-                                                 label=f"\u03B5 = {np.unique(np.asarray(eps))[n_eps - j - 1]:.2f}"))
+                for j in range(num_eps):
+                    legend_elements.append(Patch(facecolor=rgba[num_eps - j - 1], label=f"\u03B5 = {np.unique(np.asarray(eps))[num_eps - j - 1]:.2f}"))
 
-                fig.legend(handles=legend_elements, loc="lower center", borderaxespad=0., ncol=n_eps)
+                fig.legend(handles=legend_elements, loc="lower center", borderaxespad=0., ncol=num_eps)
                 plt.subplots_adjust(hspace=0.05, wspace=0.05)  # adjust the subplot to the right for the legend
                 fig.suptitle(f"Disaggregation of Seismic Hazard\nIntensity Measure: {imt}\nLatitude: "
                              f"{lat:.4f}, Longitude: {lon:.4f}", fontsize=14, weight='bold', ha='left', x=0.0, y=1.0)
@@ -458,7 +469,7 @@ def disagg_MReps(Mbin, dbin, path_disagg_results, output_dir='Post_Outputs', n_r
 
 # FUNCTIONS TO PARSE A LOGIC TREE FROM SA to AvgSA
 # ---------------------------------------------------------------------
-def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
+def parse_sa_logic_tree_to_avgsa(input_logic_tree_file, output_logic_tree_file, avgsa_periods, correlation_model):
     """
     Details
     -------
@@ -466,28 +477,27 @@ def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
 
     Parameters
     ----------
-    input_lt_file : str
+    input_logic_tree_file : str
         Input GMPE logic tree for SA, e.g. 'gmmLT.xml'
-    output_lt_file : str
+    output_logic_tree_file : str
         The output GMPE LT file, e.g. 'gmmLT_AvgSA.xml'
-    periods : list
-        List of periods for the AvgSA calculation
-        e.g. periods = [[0.4,0.5,0.6,0.7,0.8], [1.1,1.2,1.3,1.4,1.5]]
-    correlation: str
+    avgsa_periods : list
+        Periods used for AvgSA calculation
+        e.g. periods = [0.4,0.5,0.6,0.7,0.8]
+    correlation_model: str
         String for one of the supported correlation models (e.g. 'akkar', 'baker_jayaram')
 
     Returns
     -------
     None.
     """
-    # TODO: modify the method for single AvgSA case, apparently there is no way to run PSHA for multiple AvgSA
 
     def replace_text_str(input_str):
         """
         Details
         -------
         Replaces the text string of an uncertainty model with an alternative
-        formulation in terms of Average Sa
+        formulation in terms of AvgSa
 
         Parameters
         ----------
@@ -504,12 +514,12 @@ def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
             input_gmpe = search_output.group(1)
         else:
             input_gmpe = input_str.strip()
-        period_str = ",".join(["{:s}".format(str(per)) for per in periods])
+
         # Setup initial arguments for GenericGmpeAvgSa
-        initial_set = ["[GenericGmpeAvgSA]",
-                       "gmpe_name = \"{:s}\"".format(input_gmpe),
-                       "avg_periods = {:s}".format(period_str),
-                       "corr_func = \"{:s}\"".format(correlation)]
+        initial_set = ["[GenericGmpeAvgSA]", 
+                       f"gmpe_name = \"{input_gmpe}\"", 
+                       f"avg_periods = {avgsa_periods}", 
+                       f"corr_func = \"{correlation_model}\""]
         if not search_output:
             # No additional arguments passed to GMPE, just return the string as is
             return "\n".join(initial_set)
@@ -520,15 +530,14 @@ def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
                 # Empty string
                 continue
             if input_gmpe in segment:
-                new_gmpe = segment.replace(input_gmpe,
-                                           "GenericGmpeAvgSA")
+                new_gmpe = segment.replace(input_gmpe, "GenericGmpeAvgSA")
                 if not new_gmpe in initial_set:
                     initial_set.append(new_gmpe)
             else:
                 initial_set.append(segment)
         return "\n".join(initial_set)
 
-    [input_lt] = nrml.read(input_lt_file)
+    [input_lt] = nrml.read(input_logic_tree_file)
     output_lt = []
     for blev in input_lt:
 
@@ -543,27 +552,20 @@ def parse_sa_lt_to_avgsa(input_lt_file, output_lt_file, periods, correlation):
             unc_model_str = br.uncertaintyModel.text
             weight = float(br.uncertaintyWeight.text)
             new_unc_model = replace_text_str(unc_model_str)
-            br_node = Node("logicTreeBranch", br.attrib, nodes=[
-                Node("uncertaintyModel", text=new_unc_model),
-                Node("uncertaintyWeight", text=str(weight))
-            ])
+            br_node = Node("logicTreeBranch", br.attrib, nodes=[Node("uncertaintyModel", text=new_unc_model), Node("uncertaintyWeight", text=str(weight))])
             bset_branches.append(br_node)
-        output_bs = Node("logicTreeBranchSet",
-                         bset.attrib,
-                         nodes=bset_branches)
+        output_bs = Node("logicTreeBranchSet", bset.attrib, nodes=bset_branches)
         output_lt.append(output_bs)
-    output_lt = Node("logicTree",
-                     {"logicTreeID": input_lt["logicTreeID"] + "AvgSA"},
-                     nodes=output_lt)
-    with open(output_lt_file, "wb") as f:
+    output_lt = Node("logicTree", {"logicTreeID": input_lt["logicTreeID"] + "AvgSA"}, nodes=output_lt)
+    with open(output_logic_tree_file, "wb") as f:
         nrml.write([output_lt], f, fmt="%s")
-    print("Written to %s" % output_lt_file)
+    print("Written to %s" % output_logic_tree_file)
 
 
 # FUNCTIONS TO READ GROUND MOTION RECORD FILES
 # ---------------------------------------------------------------------
 
-def ContentFromZip(paths, zipName):
+def content_from_zip(paths, zip_name):
     """
     Details
     -------
@@ -574,17 +576,17 @@ def ContentFromZip(paths, zipName):
     ----------
     paths : list
         Containing file list which are going to be read from the zipfile.
-    zipName    : str
+    zip_name : str
         Path to the zip file where file lists defined in "paths" are located.
 
     Returns
     -------
-    contents   : dictionary
+    contents : dictionary
         Containing raw contents of the files which are read from the zipfile.
     """
 
     contents = {}
-    with zipfile.ZipFile(zipName, 'r') as myzip:
+    with zipfile.ZipFile(zip_name, 'r') as myzip:
         for i in range(len(paths)):
             with myzip.open(paths[i]) as myfile:
                 contents[i] = [x.decode('utf-8') for x in myfile.readlines()]
@@ -592,7 +594,7 @@ def ContentFromZip(paths, zipName):
     return contents
 
 
-def ReadNGA(inFilename=None, content=None, outFilename=None):
+def read_nga(in_filename=None, content=None, out_filename=None):
     """
     Details
     -------
@@ -600,13 +602,13 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
 
     Parameters
     ----------
-    inFilename : str, optional
+    in_filename : str, optional
         Location and name of the input file.
         The default is None
-    content    : str, optional
+    content : str, optional
         Raw content of the .AT2 file.
         The default is None
-    outFilename : str, optional
+    out_filename : str, optional
         location and name of the output file.
         The default is None.
 
@@ -616,15 +618,15 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
 
     Returns
     -------
-    dt   : float
+    dt : float
         time interval of recorded points.
     npts : int
         number of points in ground motion record file.
     desc : str
         Description of the earthquake (e.g., name, year, etc).
-    t    : numpy.array (n x 1)
+    t : numpy.ndarray (n x 1)
         time array, same length with npts.
-    acc  : numpy.array (n x 1)
+    acc : numpy.ndarray (n x 1)
         acceleration array, same length with time unit
         usually in (g) unless stated as other.
     """
@@ -632,7 +634,7 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
     try:
         # Read the file content from inFilename
         if content is None:
-            with open(inFilename, 'r') as inFileID:
+            with open(in_filename, 'r') as inFileID:
                 content = inFileID.readlines()
 
         # check the first line
@@ -688,16 +690,16 @@ def ReadNGA(inFilename=None, content=None, outFilename=None):
         dur = len(acc) * dt
         t = np.arange(0, dur, dt)
 
-        if outFilename is not None:
-            np.savetxt(outFilename, acc, fmt='%1.4e')
+        if out_filename is not None:
+            np.savetxt(out_filename, acc, fmt='%1.4e')
 
         return dt, npts, desc, t, acc
 
     except BaseException as error:
-        print(f"Record file reader FAILED for {inFilename}: ", error)
+        print(f"Record file reader FAILED for {in_filename}: ", error)
 
 
-def ReadESM(inFilename=None, content=None, outFilename=None):
+def read_esm(in_filename=None, content=None, out_filename=None):
     """
     Details
     -------
@@ -705,27 +707,27 @@ def ReadESM(inFilename=None, content=None, outFilename=None):
 
     Parameters
     ----------
-    inFilename : str, optional
+    in_filename : str, optional
         Location and name of the input file.
         The default is None
-    content    : str, optional
+    content : str, optional
         Raw content of the ESM record file.
         The default is None
-    outFilename : str, optional
+    out_filename : str, optional
         location and name of the output file.
         The default is None.
 
     Returns
     -------
-    dt   : float
+    dt : float
         time interval of recorded points.
     npts : int
         number of points in ground motion record file.
     desc : str
         Description of the earthquake (e.g., name, year, etc).
-    time : numpy.array (n x 1)
+    time : numpy.ndarray (n x 1)
         time array, same length with npts.
-    acc  : numpy.array (n x 1)
+    acc : numpy.ndarray (n x 1)
         acceleration array, same length with time unit
         usually in (g) unless stated as other.
     """
@@ -733,7 +735,7 @@ def ReadESM(inFilename=None, content=None, outFilename=None):
     try:
         # Read the file content from inFilename
         if content is None:
-            with open(inFilename, 'r') as inFileID:
+            with open(in_filename, 'r') as inFileID:
                 content = inFileID.readlines()
 
         desc = content[:64]
@@ -745,19 +747,19 @@ def ReadESM(inFilename=None, content=None, outFilename=None):
         t = np.arange(0, dur, dt)
         acc = acc / 980.655  # cm/s**2 to g
 
-        if outFilename is not None:
-            np.savetxt(outFilename, acc, fmt='%1.4e')
+        if out_filename is not None:
+            np.savetxt(out_filename, acc, fmt='%1.4e')
 
         return dt, npts, desc, t, acc
 
     except BaseException as error:
-        print(f"Record file reader FAILED for {inFilename}: ", error)
+        print(f"Record file reader FAILED for {in_filename}: ", error)
 
 
 # FUNCTIONS TO CREATE BUILDING CODE DESIGN SPECTRA
 # ---------------------------------------------------------------------
 
-def Sae_ec8_part1(ag, xi, T, ImpClass, Type, SiteClass):
+def sae_ec8_part1(ag, xi, periods, importance_class, spectrum_type, site_class):
     """
     Details
     -------
@@ -773,27 +775,27 @@ def Sae_ec8_part1(ag, xi, T, ImpClass, Type, SiteClass):
 
     Parameters
     ----------
-    ag: float
+    ag : float
         Peak ground acceleration
-    xi: float
+    xi : float
         Damping ratio
-    T: list or numpy.array
+    periods : list or numpy.ndarray
         Period array for which elastic response spectrum is calculated
-    ImpClass: str
+    importance_class : str
         Importance class ('I','II','III','IV')
-    Type: str
+    spectrum_type: str
         Type of spectrum ('Type1','Type2')
-    SiteClass: str
+    site_class : str
         Site Soil Class ('A','B','C','D','E')
 
     Returns
     -------
-    Sae: numpy.array
+    Sae : numpy.ndarray
         Elastic acceleration response spectrum
 
     """
 
-    SpecProp = {
+    spec_props = {
         'Type1': {
             'A': {'S': 1.00, 'Tb': 0.15, 'Tc': 0.4, 'Td': 2.0},
             'B': {'S': 1.20, 'Tb': 0.15, 'Tc': 0.5, 'Td': 2.0},
@@ -811,47 +813,47 @@ def Sae_ec8_part1(ag, xi, T, ImpClass, Type, SiteClass):
         }
     }
 
-    S = SpecProp[Type][SiteClass]['S']
-    Tb = SpecProp[Type][SiteClass]['Tb']
-    Tc = SpecProp[Type][SiteClass]['Tc']
-    Td = SpecProp[Type][SiteClass]['Td']
+    s = spec_props[spectrum_type][site_class]['S']
+    tb = spec_props[spectrum_type][site_class]['Tb']
+    tc = spec_props[spectrum_type][site_class]['Tc']
+    td = spec_props[spectrum_type][site_class]['Td']
 
     eta = max(np.sqrt(0.10 / (0.05 + xi)), 0.55)
 
-    if ImpClass == 'I':
-        I = 0.8
-    elif ImpClass == 'II':
-        I = 1.0
-    elif ImpClass == 'III':
-        I = 1.2
-    elif ImpClass == 'IV':
-        I = 1.4
+    if importance_class == 'I':
+        imp_factor = 0.8
+    elif importance_class == 'II':
+        imp_factor = 1.0
+    elif importance_class == 'III':
+        imp_factor = 1.2
+    elif importance_class == 'IV':
+        imp_factor = 1.4
     else:
         print('Error! Cannot compute a value of Importance Factor')
 
-    ag = ag * I
+    ag = ag * imp_factor
 
-    Sae = []
-    for i in range(len(T)):
-        if 0 <= T[i] <= Tb:
-            Sa_el = ag * S * (1.0 + T[i] / Tb * (2.5 * eta - 1.0))
-        elif Tb <= T[i] <= Tc:
-            Sa_el = ag * S * 2.5 * eta
-        elif Tc <= T[i] <= Td:
-            Sa_el = ag * S * 2.5 * eta * (Tc / T[i])
-        elif T[i] >= Td:
-            Sa_el = ag * S * 2.5 * eta * (Tc * Td / T[i] / T[i])
+    sae = []
+    for i in range(len(periods)):
+        if 0 <= periods[i] <= tb:
+            sat = ag * s * (1.0 + periods[i] / tb * (2.5 * eta - 1.0))
+        elif tb <= periods[i] <= tc:
+            sat = ag * s * 2.5 * eta
+        elif tc <= periods[i] <= td:
+            sat = ag * s * 2.5 * eta * (tc / periods[i])
+        elif periods[i] >= td:
+            sat = ag * s * 2.5 * eta * (tc * td / periods[i] / periods[i])
         else:
             print('Error! Cannot compute a value of Spectral Acceleration')
 
-        Sae.append(Sa_el)
+        sae.append(sat)
 
-    Sae = np.array(Sae)
+    sae = np.array(sae)
 
-    return Sae
+    return sae
 
 
-def Sae_asce7_16(T, SDS, SD1, TL):
+def sae_asce7_16(periods, sds, sd1, tl):
     """
     Details
     -------
@@ -867,39 +869,39 @@ def Sae_asce7_16(T, SDS, SD1, TL):
 
     Parameters
     ----------
-    T:  numpy.array
+    periods : numpy.ndarray
         Period array for which elastic response spectrum is calculated
-    SDS: float
+    sds : float
         Numeric seismic design value (0.2 sec)
-    SD1: float
+    sd1 : float
         Numeric seismic design value (1.0 sec)
-    TL: float
+    tl : float
         Long-period transition period
 
 
     Returns
     -------
-    Sae: numpy.array
+    Sae : numpy.ndarray
         Elastic acceleration response spectrum
     """
 
-    T0 = 0.2 * (SD1 / SDS)
-    TS = SD1 / SDS
-    Sae = np.zeros(len(T))
-    for i in range(len(T)):
-        if T[i] < T0:
-            Sae[i] = SDS * (0.4 + 0.6 * T[i] / T0)
-        if T0 <= T[i] <= TS:
-            Sae[i] = SDS
-        if TS <= T[i] <= TL:
-            Sae[i] = SD1 / T[i]
-        if TL < T[i]:
-            Sae[i] = (SD1 * TL) / (T[i] ** 2)
+    t0 = 0.2 * (sd1 / sds)
+    ts = sd1 / sds
+    sae = np.zeros(len(periods))
+    for i in range(len(periods)):
+        if periods[i] < t0:
+            sae[i] = sds * (0.4 + 0.6 * periods[i] / t0)
+        if t0 <= periods[i] <= ts:
+            sae[i] = sds
+        if ts <= periods[i] <= tl:
+            sae[i] = sd1 / periods[i]
+        if tl < periods[i]:
+            sae[i] = (sd1 * tl) / (periods[i] ** 2)
 
-    return Sae
+    return sae
 
 
-def SiteParam_asce7_16(Lat, Long, RiskCat, SiteClass):
+def site_parameters_asce7_16(lat, long, risk_category, site_class):
     """
     Details
     -------
@@ -917,54 +919,53 @@ def SiteParam_asce7_16(Lat, Long, RiskCat, SiteClass):
 
     Parameters
     ----------
-    Lat: float
+    lat : float
         Site latitude
-    Long: float
+    long : float
         Site longitude
-    RiskCat:  str
+    risk_category :  str
         Risk category for structure ('I','II','III','IV')
-    SiteClass: str
+    site_class : str
         Site soil class ('A','B','C','D','E')
 
     Returns
     -------
-    SDS: float
+    sds : float
         Short period (0.2 sec) spectral acceleration coefficient
-    SD1: float
+    sd1 : float
         Spectral acceleration coefficient at period 1.0
-    TL: float
+    tl : float
         Period value for long-period transition
     """
 
-    thisURL = 'https://earthquake.usgs.gov/ws/designmaps/asce7-16.json?latitude=' + str(Lat) + '&longitude=' + str(
-        Long) + '&riskCategory=' + RiskCat + '&siteClass=' + SiteClass + '&title=Example'
-    web = json.loads(requests.get(thisURL).text)  # get the info from webpage and convert json format to dictionary
-    Ss = web['response']['data']['ss']
-    S1 = web['response']['data']['s1']
-    Fa = web['response']['data']['fa']
-    Fv = web['response']['data']['fv']
-    TL = web['response']['data']['tl']
+    url = 'https://earthquake.usgs.gov/ws/designmaps/asce7-16.json?latitude=' + str(lat) + '&longitude=' + str(long) + '&riskCategory=' + risk_category + '&siteClass=' + site_class + '&title=Example'
+    web = json.loads(requests.get(url).text)  # get the info from webpage and convert json format to dictionary
+    ss = web['response']['data']['ss']
+    s1 = web['response']['data']['s1']
+    fa = web['response']['data']['fa']
+    fv = web['response']['data']['fv']
+    tl = web['response']['data']['tl']
 
-    if Ss is None:
+    if ss is None:
         raise ValueError('Failed to get parameter Ss, define user-defined spectrum instead.')
-    if S1 is None:
+    if s1 is None:
         raise ValueError('Failed to get parameter S1, define user-defined spectrum instead.')
-    if Fa is None:
+    if fa is None:
         raise ValueError('Failed to get parameter Fa, define user-defined spectrum instead.')
-    if Fv is None:
+    if fv is None:
         raise ValueError('Failed to get parameter Fv, define user-defined spectrum instead.')
-    if TL is None:
+    if tl is None:
         raise ValueError('Failed to get parameter TL, define user-defined spectrum instead.')
 
-    Sms = Fa * Ss
-    Sm1 = Fv * S1
-    SDS = (2 / 3) * Sms
-    SD1 = (2 / 3) * Sm1
+    sms = fa * ss
+    sm1 = fv * s1
+    sds = (2 / 3) * sms
+    sd1 = (2 / 3) * sm1
 
-    return SDS, SD1, TL
+    return sds, sd1, tl
 
 
-def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
+def site_parameters_tbec2018(lat, long, dd, site_class):
     """
     Details
     -------
@@ -979,24 +980,24 @@ def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
 
     Parameters
     ----------
-    Lat: float
+    lat : float
         Site latitude
-    Long: float
+    long : float
         Site longitude
-    DD:  int
+    dd_level :  int
         Earthquake ground motion intensity level (1,2,3,4)
-    SiteClass: str
+    site_class : str
         Site soil class ('ZA','ZB','ZC','ZD','ZE')
 
     Returns
     -------
-    PGA: float
+    PGA : float
         Peak ground acceleration
-    SDS: float
+    SDS : float
         Short period (0.2 sec) spectral acceleration coefficient
-    SD1: float
+    SD1 : float
         Spectral acceleration coefficient at period 1.0
-    TL: float
+    TL : float
         Period value for long-period transition
     """
 
@@ -1005,37 +1006,37 @@ def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
     data = pd.read_csv(file_path)
 
     # Check if the coordinates are within the limits
-    if Long > np.max(data['Longitude']) or Long < np.min(data['Longitude']):
+    if long > np.max(data['Longitude']) or long < np.min(data['Longitude']):
         raise ValueError('Longitude value must be within the limits: [24.55,45.95]')
-    if Lat > np.max(data['Latitude']) or Lat < np.min(data['Latitude']):
+    if lat > np.max(data['Latitude']) or lat < np.min(data['Latitude']):
         raise ValueError('Latitude value must be within the limits: [34.25,42.95]')
 
     # Targeted probability of exceedance in 50 years
-    if DD == 1:
-        PoE = '2'
-    elif DD == 2:
-        PoE = '10'
-    elif DD == 3:
-        PoE = '50'
-    elif DD == 4:
-        PoE = '68'
+    if dd == 1:
+        poe = '2'
+    elif dd == 2:
+        poe = '10'
+    elif dd == 3:
+        poe = '50'
+    elif dd == 4:
+        poe = '68'
 
     # Determine Peak Ground Acceleration PGA [g]
-    PGA_col = 'PGA (g) - %' + PoE
-    data_pga = np.array([data['Longitude'], data['Latitude'], data[PGA_col]]).T
-    PGA = interpolate.griddata(data_pga[:, 0:2], data_pga[:, 2], [(Long, Lat)], method='linear')
+    pga_col = 'PGA (g) - %' + poe
+    data_pga = np.array([data['Longitude'], data['Latitude'], data[pga_col]]).T
+    pga = interpolate.griddata(data_pga[:, 0:2], data_pga[:, 2], [(long, lat)], method='linear')
 
     # Short period map spectral acceleration coefficient [dimensionless]
-    SS_col = 'SS (g) - %' + PoE
-    data_ss = np.array([data['Longitude'], data['Latitude'], data[SS_col]]).T
-    SS = interpolate.griddata(data_ss[:, 0:2], data_ss[:, 2], [(Long, Lat)], method='linear')
+    ss_col = 'SS (g) - %' + poe
+    data_ss = np.array([data['Longitude'], data['Latitude'], data[ss_col]]).T
+    ss = interpolate.griddata(data_ss[:, 0:2], data_ss[:, 2], [(long, lat)], method='linear')
 
     # Map spectral acceleration coefficient for a 1.0 second period [dimensionless]
-    S1_col = 'S1 (g) - %' + PoE
-    data_s1 = np.array([data['Longitude'], data['Latitude'], data[S1_col]]).T
-    S1 = interpolate.griddata(data_s1[:, 0:2], data_s1[:, 2], [(Long, Lat)], method='linear')
+    s1_col = 'S1 (g) - %' + poe
+    data_s1 = np.array([data['Longitude'], data['Latitude'], data[s1_col]]).T
+    s1 = interpolate.griddata(data_s1[:, 0:2], data_s1[:, 2], [(long, lat)], method='linear')
 
-    SoilParam = {
+    soil_parameters = {
         'FS': {
             'ZA': [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
             'ZB': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
@@ -1059,65 +1060,65 @@ def SiteParam_tbec2018(Lat, Long, DD, SiteClass):
     }
 
     # Local soil response coefficient for the short period region
-    if SS <= SoilParam['SS'][0]:
-        FS = SoilParam['FS'][SiteClass][0]
-    elif SoilParam['SS'][0] < SS <= SoilParam['SS'][1]:
-        FS = (SoilParam['FS'][SiteClass][1] - SoilParam['FS'][SiteClass][0]) \
-             * (SS - SoilParam['SS'][0]) / (SoilParam['SS'][1] - SoilParam['SS'][0]) \
-             + SoilParam['FS'][SiteClass][0]
-    elif SoilParam['SS'][1] < SS <= SoilParam['SS'][2]:
-        FS = (SoilParam['FS'][SiteClass][2] - SoilParam['FS'][SiteClass][1]) \
-             * (SS - SoilParam['SS'][1]) / (SoilParam['SS'][2] - SoilParam['SS'][1]) \
-             + SoilParam['FS'][SiteClass][1]
-    elif SoilParam['SS'][2] < SS <= SoilParam['SS'][3]:
-        FS = (SoilParam['FS'][SiteClass][3] - SoilParam['FS'][SiteClass][2]) \
-             * (SS - SoilParam['SS'][2]) / (SoilParam['SS'][3] - SoilParam['SS'][2]) \
-             + SoilParam['FS'][SiteClass][2]
-    elif SoilParam['SS'][3] < SS <= SoilParam['SS'][4]:
-        FS = (SoilParam['FS'][SiteClass][4] - SoilParam['FS'][SiteClass][3]) \
-             * (SS - SoilParam['SS'][3]) / (SoilParam['SS'][4] - SoilParam['SS'][3]) \
-             + SoilParam['FS'][SiteClass][3]
-    elif SoilParam['SS'][4] < SS <= SoilParam['SS'][5]:
-        FS = (SoilParam['FS'][SiteClass][5] - SoilParam['FS'][SiteClass][4]) \
-             * (SS - SoilParam['SS'][4]) / (SoilParam['SS'][5] - SoilParam['SS'][4]) \
-             + SoilParam['FS'][SiteClass][4]
-    elif SS >= SoilParam['SS'][5]:
-        FS = SoilParam['FS'][SiteClass][5]
+    if ss <= soil_parameters['SS'][0]:
+        fs = soil_parameters['FS'][site_class][0]
+    elif soil_parameters['SS'][0] < ss <= soil_parameters['SS'][1]:
+        fs = (soil_parameters['FS'][site_class][1] - soil_parameters['FS'][site_class][0]) \
+             * (ss - soil_parameters['SS'][0]) / (soil_parameters['SS'][1] - soil_parameters['SS'][0]) \
+             + soil_parameters['FS'][site_class][0]
+    elif soil_parameters['SS'][1] < ss <= soil_parameters['SS'][2]:
+        fs = (soil_parameters['FS'][site_class][2] - soil_parameters['FS'][site_class][1]) \
+             * (ss - soil_parameters['SS'][1]) / (soil_parameters['SS'][2] - soil_parameters['SS'][1]) \
+             + soil_parameters['FS'][site_class][1]
+    elif soil_parameters['SS'][2] < ss <= soil_parameters['SS'][3]:
+        fs = (soil_parameters['FS'][site_class][3] - soil_parameters['FS'][site_class][2]) \
+             * (ss - soil_parameters['SS'][2]) / (soil_parameters['SS'][3] - soil_parameters['SS'][2]) \
+             + soil_parameters['FS'][site_class][2]
+    elif soil_parameters['SS'][3] < ss <= soil_parameters['SS'][4]:
+        fs = (soil_parameters['FS'][site_class][4] - soil_parameters['FS'][site_class][3]) \
+             * (ss - soil_parameters['SS'][3]) / (soil_parameters['SS'][4] - soil_parameters['SS'][3]) \
+             + soil_parameters['FS'][site_class][3]
+    elif soil_parameters['SS'][4] < ss <= soil_parameters['SS'][5]:
+        fs = (soil_parameters['FS'][site_class][5] - soil_parameters['FS'][site_class][4]) \
+             * (ss - soil_parameters['SS'][4]) / (soil_parameters['SS'][5] - soil_parameters['SS'][4]) \
+             + soil_parameters['FS'][site_class][4]
+    elif ss >= soil_parameters['SS'][5]:
+        fs = soil_parameters['FS'][site_class][5]
 
     # Local soil response coefficient for 1.0 second period
-    if S1 <= SoilParam['S1'][0]:
-        F1 = SoilParam['F1'][SiteClass][0]
-    elif SoilParam['S1'][0] < S1 <= SoilParam['S1'][1]:
-        F1 = (SoilParam['F1'][SiteClass][1] - SoilParam['F1'][SiteClass][0]) \
-             * (S1 - SoilParam['S1'][0]) / (SoilParam['S1'][1] - SoilParam['S1'][0]) \
-             + SoilParam['F1'][SiteClass][0]
-    elif SoilParam['S1'][1] < S1 <= SoilParam['S1'][2]:
-        F1 = (SoilParam['F1'][SiteClass][2] - SoilParam['F1'][SiteClass][1]) \
-             * (S1 - SoilParam['S1'][1]) / (SoilParam['S1'][2] - SoilParam['S1'][1]) \
-             + SoilParam['F1'][SiteClass][1]
-    elif SoilParam['S1'][2] < S1 <= SoilParam['S1'][3]:
-        F1 = (SoilParam['F1'][SiteClass][3] - SoilParam['F1'][SiteClass][2]) \
-             * (S1 - SoilParam['S1'][2]) / (SoilParam['S1'][3] - SoilParam['S1'][2]) \
-             + SoilParam['F1'][SiteClass][2]
-    elif SoilParam['S1'][3] < S1 <= SoilParam['S1'][4]:
-        F1 = (SoilParam['F1'][SiteClass][4] - SoilParam['F1'][SiteClass][3]) \
-             * (S1 - SoilParam['S1'][3]) / (SoilParam['S1'][4] - SoilParam['S1'][3]) \
-             + SoilParam['F1'][SiteClass][3]
-    elif SoilParam['S1'][4] < S1 <= SoilParam['S1'][5]:
-        F1 = (SoilParam['F1'][SiteClass][5] - SoilParam['F1'][SiteClass][4]) \
-             * (S1 - SoilParam['S1'][4]) / (SoilParam['S1'][5] - SoilParam['S1'][4]) \
-             + SoilParam['F1'][SiteClass][4]
-    elif S1 >= SoilParam['S1'][5]:
-        F1 = SoilParam['F1'][SiteClass][5]
+    if s1 <= soil_parameters['S1'][0]:
+        f1 = soil_parameters['F1'][site_class][0]
+    elif soil_parameters['S1'][0] < s1 <= soil_parameters['S1'][1]:
+        f1 = (soil_parameters['F1'][site_class][1] - soil_parameters['F1'][site_class][0]) \
+             * (s1 - soil_parameters['S1'][0]) / (soil_parameters['S1'][1] - soil_parameters['S1'][0]) \
+             + soil_parameters['F1'][site_class][0]
+    elif soil_parameters['S1'][1] < s1 <= soil_parameters['S1'][2]:
+        f1 = (soil_parameters['F1'][site_class][2] - soil_parameters['F1'][site_class][1]) \
+             * (s1 - soil_parameters['S1'][1]) / (soil_parameters['S1'][2] - soil_parameters['S1'][1]) \
+             + soil_parameters['F1'][site_class][1]
+    elif soil_parameters['S1'][2] < s1 <= soil_parameters['S1'][3]:
+        f1 = (soil_parameters['F1'][site_class][3] - soil_parameters['F1'][site_class][2]) \
+             * (s1 - soil_parameters['S1'][2]) / (soil_parameters['S1'][3] - soil_parameters['S1'][2]) \
+             + soil_parameters['F1'][site_class][2]
+    elif soil_parameters['S1'][3] < s1 <= soil_parameters['S1'][4]:
+        f1 = (soil_parameters['F1'][site_class][4] - soil_parameters['F1'][site_class][3]) \
+             * (s1 - soil_parameters['S1'][3]) / (soil_parameters['S1'][4] - soil_parameters['S1'][3]) \
+             + soil_parameters['F1'][site_class][3]
+    elif soil_parameters['S1'][4] < s1 <= soil_parameters['S1'][5]:
+        f1 = (soil_parameters['F1'][site_class][5] - soil_parameters['F1'][site_class][4]) \
+             * (s1 - soil_parameters['S1'][4]) / (soil_parameters['S1'][5] - soil_parameters['S1'][4]) \
+             + soil_parameters['F1'][site_class][4]
+    elif s1 >= soil_parameters['S1'][5]:
+        f1 = soil_parameters['F1'][site_class][5]
 
-    SDS = SS * FS
-    SD1 = S1 * F1
-    TL = 6
+    sds = ss * fs
+    sd1 = s1 * f1
+    tl = 6
 
-    return PGA, SDS, SD1, TL
+    return pga, sds, sd1, tl
 
 
-def Sae_tbec2018(T, SDS, SD1, TL):
+def sae_tbec2018(periods, sds, sd1, tl):
     """
     Details
     -------
@@ -1132,52 +1133,52 @@ def Sae_tbec2018(T, SDS, SD1, TL):
 
     Parameters
     ----------
-    T:  numpy.array
+    periods :  numpy.ndarray
         Period array for which elastic response spectrum is calculated
-    SDS: float
+    sds : float
         Short period (0.2 sec) spectral acceleration coefficient
-    SD1: float
+    sd1 : float
         Spectral acceleration coefficient at period 1.0
-    TL: float
+    tl : float
         Period value for long-period transition
 
     Returns
     -------
-    Sae: numpy.array
+    sae : numpy.ndarray
         Horizontal elastic acceleration response spectrum
-    SaeD: numpy.array
-        Vertıcal elastic acceleration response spectrum
+    sae_vert : numpy.ndarray
+        Vertical elastic acceleration response spectrum
     """
 
-    TA = 0.2 * SD1 / SDS
-    TB = SD1 / SDS
-    TAD = TA/3
-    TBD = TB/3
-    TLD = TL/2
-    Sae = np.zeros(len(T))
-    SaeD = np.zeros(len(T))
+    ta = 0.2 * sd1 / sds
+    tb = sd1 / sds
+    tad = ta/3
+    tbd = tb/3
+    tld = tl/2
+    sae = np.zeros(len(periods))
+    sae_vert = np.zeros(len(periods))
 
-    for i in range(len(T)):
-        if T[i] <= TA:
-            Sae[i] = (0.4 + 0.6 * T[i] / TA) * SDS
-        elif TA < T[i] <= TB:
-            Sae[i] = SDS
-        elif TB < T[i] <= TL:
-            Sae[i] = SD1 / T[i]
-        elif T[i] > TL:
-            Sae[i] = SD1 * TL / T[i] ** 2
+    for i in range(len(periods)):
+        if periods[i] <= ta:
+            sae[i] = (0.4 + 0.6 * periods[i] / ta) * sds
+        elif ta < periods[i] <= tb:
+            sae[i] = sds
+        elif tb < periods[i] <= tl:
+            sae[i] = sd1 / periods[i]
+        elif periods[i] > tl:
+            sae[i] = sd1 * tl / periods[i] ** 2
 
-        if T[i] <= TAD:
-            SaeD[i] = (0.32 + 0.48 * T[i] / TAD) * SDS
-        elif TAD < T[i] <= TBD:
-            SaeD[i] = 0.8 * SDS
-        elif TBD < T[i] <= TLD:
-            SaeD[i] = 0.8 * SDS * TBD / T[i]
+        if periods[i] <= tad:
+            sae_vert[i] = (0.32 + 0.48 * periods[i] / tad) * sds
+        elif tad < periods[i] <= tbd:
+            sae_vert[i] = 0.8 * sds
+        elif tbd < periods[i] <= tld:
+            sae_vert[i] = 0.8 * sds * tbd / periods[i]
 
-    return Sae, SaeD
+    return sae, sae_vert
 
 
-def Sae_TBEC2007(T, zone, soil):
+def sae_tbec2007(periods, zone, soil):
 
     """
     Details
@@ -1193,58 +1194,56 @@ def Sae_TBEC2007(T, zone, soil):
 
     Parameters
     ----------
-    T:  numpy.array
+    periods :  numpy.ndarray
         Period array for which elastic response spectrum is calculated
-    zone: int
+    zone : int
         Seismic zone (1, 2, 3, 4)
-    soil: str
+    soil : str
         Site class ('Z1', 'Z2', 'Z3', 'Z4')
-    SD1: float
-        Spectral acceleration coefficient at period 1.0
 
     Returns
     -------
-    Sae: numpy.array
+    sae : numpy.ndarray
         Elastic acceleration response spectrum
     """
 
     # Seismic zone
     if zone == 1:
-      A0 = 0.1
+      a0 = 0.1
     elif zone == 2:
-      A0 = 0.2
+      a0 = 0.2
     elif zone == 3:
-      A0 = 0.3
+      a0 = 0.3
     elif zone == 4:
-      A0 = 0.4
+      a0 = 0.4
 
     # site class
     if soil == 'Z1':
-      TA = 0.1
-      TB = 0.30
+      ta = 0.1
+      tb = 0.30
     elif soil == 'Z2':
-       TA = 0.15
-       TB = 0.40     
+       ta = 0.15
+       tb = 0.40     
     elif soil == 'Z3':
-       TA = 0.15
-       TB = 0.60   
+       ta = 0.15
+       tb = 0.60   
     elif soil == 'Z4':
-       TA = 0.2
-       TB = 0.90   
+       ta = 0.2
+       tb = 0.90   
 
     # Response spectrum
-    Sae = np.zeros(len(T))
-    for i in range(len(T)):
-        if T[i] <= TA:
-            Sae[i] = 1+1.5*T[i]/TA
-        elif T[i] > TA and T[i]<=TB:       
-            Sae[i] = 2.5
-        elif T[i] > TB:       
-            Sae[i] = 2.5*(TB/T[i])**0.8  
+    sae = np.zeros(len(periods))
+    for i in range(len(periods)):
+        if periods[i] <= ta:
+            sae[i] = 1+1.5*periods[i]/ta
+        elif periods[i] > ta and periods[i]<=tb:       
+            sae[i] = 2.5
+        elif periods[i] > tb:       
+            sae[i] = 2.5*(tb/periods[i])**0.8  
         
-    Sae = A0*Sae
+    sae = a0*sae
     
-    return Sae
+    return sae
 
 
 # FUNCTIONS TO CHECK GMPES IMPLEMENTED IN OPENQUAKE
@@ -1329,7 +1328,7 @@ def check_gmpe_attributes(gmpe):
 # MISCELLANEOUS FUNCTIONS
 # ---------------------------------------------------------------------
 
-def get_esm_token(username, pwd):
+def get_esm_token(username, password):
     """
     Details
     -------
@@ -1343,39 +1342,43 @@ def get_esm_token(username, pwd):
 
     Parameters
     ----------
-    username     : str
-        Account username (e-mail),  e.g. 'username@mail.com'.
-    pwd          : str
-        Account password, e.g. 'password!12345'.
+    username : str
+        Account username (e-mail),  e.g. 'example_username@email.com'.
+    password : str
+        Account password, e.g. 'example_password123456'.
 
     Returns
     -------
-    None.
+    token_path : str
+        Path to token used to retrieve records from ESM_2018 database
     """
 
     if sys.platform.startswith('win'):
         command = 'curl --ssl-no-revoke -X POST -F ' + '\"' + \
                   'message={' + '\\\"' + 'user_email' + '\\\": ' + '\\\"' + username + '\\\", ' + \
-                  '\\\"' + 'user_password' + '\\\": ' + '\\\"' + pwd + '\\\"}' + \
+                  '\\\"' + 'user_password' + '\\\": ' + '\\\"' + password + '\\\"}' + \
                   '\" ' + '\"https://esm-db.eu/esmws/generate-signed-message/1/query\" > token.txt'
     else:
         command = 'curl -X POST -F \'message={\"user_email\": \"' + \
-                  username + '\",\"user_password\": \"' + pwd + \
+                  username + '\",\"user_password\": \"' + password + \
                   '\"}\' \"https://esm-db.eu/esmws/generate-signed-message/1/query\" > token.txt'
 
     os.system(command)
+    token_path = os.path.join(os.getcwd(), 'token.txt')
+
+    return token_path
 
 
-def create_dir(dir_path):
+def make_dir(dir_path):
     """
     Details
     -------
-    Creates a clean directory by deleting it if it exists.
+    Makes a clean directory by deleting it if it exists.
 
     Parameters
     ----------
     dir_path : str
-        name of directory to create.
+        name of directory to make.
 
     None.
     """
@@ -1398,7 +1401,7 @@ def run_time(start_time):
     """
     Details
     -------
-    Prints the time passed between startTime and FinishTime (now)
+    Prints the time passed between start_time and finish_time (now)
     in hours, minutes, seconds. startTime is a global variable.
 
     Parameters
@@ -1433,18 +1436,18 @@ def random_uniform(num_dimensions, num_samples, sampling_type):
 
     Parameters
     ----------
-    num_dimensions: int
+    num_dimensions : int
         number of dimensions
-    num_samples: int
+    num_samples : int
         number of samples
-    sampling_type: str
+    sampling_type : str
         type of sampling.
         Monte Carlo Sampling: 'MCS'
         Latin Hypercube Sampling: 'LHS'
 
     Returns
     -------
-    sample: numpy.ndarray (num_samples x num_dimensions)
+    sample : numpy.ndarray (num_samples x num_dimensions)
         Array which contains randomly generated numbers between 0 and 1
     """
     # Not really required, but will ensure different realizations each time
@@ -1477,13 +1480,13 @@ def random_multivariate_normal(mu, cov, num_samples, sampling_option):
 
     Parameters
     ----------
-    mu: numpy.ndarray (1-D)
+    mu : numpy.ndarray (1-D)
         Mean value vector
-    cov: numpy.ndarray (2-D)
+    cov : numpy.ndarray (2-D)
         Covariance matrix
-    num_samples: int
+    num_samples : int
         number of samples
-    sampling_option: str
+    sampling_option : str
         Monte Carlo Sampling: 'MCS'
         Latin Hypercube Sampling: 'LHS'
 

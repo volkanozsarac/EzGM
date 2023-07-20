@@ -198,7 +198,7 @@ def disaggregation_mag_dist(mag_bin, dist_bin, path_disagg_results, output_dir='
             # Load the dataframe
             df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
             for key in df.keys():
-                if key.startswith('rlz'):
+                if key.startswith('rlz') or key == 'mean':
                     hz_key = key
             poes = np.unique(df['poe']).tolist()
             poes.sort(reverse=True)
@@ -346,7 +346,7 @@ def disaggregation_mag_dist_eps(mag_bin, dist_bind, path_disagg_results, output_
             # Load the dataframe
             df = pd.read_csv(''.join([path_disagg_results, '/', file]), skiprows=1)
             for key in df.keys():
-                if key.startswith('rlz'):
+                if key.startswith('rlz') or key == 'mean':
                     hz_key = key
             poes = np.unique(df['poe']).tolist()
             poes.sort(reverse=True)

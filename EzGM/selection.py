@@ -2065,7 +2065,7 @@ class ConditionalSpectrum(_SubClass_):
                 mu_lnSaT[i] = params[0]
                 sigma_lnSaT[i] = params[1][0]
                 # modify spectral targets if RotD100 values were specified for two-component selection:
-                if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.num_components == 2:
+                if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT.name and self.num_components == 2:
                     rotd100_mu_ratio, rotd100_sigma = self._gmpe_sb_2014_ratios(self.periods[i])
                     mu_lnSaT[i] = mu_lnSaT[i] + np.log(rotd100_mu_ratio)
                     sigma_lnSaT[i] = (sigma_lnSaT[i] ** 2 + rotd100_sigma ** 2) ** 0.5

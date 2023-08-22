@@ -1184,7 +1184,7 @@ class ConditionalSpectrum(_SubClass_):
 
         # Read the old EzGM obj
         if obj_path:
-            with open('obj.pkl', 'rb') as file:
+            with open(obj_path, 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
             database = self.database
@@ -2510,7 +2510,7 @@ class CodeSpectrum(_SubClass_):
 
         # Read the old EzGM obj
         if obj_path:
-            with open('obj.pkl', 'rb') as file:
+            with open(obj_path, 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
             database = self.database

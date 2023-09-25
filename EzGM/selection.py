@@ -2233,10 +2233,11 @@ class ConditionalSpectrum(_SubClass_):
         mech_limits : list, optional
             The limiting fault mechanisms.
             For NGA_W2 database:
-                0 for unspecified fault
-                1 for strike-slip fault
-                2 for normal fault
-                3 for reverse fault
+                0 for strike-slip fault
+                1 for normal fault
+                2 for reverse fault
+                3 for reverse/oblique fault
+                4 for normal/oblique fault
             For ESM_2018 database:
                 'NF' for normal faulting
                 'NS' for predominately normal with strike-slip component
@@ -2467,10 +2468,11 @@ class CodeSpectrum(_SubClass_):
         mech_limits : list, optional, the default is None.
             The limiting fault mechanisms.
             For NGA_W2 database:
-                0 for unspecified fault
-                1 for strike-slip fault
-                2 for normal fault
-                3 for reverse fault
+                0 for strike-slip fault
+                1 for normal fault
+                2 for reverse fault
+                3 for reverse/oblique fault
+                4 for normal/oblique fault
             For ESM_2018 database:
                 'NF' for normal faulting
                 'NS' for predominately normal with strike-slip component

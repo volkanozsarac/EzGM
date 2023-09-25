@@ -1184,7 +1184,7 @@ class ConditionalSpectrum(_SubClass_):
 
         # Read the old EzGM obj
         if obj_path:
-            with open('obj.pkl', 'rb') as file:
+            with open(obj_path, 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
             database = self.database
@@ -1849,7 +1849,7 @@ class ConditionalSpectrum(_SubClass_):
 
         return min_id
 
-    def create(self, Tstar=None, gmpe='BooreEtAl2014', num_components=1, spectrum_definition='RotD50',
+    def create(self, Tstar=None, gmpe='BooreEtAl2014', num_components=None, spectrum_definition='RotD50',
                site_param={'vs30': 520}, rup_param={'rake': [0.0, 45.0], 'mag': [7.2, 6.5]},
                dist_param={'rjb': [20, 5]}, hz_cont=[0.6, 0.4], period_range=[0.01, 4],
                im_Tstar=1.0, epsilon=None, use_variance=1, correlation_model='baker_jayaram'):
@@ -1893,11 +1893,12 @@ class ConditionalSpectrum(_SubClass_):
         gmpe : str, optional
             GMPE model (see OpenQuake library).
             The default is 'BooreEtAl2014'.
-        num_components : int, optional, the default is 1.
+        num_components : int, optional, the default is None.
             1 for single-component selection and arbitrary component sigma.
             2 for two-component selection and average component sigma.
+            if None determined based on spectrum_definition
         spectrum_definition : str, optional
-            The spectra definition, 'GeoMean', 'RotD50', 'RotD100'. Necessary if num_components = 2.
+            The spectra definition of horizontal component, 'Arbitrary', 'GeoMean', 'RotD50', 'RotD100'.
             The default is 'RotD50'.
         site_param : dictionary
             Contains site parameters to define target spectrum.
@@ -2014,6 +2015,18 @@ class ConditionalSpectrum(_SubClass_):
         except KeyError:
             print(f'{gmpe} is not a valid gmpe name')
             raise
+        
+        # Keep num_components for now, the parameter will be required in the case of vertical spectrum
+        if num_components is None:
+            num_components = {'Arbitrary': 1, 'GeoMean': 2, 'RotD50': 2, 'RotD100': 2}[spectrum_definition]
+
+        elif spectrum_definition in ['GeoMean', 'RotD50', 'RotD100'] and num_components < 2:
+            num_components = 2
+            print(f'Changing number of components to 2 for this horizontal spectra component definition: {spectrum_definition}...')
+
+        elif spectrum_definition == 'Arbitrary' and num_components > 1:
+            num_components = 1
+            print(f'Changing number of components to 1 for this horizontal spectra component definition: {spectrum_definition}...')
 
         # add target spectrum settings to self
         self.num_components = num_components
@@ -2065,7 +2078,7 @@ class ConditionalSpectrum(_SubClass_):
                 mu_lnSaT[i] = params[0]
                 sigma_lnSaT[i] = params[1][0]
                 # modify spectral targets if RotD100 values were specified for two-component selection:
-                if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT and self.num_components == 2:
+                if self.spectrum_definition == 'RotD100' and not 'RotD100' in self.bgmpe.DEFINED_FOR_INTENSITY_MEASURE_COMPONENT.name and self.num_components == 2:
                     rotd100_mu_ratio, rotd100_sigma = self._gmpe_sb_2014_ratios(self.periods[i])
                     mu_lnSaT[i] = mu_lnSaT[i] + np.log(rotd100_mu_ratio)
                     sigma_lnSaT[i] = (sigma_lnSaT[i] ** 2 + rotd100_sigma ** 2) ** 0.5
@@ -2499,7 +2512,7 @@ class CodeSpectrum(_SubClass_):
 
         # Read the old EzGM obj
         if obj_path:
-            with open('obj.pkl', 'rb') as file:
+            with open(obj_path, 'rb') as file:
                 obj = pickle.load(file)
             self.__dict__.update(obj)
             database = self.database

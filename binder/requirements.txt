@@ -1,2 +1,2 @@
-EzGM==1.7.0.0
+EzGM==1.7.0.1
 openquake.engine==3.15.0

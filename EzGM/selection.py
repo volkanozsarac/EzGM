@@ -2863,13 +2863,13 @@ class CodeSpectrum(_SubClass_):
             lower_bound_period = 0.2 * min(fundamental_periods)
         elif lower_bound_period < 0.2 * min(fundamental_periods):
             lower_bound_period = 0.2 * min(fundamental_periods)
-            print('Warning! Lower bound cannot be lower than 0.2 times the largest first-mode period according to '
+            print('Warning! Lower bound cannot be lower than 0.2 times the smallest first-mode period according to '
                   'ASCE 7-16. Changing...')
         if not upper_bound_period:
             upper_bound_period = 2.0 * max(fundamental_periods)
         elif upper_bound_period < 1.5 * max(fundamental_periods):
             upper_bound_period = 1.5 * max(fundamental_periods)
-            print('Warning! Upper bound cannot be lower than 1.5 times the smallest first-mode period according to '
+            print('Warning! Upper bound cannot be lower than 1.5 times the largest first-mode period according to '
                   'ASCE 7-16. Changing...')
         self.lower_bound_period = lower_bound_period
         self.upper_bound_period = upper_bound_period

@@ -331,9 +331,6 @@ def get_parameters(ag, dt, periods, xi):
         VSI : float
             Velocity spectrum intensity [m].
             Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
-        VSI : float
-            Velocity spectrum intensity [m].
-            Requires T to be defined between (0.1-2.5 sec), otherwise not applicable, and equal to -1.
     """
     # TODO: there are bunch of other IMs which can be computed. Add them here.
     
@@ -478,7 +475,7 @@ def get_parameters(ag, dt, periods, xi):
     pas[:, 0] = freq
     pas[:, 1] = pamp
     param['FAS'] = fas
-    param['PAS'] = fas
+    param['PAS'] = pas
 
     # MEAN PERIOD
     mask = (freq > 0.25) * (freq < 20)

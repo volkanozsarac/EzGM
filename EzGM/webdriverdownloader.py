@@ -354,30 +354,7 @@ class ChromeDriverDownloader(WebDriverDownloaderBase):
     """Class for downloading the Google Chrome WebDriver.
     """
 
-    chrome_driver_base_url = 'https://www.googleapis.com/storage/v1/b/chromedriver'
-    chrome_driver_base_url2 = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE_'
-
-    def _get_latest_version_number(self):
-        resp = requests.get(self.chrome_driver_base_url + '/o/LATEST_RELEASE')
-        if resp.status_code != 200:
-            error_message = "Error, unable to get version number for latest release, got code: {0}".format(
-                resp.status_code)
-            logger.error(error_message)
-            raise RuntimeError(error_message)
-        latest_release = requests.get(resp.json()['mediaLink'])
-        return latest_release.text
-
-    def _get_chrome_compatible_version_number(self):
-        version = get_chrome_version()
-        version = '.'.join(version.split('.')[:-1])
-        resp = requests.get(self.chrome_driver_base_url2 + version)
-        if resp.status_code != 200:
-            error_message = "Error, unable to get version number for the chrome compatible release, got code: {0}".format(
-                resp.status_code)
-            logger.error(error_message)
-            raise RuntimeError(error_message)
-
-        return resp.text       
+    chrome_driver_base_url = "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json"
 
     def get_driver_filename(self, os_name=None):
         """
@@ -395,11 +372,13 @@ class ChromeDriverDownloader(WebDriverDownloaderBase):
             return "chromedriver"
 
     def get_download_path(self, version="latest"):
-        if version == "latest":
-            ver = self._get_latest_version_number()
-        else:
-            ver = self._get_chrome_compatible_version_number()
-        return os.path.join(self.download_root, "chrome", ver)
+
+        chrome_version = get_chrome_version()
+        milestone = chrome_version.split('.')[0]
+        data = requests.get(self.chrome_driver_base_url).json()
+        driver_version = data['milestones'][milestone]['version']
+
+        return os.path.join(self.download_root, "chrome", driver_version)
 
     def get_download_url(self, version="latest", os_name=None, bitness=None):
         """
@@ -414,37 +393,39 @@ class ChromeDriverDownloader(WebDriverDownloaderBase):
                         will try to guess the bitness by using util.get_architecture_bitness().
         :returns: The download URL for the Google Chrome driver binary.
         """
-        if version == "latest":
-            version = self._get_latest_version_number()
-        elif version == 'compatible':
-            version = self._get_chrome_compatible_version_number()
 
-        if os_name is None:
-            os_name = platform.system()
-            if os_name == "Darwin":
-                os_name = "mac"
-            elif os_name == "Windows":
-                os_name = "win"
-            elif os_name == "Linux":
-                os_name = "linux"
         if bitness is None:
             bitness = get_architecture_bitness()
             logger.debug("Detected OS: {0}bit {1}".format(bitness, os_name))
 
-        chrome_driver_objects = requests.get(self.chrome_driver_base_url + '/o')
-        matching_versions = [item for item in chrome_driver_objects.json()['items'] if item['name'].startswith(version)]
-        os_matching_versions = [item for item in matching_versions if os_name in item['name']]
-        if not os_matching_versions:
-            error_message = "Error, unable to find appropriate download for {0}.".format(os_name + bitness)
+        if os_name is None:
+            os_name = platform.system()
+        if os_name == "Darwin":
+            os_name = 'mac-x' + bitness 
+        elif os_name == "Windows":
+            os_name = "win" + bitness 
+        elif os_name == "Linux":
+            os_name = "linux" + bitness 
+
+        chrome_version = get_chrome_version()
+        milestone = chrome_version.split('.')[0]
+
+        result = None
+        data = requests.get(self.chrome_driver_base_url).json()
+        for item in data['milestones'][milestone]['downloads']['chromedriver']:
+            if item['platform'] == os_name:
+                result = item['url']
+                break
+        
+        resp = requests.get(result)
+        if resp.status_code != 200:
+            error_message = "Error, unable to get version number for the chrome compatible release, got code: {0}".format(
+                resp.status_code)
             logger.error(error_message)
             raise RuntimeError(error_message)
-        elif len(os_matching_versions) == 1:
-            result = os_matching_versions[0]['mediaLink']
-        elif len(os_matching_versions) == 2:
-            result = [item for item in matching_versions if os_name + bitness in item['name']][0]['mediaLink']
 
         return result
-
+    
 
 def get_architecture_bitness() -> str:
     """
@@ -488,12 +469,13 @@ def extract_version_folder():
     return None
 
 def get_chrome_version():
-    #
-    # Programmatically detect the version of the Chrome web browser installed on the PC.
-    # Compatible with Windows, Mac, Linux.
-    # Written in Python.
-    # Uses native OS detection. Does not require Selenium nor the Chrome web driver.
-    #
+    """
+    Programmatically detect the version of the Chrome web browser installed on the PC.
+    Compatible with Windows, Mac, Linux.
+    Written in Python.
+    Uses native OS detection. Does not require Selenium nor the Chrome web driver.
+    """
+
     version = None
     install_path = None
 
@@ -521,4 +503,3 @@ def get_chrome_version():
     version = os.popen(f"{install_path} --version").read().strip('Google Chrome ').strip() if install_path else version
 
     return version
-

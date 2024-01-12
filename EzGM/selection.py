@@ -80,10 +80,13 @@ class _SubClass_:
             file_id = '15cfA8rVB6uLG7T85HOrar7u0AaCOUdxt'
             path_to_zip_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data.zip')
             URL = "https://docs.google.com/uc?export&confirm=download"
+            HEADERS = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"  # NOQA
+            }
             CHUNK_SIZE = 32768
 
             session = requests.Session()
-            response = session.get(URL, params={'id': file_id}, stream=True)
+            response = session.get(URL, headers=HEADERS, params={'id': file_id}, stream=True)
             token = None
             for key, value in response.cookies.items():
                 if key.startswith('download_warning'):

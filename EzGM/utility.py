@@ -1397,6 +1397,48 @@ def make_dir(dir_path):
     os.makedirs(dir_path)
 
 
+def download_file_from_google_drive(file_id, destination):
+    """
+    Details
+    -------
+    Downloads the a file stored in google drive
+
+    Parameters
+    ----------
+    file_id : str
+        File id from google drive (last part of the shared link)
+    destination : str
+        The path where the downloaded file would be stored
+
+    Returns
+    -------
+    None. 
+    """
+
+    URL = "https://docs.google.com/uc?export&confirm=download"
+    HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"  # NOQA
+    }
+    CHUNK_SIZE = 32768
+
+    session = requests.Session()
+    response = session.get(URL, headers=HEADERS, params={'id': file_id}, stream=True)
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+            break
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(URL, headers=HEADERS, params=params, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+
+
 def run_time(start_time):
     """
     Details

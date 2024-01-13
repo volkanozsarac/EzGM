@@ -1,6 +1,11 @@
 """
 Ground motion record selection toolbox
 """
+# Code improvements
+# TODO: Better to use pathlib for path related stuff
+# TODO: Change styling (use flake8)
+# TODO: Convert depreciated oq functions to the new ones
+
 # Possible future developments
 # TODO: Seems that exact CS computation via OpenQuake engine is possible. Add separate class for exact CS, and name
 #  the previous one as approximate. Nonetheless, what need to be figured out is how to get correlation matrix directly.
@@ -11,6 +16,7 @@ Ground motion record selection toolbox
 # Import python libraries
 import copy
 import os
+from pathlib import Path
 import pickle
 import shutil
 import sys
@@ -28,7 +34,7 @@ from selenium import webdriver
 from .webdriverdownloader import ChromeDriverDownloader, GeckoDriverDownloader
 from numba import njit
 from openquake.hazardlib import gsim, imt, const
-from .utility import make_dir, content_from_zip, read_nga, read_esm, get_esm_token
+from .utility import make_dir, content_from_zip, read_nga, read_esm, get_esm_token, download_file_from_google_drive
 from .utility import site_parameters_tbec2018, sae_tbec2018, site_parameters_asce7_16, sae_asce7_16, sae_ec8_part1
 from .utility import random_multivariate_normal
 
@@ -72,40 +78,19 @@ class _SubClass_:
 
         """
 
-        directory_to_extract_to = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data')
-        if os.path.isdir(directory_to_extract_to):  # if meta data is retrieved before no need to do anything
-            pass
-        else:  # if meta data is not retrieved before, download it from the shared link
-            # File id from google drive: last part of the shared link
-            file_id = '15cfA8rVB6uLG7T85HOrar7u0AaCOUdxt'
-            path_to_zip_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Meta_Data.zip')
-            URL = "https://docs.google.com/uc?export&confirm=download"
-            HEADERS = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36"  # NOQA
-            }
-            CHUNK_SIZE = 32768
+        meta_data_folder = Path(__file__).parent / 'Meta_Data'
 
-            session = requests.Session()
-            response = session.get(URL, headers=HEADERS, params={'id': file_id}, stream=True)
-            token = None
-            for key, value in response.cookies.items():
-                if key.startswith('download_warning'):
-                    token = value
-                    break
-
-            if token:
-                params = {'id': id, 'confirm': token}
-                response = session.get(URL, params=params, stream=True)
-
-            with open(path_to_zip_file, "wb") as f:
-                for chunk in response.iter_content(CHUNK_SIZE):
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-
-            with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
-                zip_ref.extractall(directory_to_extract_to)
+        # if meta data is not retrieved before, download it from the shared link
+        if not Path.exists(meta_data_folder):    
+            destination = Path(__file__).parent / 'tmp.zip'  # temporary zipfile location
+            FILE_ID = '15cfA8rVB6uLG7T85HOrar7u0AaCOUdxt'  # file id of meta data stored in google drive
+            download_file_from_google_drive(FILE_ID, destination)
+            # Extract the zip file
+            with zipfile.ZipFile(destination, 'r') as zip_ref:
+                zip_ref.extractall(meta_data_folder)
             # Remove the zip file after extracting the files
-            os.remove(path_to_zip_file)
+            destination.unlink()
+            
 
     def _search_database(self):
         """

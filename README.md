@@ -45,33 +45,42 @@ For EzGM examples, see:
    ```
    pip install EzGM
    ```
-- Nonetheless, in order to avoid any potential issues related to the conflicts in external dependencies, the following steps **tested in Windows 64-bit** are **recommended** for installation:
+- Nonetheless, in order to avoid any potential issues related to the conflicts in external dependencies, the following steps **(tested in Windows 64-bit)** are **recommended** for installation.
    1. Install [Python 3.8.10](https://www.python.org/downloads/release/python-3810/). During the installation, check *Add Python 3.8 to PATH* option.
    2. Clone the EzGM project, and launch the command prompt or terminal within the clone directory.
-   3. Create a new virtual envrionment (venv) with Python 3.8 by entering:
-   ```
-   py -3.8 python -m venv venv
-   ```
+   3. Create a new virtual envrionment (venv) with Python 3.8.
+      ```
+      py -3.8 python -m venv venv
+      ```
    4. Activate venv by entering the following. If it is active (venv) should appear in the terminal.
+      ```
+      venv\Scripts\activate
+      ```
+   5. Upgrade pip.
+      ```
+      python -m pip install --upgrade pip
+      ```
+   6. Install the package requirements based on your system.
+      - For Windows:
+         ```
+         pip install -r requirements-py38-win64.txt
+         ```
+      - For Linux:
+         ```
+         pip install -r requirements-py38-linux64.txt
+         ```
+      - For MacOS:
+         ```
+         pip install -r requirements-py38-macos_x86_64.txt
+         ```
+   7. Install EzGM.
+      ```
+      pip install -e .
+      ```
+- Once the Python is executed in venv where the package is installed, it can be imported.
    ```
-   venv\Scripts\activate
+   import EzGM
    ```
-   5. Upgrade pip:
-   ```
-   python -m pip install --upgrade pip
-   ```
-   6. Install the package requirements based on your system by entering:
-   ```
-   pip install -r requirements-py38-win64.txt
-   ```
-   7. Install EzGM by entering:
-   ```
-   pip install -e .
-   ```
-- Once the Python is executed in venv where the package is installed, it can be imported as:
-```
-import EzGM
-```
 ***
 ## Acknowledgements
 Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.selection.conditional_spectrum method is greatly inspired by Prof. Jack W. Baker whom I thank for sharing his work with the research community.

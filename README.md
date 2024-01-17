@@ -12,7 +12,7 @@ Toolbox for ground motion record selection and processing.
 The package has three different modules: 
 1. **EzGM.selection** deals with the record selection. 
    It can be used to perform unconditional or conditional spectrum based selection in which intensity measure can be chosen as Sa(T*) or AvgSa(T*). The tool makes use of 
-   [OpenQuake hazard library](https://docs.openquake.org/oq-engine/3.14/openquake.hazardlib.gsim.html#ground-shaking-intensity-models) and 
+   [OpenQuake hazard library](https://docs.openquake.org/oq-engine/3.16/reference/openquake.hazardlib.gsim.html) and 
    thus any available ground motion prediction equation available can directly be used (see Example 1). <br />
    It can also be used to perform the selection based on Turkish Building Earthquake Code (TBEC-2018), ASCE 7-16, and Eurocode 8 Part 1 (see Example 2). <br />
    Currently, the records can be selected from the two publicly available databases: *NGA_W2* and *ESM_2018*. 
@@ -45,23 +45,30 @@ For EzGM examples, see:
    ```
    pip install EzGM
    ```
-- Nonetheless, in order to avoid any potential issues, the following is recommended for installation:
-   1. First, create a clean python envrionment with python version greater than 3.7. Then, upgrade pip:
+- Nonetheless, in order to avoid any potential issues related to the conflicts in external dependencies, the following steps **tested in Windows 64-bit** are **recommended** for installation:
+   1. Install [Python 3.8.10](https://www.python.org/downloads/release/python-3810/). During the installation, check *Add Python 3.8 to PATH* option.
+   2. Clone the EzGM project, and launch the command prompt or terminal within the clone directory.
+   3. Create a new virtual envrionment (venv) with Python 3.8 by entering:
    ```
-   pip install --upgrade pip
+   py -3.8 python -m venv venv
    ```
-   2. Clone openquake.engine from https://github.com/gem/oq-engine, and open the terminal inside the clone directory. 
-   Activate the environment you want to install the package. Then, install the package requirements based on your system via:
+   4. Activate venv by entering the following. If it is active (venv) should appear in the terminal.
+   ```
+   venv\Scripts\activate
+   ```
+   5. Upgrade pip:
+   ```
+   python -m pip install --upgrade pip
+   ```
+   6. Install the package requirements based on your system by entering:
    ```
    pip install -r requirements-py38-win64.txt
    ```
-   3. Install OpenQuake:
+   7. Install EzGM by entering:
    ```
    pip install -e .
    ```
-   4. Clone EzGM, and open the terminal inside the clone directory. 
-   Activate the environment you want to install the package. Finally, install the package via the same command shown in the previous step.
-- Finally the package can be imported as:
+- Once the Python is executed in venv where the package is installed, it can be imported as:
 ```
 import EzGM
 ```
@@ -75,6 +82,7 @@ If you are going to use the code presented herein for any official study, please
 Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2023) Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, 19:4, 554-574, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
 ***
 ## Potential Improvements
+- Re-formatting the source code for easier development
 - Computation of the exact CS
 - Addition of 3 component selection
 - Addition of spectral matching methods

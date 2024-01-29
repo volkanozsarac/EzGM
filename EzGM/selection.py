@@ -2194,7 +2194,7 @@ class ConditionalSpectrum(_SubClass_):
         self.sim_spec = np.log(spectra[recUse])  # return the best set of simulations
 
     def select(self, num_records=30, is_scaled=1, max_scale_factor=4, mag_limits=None, vs30_limits=None, rjb_limits=None,
-               mech_limits=None, num_simulations=20, seed_value=None, error_weights=[1, 2, 0.3], num_greedy_loops=2, penalty=0, 
+               mech_limits=None, num_simulations=20, seed_value=None, error_weights=[1, 2, 0.3], num_greedy_loops=2, penalty=0,
                tolerance=10):
         """
         Details
@@ -2325,7 +2325,7 @@ class ConditionalSpectrum(_SubClass_):
 
         if self.is_conditioned == 1 and len(self.Tstar) == 1:
             # These indices are required in case IM = Sa(T) to break the loop
-            ind2 = (np.where(self.periods != self.Tstar[0])[0][0]).tolist()
+            ind2 = (np.where(self.periods != self.Tstar[0])[0]).tolist()
 
         # Find num_records ground motions, initial subset
         for i in range(self.num_records):

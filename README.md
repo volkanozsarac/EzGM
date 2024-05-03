@@ -82,9 +82,6 @@ For EzGM examples, see:
    import EzGM
    ```
 ***
-## Acknowledgements
-Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.selection.conditional_spectrum method is greatly inspired by Prof. Jack W. Baker whom I thank for sharing his work with the research community.
-***
 ## References
 The references associated with each method are provided as the docstring.
 If you are going to use the code presented herein for any official study, please refer to: <br /> 

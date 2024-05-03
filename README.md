@@ -83,7 +83,7 @@ For EzGM examples, see:
    ```
 ***
 ## Acknowledgements
-Special thanks to Besim Yukselen for his help in the development of ngaw2_download method, and Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.selection.conditional_spectrum method is greatly inspired by Prof. Jack W. Baker whom I thank for sharing his work with the research community.
+Special thanks to Gerard J. O'Reilly for sharing his knowledge in the field with me. The EzGM.selection.ConditionalSpectrum method is greatly inspired by Prof. Jack W. Baker whom I thank for sharing his work with the research community.
 ***
 ## References
 The references associated with each method are provided as the docstring.

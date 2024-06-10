@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.mat
+EzGM/Meta_Data/Parameters_TBEC2018.csv

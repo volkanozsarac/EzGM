@@ -2219,8 +2219,8 @@ class ConditionalSpectrum(_SubClass_):
             If other than None use of amplitude scaling for spectral matching is allowed.
             The default is 4.
         is_scaled : int, optional
-            If 1 use of amplitude scaling for spectral matching is not allowed.
-            If 0 None use of amplitude scaling for spectral matching is allowed.
+            If 1, use of amplitude scaling for spectral matching is allowed.
+            If 0, use of amplitude scaling for spectral matching is not allowed.
             The default is 1.        
         mag_limits : list, optional
             The limiting values on magnitude.

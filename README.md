@@ -4,6 +4,8 @@ Toolbox for ground motion record selection and processing.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5878962.svg)](https://doi.org/10.5281/zenodo.5878962)
 
+Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2023) Probabilistic seismic assessment of reinforced concrete bridges using simulated records, Structure and Infrastructure Engineering, 19:4, 554-574, DOI: [10.1080/15732479.2021.1956551](https://doi.org/10.1080/15732479.2021.1956551)
+
 ***
 ### The repository is deprecated for now
 

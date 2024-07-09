@@ -9,7 +9,7 @@ Volkan Ozsarac, Ricardo Monteiro & Gian Michele Calvi (2023) Probabilistic seism
 ***
 ### The repository is deprecated for now
 
-The repository is deprecated for now as the [Djura team](https://www.djura.it/company/our-team) has made significant changes in the EzGM toolbox. The significant improvements made resulted in brand new tools such as Djura record-selector [(click for demo)](https://www.djura.it/playground). Some of the new features of these tools include:
+The repository is deprecated for now as the [Djura team](https://www.djura.it/company/our-team) has made significant changes in the EzGM toolbox. The significant improvements made resulted in brand new tools such as Djura record-selector ([see demo](https://www.djura.it/playground)). Some of the new features of these tools include:
 
 - Selection of records using a web application with a graphical user interface (GUI).
 - Computation of new intensity measures (IMs) such as filtered incremental velocity, FIV3.

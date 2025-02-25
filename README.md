@@ -14,7 +14,7 @@ The repository is deprecated for now as the [Djura team](https://www.djura.it/ou
 - Usability of generalized conditional intensity measure approach (GCIM), with adoption to new IMs such as FIV3.
 - Computation of exact conditional spectrum.
 
-The finalized tools will be released soon along with the training videos. Feel free to contact me for further information. 
+Feel free to contact me for further information. 
 ***
 ### References
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5878962.svg)](https://doi.org/10.5281/zenodo.5878962)

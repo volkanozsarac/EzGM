@@ -5,7 +5,7 @@ Toolbox for ground motion record selection and processing.
 ***
 ### The repository is deprecated for now
 
-The repository is deprecated for now as the [Djura team](https://www.djura.it/company/our-team) has made significant changes in the EzGM toolbox. The collaborative efforts being made resulted in brand new tools such as Djura - record selector ([try as guest](https://www.djura.it/login)). Some of the new features of these tools include:
+The repository is deprecated for now as the [Djura team](https://www.djura.it/company/our-team) has made significant changes in the EzGM toolbox. The collaborative efforts being made resulted in brand new tools such as Djura - record selector ([try as guest](https://apps.djura.it/login)). Some of the new features of these tools include:
 
 - Selection of records using a web application with a graphical user interface (GUI).
 - Computation of new intensity measures (IMs) such as filtered incremental velocity, FIV3.

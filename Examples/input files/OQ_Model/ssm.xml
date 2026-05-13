@@ -1,0 +1,1455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nrml
+xmlns="http://openquake.org/xmlns/nrml/0.5"
+xmlns:gml="http://www.opengis.net/gml"
+>
+    <sourceModel
+    name="None"
+    >
+        <sourceGroup
+        name="group 1"
+        tectonicRegion="Active Shallow Crust"
+        >
+            <areaSource
+            id="927"
+            name="ITA927"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    14.28868419293478453 41.78892144673913123 15.38415961684782829 40.99078935217391262 15.90059803097826219 40.52129988478260714 16.47963504076087204 39.66056919456521968 16.02579522228261055 39.69186849239130765 15.03986734076087117 40.84994251195652737 14.72687436250000204 41.05338794782608858 14.17913665054348016 41.42897952173913012 14.28868419293478453 41.78892144673913123
+                                 </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.11" bValue="0.74" maxMag="7.06" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="9.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="903"
+            name="ITA903"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    10.1459 46.8685 10.6091 46.8561 10.6485 46.6356 9.9375 46.1137 9.7675 46.2964 9.6259 46.4474 9.3106 46.7799 9.4253 46.884 10.1459 46.8685 10.1459 46.8685
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.07" bValue="1.26" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="9.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="905"
+            name="ITA905"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    13.8249 46.1248 13.5463 45.8765 13.1597 46.156 12.6387 45.9916 12.2322 45.7889 11.8977 45.6302 11.8999 46.0467 12.967 46.4988 13.6509 46.4802 13.7857 46.1509 13.8249 46.1248 13.8249 46.1248
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.5" bValue="1.06" maxMag="6.6" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="901"
+            name="ITA901"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    6.9769 46.3807 7.3578 45.9577 7.3564 45.9573 7.0485 45.8614 6.794 45.7071 6.1651 46.083 6.1779 46.0935 6.2804 46.2249 6.2956 46.2443 6.7075 46.3856 6.709 46.3861 6.8811 46.4847 6.9769 46.3807 6.9769 46.3807
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.59" bValue="1.18" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="902"
+            name="ITA902"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    6.9769 46.3807 7.6256 46.3881 8.3208 46.4491 8.3351 46.3267 7.693 45.9487 7.5724 46.024 7.3578 45.9577 6.9769 46.3807 6.9769 46.3807
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.07" bValue="1.26" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="904"
+            name="ITA904"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    13.8249 46.1248 14.3229 45.7887 14.1295 45.4469 13.5463 45.8765 13.8249 46.1248 13.8249 46.1248
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.41" bValue="1.12" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="7.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="906"
+            name="ITA906"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    11.8999 46.0467 11.8977 45.6302 11.6902 45.5535 11.2693 45.3272 10.6619 45.273 10.1105 45.3123 10.6066 45.863 10.7791 45.8877 11.1791 45.8797 11.3582 45.8106 11.8999 46.0467 11.8999 46.0467
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.4" bValue="1.14" maxMag="6.6" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="909"
+            name="ITA909"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    7.3578 45.9577 7.5724 46.024 7.693 45.9487 7.5494 45.8697 7.2067 45.5728 6.8333 45.2447 7.0009 44.6859 7.1557 44.3118 6.6708 44.5054 6.4167 45.2083 6.5387 45.551 6.794 45.7071 7.0485 45.8614 7.3564 45.9573 7.3578 45.9577 7.3578 45.9577
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.97" bValue="1.27" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="907"
+            name="ITA907"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    10.6066 45.863 10.1105 45.3123 9.8865 45.3275 9.5116 45.5471 9.6762 45.8032 10.1092 45.7901 10.6066 45.863 10.6066 45.863
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="6.64" bValue="1.71" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="910"
+            name="ITA910"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    7.1557 44.3118 7.6572 44.1459 7.85 44.1022 8.0721 44.1058 8.4518 44.1109 8.1347 43.8425 7.8801 43.7263 7.5655 43.7804 6.6708 44.5054 7.1557 44.3118 7.1557 44.3118
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.41" bValue="1.12" maxMag="6.37" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="E"
+            name="ITAE"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    8.47553 44.712498 8.779481 44.549854 8.45183 44.110916 8.072137 44.105778 8.47553 44.712498
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.0" bValue="1.0" maxMag="7.0" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="908"
+            name="ITA908"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    7.206743 45.572803 7.519383 44.734776 7.657177 44.145886 7.155746 44.311829 7.000906 44.685932 6.833257 45.24472 7.206743 45.572803
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="7.58" bValue="1.91" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="911"
+            name="ITA911"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    8.47553 44.712498 9.314071 45.265533 10.015694 45.011757 9.656718 44.669632 9.461147 44.4715 9.270211 44.283428 8.779481 44.549854 8.47553 44.712498
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.61" bValue="1.47" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="912"
+            name="ITA912"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.395358 44.434109 12.270123 44.106453 12.07572 44.297394 11.553079 44.507702 11.13718 44.548515 10.537289 44.745727 10.824336 44.951595 11.457679 44.916168 11.919618 44.781052 12.052342 44.74168 12.395358 44.434109
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.42" bValue="1.35" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="7.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="913"
+            name="ITA913"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    9.656718 44.669632 10.015694 45.011757 10.537289 44.745727 11.13718 44.548515 11.553079 44.507702 11.32331 44.136684 10.699876 44.208866 9.656718 44.669632
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="7.31" bValue="1.8" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="915"
+            name="ITA915"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    9.461147 44.4715 9.656718 44.669632 10.699876 44.208866 11.32331 44.136684 12.11651 43.793972 11.993237 43.542446 11.870223 43.658337 11.254693 43.954441 10.413175 43.987789 9.461147 44.4715
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.34" bValue="1.34" maxMag="6.6" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="914"
+            name="ITAS914"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    11.32331 44.136684 11.553079 44.507702 12.07572 44.297394 12.270123 44.106453 12.11651 43.793972 11.32331 44.136684
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.4" bValue="1.33" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="916"
+            name="ITA916"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    9.270211 44.283428 9.461147 44.4715 10.413175 43.987789 11.254693 43.954441 11.870223 43.658337 11.577987 43.222858 10.93069 43.686275 10.226611 43.616528 10.075448 43.897949 9.270211 44.283428
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="7.81" bValue="1.96" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="6.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="917"
+            name="ITA917"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.270123 44.106453 12.395358 44.434109 13.089631 43.994849 13.784683 43.554288 14.007098 43.178297 14.079196 42.887672 14.181002 42.474834 14.372491 42.149933 14.279234 41.857189 13.541156 43.294296 12.270123 44.106453
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.97" bValue="1.04" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="7.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="918"
+            name="ITA918"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.11651 43.793972 12.270123 44.106453 13.541156 43.294296 14.279234 41.857189 13.588533 42.522327 13.151796 43.028217 12.11651 43.793972
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.32" bValue="1.1" maxMag="6.37" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="919"
+            name="ITA919"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    11.993237 43.542446 12.11651 43.793972 13.151796 43.028217 12.766461 42.665394 12.412247 43.126457 11.993237 43.542446
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.15" bValue="1.22" maxMag="6.37" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="8.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="921"
+            name="ITA921"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    10.226611 43.616528 10.93069 43.686275 11.577987 43.222858 11.755552 43.093781 11.893587 42.961288 12.161645 42.635773 12.280819 42.483452 11.996041 42.132748 11.347994 42.757839 10.386529 43.424587 10.226611 43.616528
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="8.1" bValue="2.0" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="4.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="920"
+            name="ITA920"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    11.577987 43.222858 11.870223 43.658337 11.993237 43.542446 12.412247 43.126457 12.766461 42.665394 12.938025 42.439087 13.530234 41.848179 13.604964 41.527168 13.332681 41.457592 13.05091 41.736828 12.750907 41.955196 12.701695 41.998119 12.542922 42.145256 12.280819 42.483452 12.161645 42.635773 11.893587 42.961288 11.755552 43.093781 11.577987 43.222858
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="7.99" bValue="1.96" maxMag="5.68" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="6.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="923"
+            name="ITA923"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.766461 42.665394 13.151796 43.028217 13.588533 42.522327 14.279234 41.857189 14.253578 41.775921 14.14166 41.420269 13.604964 41.527168 13.530234 41.848179 12.938025 42.439087 12.766461 42.665394
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.08" bValue="1.05" maxMag="7.06" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="9.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="924"
+            name="ITA924"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    14.295409 41.746969 15.182439 41.928 15.296317 41.951172 16.415095 41.954535 16.966878 41.932705 16.956879 41.628004 16.953434 41.523029 16.41147 41.537149 15.331386 41.557 15.100181 41.536805 14.652621 41.497887 14.295409 41.746969
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.0" bValue="1.04" maxMag="6.83" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="925"
+            name="ITA925"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    15.447919 40.932175 14.945001 41.29171 14.991632 41.292109 16.525309 41.305229 16.527219 40.942298 15.908801 40.936452 15.447919 40.932175
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="2.38" bValue="0.67" maxMag="6.83" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="928"
+            name="ITA928"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    14.693049 41.090649 14.997608 40.906006 13.913044 40.599525 13.779294 40.832626 14.693049 41.090649
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="4.21" bValue="1.04" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="3.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="926"
+            name="ITA926"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    16.759433 40.484915 15.867089 40.502525 15.66471 40.710892 17.169636 40.653954 17.168516 40.476829 16.909999 40.481933 16.759433 40.484915
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.02" bValue="1.28" maxMag="5.91" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="929"
+            name="ITA929"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    15.23128 37.817333 15.317139 37.964478 15.52963 38.325829 15.710979 38.266766 15.89257 38.684353 16.016392 38.805813 16.14447 38.931599 16.032621 39.568241 16.012461 39.713913 16.409086 39.707825 16.600388 39.554821 16.647768 38.906994 16.433876 38.785103 16.01116 38.172035 15.859719 37.942932 15.390162 37.79369 15.23128 37.817333
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.08" bValue="0.82" maxMag="7.29" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="930"
+            name="ITA930"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    15.859719 37.942932 16.01116 38.172035 16.433876 38.785103 16.647768 38.906994 16.600388 39.554821 16.409086 39.707825 17.105783 39.697952 17.156128 38.915626 16.673441 38.725941 16.297048 38.198929 16.158594 37.871082 15.859719 37.942932
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.84" bValue="1.0" maxMag="6.6" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="932"
+            name="ITA932"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    15.317139 37.964478 15.23128 37.817333 15.17205 37.835785 14.998373 37.835778 14.985673 37.863892 14.850434 38.157047 14.750374 38.37184 14.644944 38.597687 14.993376 38.614483 15.317139 37.964478
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.01" bValue="1.21" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="933"
+            name="ITA933"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    13.034643 38.031037 13.125713 38.224703 14.239689 38.068436 14.850434 38.157047 14.985673 37.863892 14.210601 37.778205 13.351506 37.960468 13.034643 38.031037
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="5.83" bValue="1.39" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="934"
+            name="ITA934"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.796037 37.522919 12.868269 37.67708 13.034643 38.031037 13.351506 37.960468 13.114467 37.534719 13.085196 37.48277 12.796037 37.522919
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="3.81" bValue="0.96" maxMag="6.14" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="10.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="935"
+            name="ITA935"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    14.318798 37.186908 15.075577 37.559738 15.198802 37.57066 15.346197 36.915281 14.748061 36.599945 14.318798 37.186908
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="2.46" bValue="0.72" maxMag="7.29" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="13.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="936"
+            name="ITA936"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    14.998373 37.835778 15.17205 37.835785 15.23128 37.817333 15.218432 37.719959 15.198802 37.57066 15.075577 37.559738 14.962014 37.591729 14.873441 37.616913 14.906193 37.751545 14.998373 37.835778
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="7.18" bValue="1.63" maxMag="5.45" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="3.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+            <areaSource
+            id="922"
+            name="ITA922"
+            tectonicRegion="Active Shallow Crust"
+            >
+                <areaGeometry>
+                    <Polygon>
+                        <exterior>
+                            <LinearRing>
+                                <posList>
+                                    12.701695 41.998119 12.750907 41.955196 13.05091 41.736828 12.637448 41.497391 12.356889 41.77586 12.701695 41.998119
+                                </posList>
+                            </LinearRing>
+                        </exterior>
+                    </Polygon>
+                    <upperSeismoDepth>
+                        0.0
+                    </upperSeismoDepth>
+                    <lowerSeismoDepth>
+                        20.0
+                    </lowerSeismoDepth>
+                </areaGeometry>
+                <magScaleRel>
+                    WC1994
+                </magScaleRel>
+                <ruptAspectRatio>
+                    1.0
+                </ruptAspectRatio>
+                <truncGutenbergRichterMFD aValue="8.97" bValue="2.0" maxMag="5.45" minMag="4.7"/>
+                <nodalPlaneDist>
+                    <nodalPlane dip="45.0" probability="1.0" rake="90.0" strike="0.0"/>
+                </nodalPlaneDist>
+                <hypoDepthDist>
+                    <hypoDepth
+                    depth="4.0"
+                    probability="1.0"
+                    >
+                    </hypoDepth>
+                </hypoDepthDist>
+            </areaSource>
+        </sourceGroup>
+    </sourceModel>
+</nrml>

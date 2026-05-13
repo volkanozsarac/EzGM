@@ -452,175 +452,52 @@ class _SubClass_:
 
         plt.ioff()
 
-        if type(self).__name__ == 'ConditionalSpectrum':
+        # xticks and yticks to use for plotting
+        xticks = [self.periods[0]]
+        for x in [0.01, 0.1, 0.2, 0.5, 1, 5, 10]:
+            if self.periods[0] < x < self.periods[-1]:
+                xticks.append(x)
+        xticks.append(self.periods[-1])
+        yticks = [0.01, 0.1, 0.2, 0.5, 1, 2, 3, 5]
 
-            # xticks and yticks to use for plotting
-            xticks = [self.periods[0]]
-            for x in [0.01, 0.1, 0.2, 0.5, 1, 5, 10]:
-                if self.periods[0] < x < self.periods[-1]:
-                    xticks.append(x)
-            xticks.append(self.periods[-1])
-            yticks = [0.01, 0.1, 0.2, 0.5, 1, 2, 3, 5]
+        if self.is_conditioned == 1:
+            if len(self.Tstar) == 1:
+                hatch = [float(self.Tstar * 0.98), float(self.Tstar * 1.02)]
+            else:
+                hatch = [float(self.Tstar.min()), float(self.Tstar.max())]
 
+        if target == 1:
+            # Plot Target spectrum vs. Simulated response spectra
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum', y=0.95)
+            ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.use_variance == 1:
+                ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                                label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                                label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+
+            ax[0].set_xlim([self.periods[0], self.periods[-1]])
+            ax[0].set_xticks(xticks)
+            ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_xaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_yticks(yticks)
+            ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_yaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+
+            handles, labels = ax[0].get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
             if self.is_conditioned == 1:
-                if len(self.Tstar) == 1:
-                    hatch = [float(self.Tstar * 0.98), float(self.Tstar * 1.02)]
-                else:
-                    hatch = [float(self.Tstar.min()), float(self.Tstar.max())]
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
-            if target == 1:
-                # Plot Target spectrum vs. Simulated response spectra
-                fig, ax = plt.subplots(1, 2, figsize=(16, 8))
-                plt.suptitle('Target Spectrum', y=0.95)
-                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.use_variance == 1:
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-                ax[0].set_xlim([self.periods[0], self.periods[-1]])
-                ax[0].set_xticks(xticks)
-                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks(yticks)
-                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_xlabel('Period [sec]')
-                ax[0].set_ylabel('Spectral Acceleration [g]')
-                ax[0].grid(True)
-
-                handles, labels = ax[0].get_legend_handles_labels()
-                by_label = dict(zip(labels, handles))
-                ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.is_conditioned == 1:
-                    ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-                # Sample and target standard deviations
-                if self.use_variance == 1:
-                    ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
-                                   label='Target - $\sigma_{ln}$')
-                    ax[1].set_xlabel('Period [sec]')
-                    ax[1].set_ylabel('Dispersion')
-                    ax[1].grid(True)
-                    ax[1].legend(frameon=False)
-                    ax[1].set_xlim([self.periods[0], self.periods[-1]])
-                    ax[1].set_xticks(xticks)
-                    ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
-                    ax[1].get_xaxis().set_minor_formatter(NullFormatter())
-                    ax[1].set_ylim(bottom=0)
-                    ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
-                    ax[1].get_yaxis().set_minor_formatter(NullFormatter())
-                    if self.is_conditioned == 1:
-                        ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-                if save == 1:
-                    plt.savefig(os.path.join(self.output_directory_path, 'Targeted.pdf'))
-
-            if simulations == 1:
-                # Plot Target spectrum vs. Simulated response spectra
-                fig, ax = plt.subplots(1, 2, figsize=(16, 8))
-                plt.suptitle('Target Spectrum vs. Simulated Spectra', y=0.95)
-
-                for i in range(self.num_records):
-                    ax[0].loglog(self.periods, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected')
-
-                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.use_variance == 1:
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-                ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0)), color='blue', lw=2,
-                             label='Selected - $e^{\mu_{ln}}$')
-                if self.use_variance == 1:
-                    ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) + 2 * np.std(self.sim_spec, axis=0)),
-                                 color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
-                                 color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-                ax[0].set_xlim([self.periods[0], self.periods[-1]])
-                ax[0].set_xticks(xticks)
-                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks(yticks)
-                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_xlabel('Period [sec]')
-                ax[0].set_ylabel('Spectral Acceleration [g]')
-                ax[0].grid(True)
-                handles, labels = ax[0].get_legend_handles_labels()
-                by_label = dict(zip(labels, handles))
-                ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.is_conditioned == 1:
-                    ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-                if self.use_variance == 1:
-                    # Sample and target standard deviations
-                    ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
-                                   label='Target - $\sigma_{ln}$')
-                    ax[1].semilogx(self.periods, np.std(self.sim_spec, axis=0), color='black', linestyle='--', lw=2,
-                                   label='Selected - $\sigma_{ln}$')
-                    ax[1].set_xlabel('Period [sec]')
-                    ax[1].set_ylabel('Dispersion')
-                    ax[1].grid(True)
-                    ax[1].legend(frameon=False)
-                    ax[1].set_xlim([self.periods[0], self.periods[-1]])
-                    ax[1].set_xticks(xticks)
-                    ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
-                    ax[1].get_xaxis().set_minor_formatter(NullFormatter())
-                    ax[1].set_ylim(bottom=0)
-                    ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
-                    ax[1].get_yaxis().set_minor_formatter(NullFormatter())
-                    if self.is_conditioned == 1:
-                        ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-                if save == 1:
-                    plt.savefig(os.path.join(self.output_directory_path, 'Simulated.pdf'))
-
-            if records == 1:
-                # Plot Target spectrum vs. Selected response spectra
-                fig, ax = plt.subplots(1, 2, figsize=(16, 8))
-                plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
-
-                for i in range(self.num_records):
-                    ax[0].loglog(self.periods, np.exp(self.rec_sa_ln[i, :]), color='gray', lw=1, label='Selected')
-
-                ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
-                if self.use_variance == 1:
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                    ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
-                                 label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0)), color='blue', lw=2,
-                             label='Selected - $e^{\mu_{ln}}$')
-                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) + 2 * np.std(self.rec_sa_ln, axis=0)),
-                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-                ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) - 2 * np.std(self.rec_sa_ln, axis=0)),
-                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
-
-                ax[0].set_xlim([self.periods[0], self.periods[-1]])
-                ax[0].set_xticks(xticks)
-                ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_xaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_yticks(yticks)
-                ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
-                ax[0].get_yaxis().set_minor_formatter(NullFormatter())
-                ax[0].set_xlabel('Period [sec]')
-                ax[0].set_ylabel('Spectral Acceleration [g]')
-                ax[0].grid(True)
-                handles, labels = ax[0].get_legend_handles_labels()
-                by_label = dict(zip(labels, handles))
-                ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
-                if self.is_conditioned == 1:
-                    ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-
-                # Sample and target standard deviations
-                ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
-                ax[1].semilogx(self.periods, np.std(self.rec_sa_ln, axis=0), color='black', linestyle='--', lw=2,
-                               label='Selected - $\sigma_{ln}$')
+            # Sample and target standard deviations
+            if self.use_variance == 1:
+                ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
+                                label='Target - $\sigma_{ln}$')
                 ax[1].set_xlabel('Period [sec]')
                 ax[1].set_ylabel('Dispersion')
                 ax[1].grid(True)
@@ -635,43 +512,126 @@ class _SubClass_:
                 if self.is_conditioned == 1:
                     ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
-                if save == 1:
-                    plt.savefig(os.path.join(self.output_directory_path, 'Selected.pdf'))
+            if save == 1:
+                plt.savefig(os.path.join(self.output_directory_path, 'Targeted.pdf'))
 
-        if type(self).__name__ == 'CodeSpectrum':
+        if simulations == 1:
+            # Plot Target spectrum vs. Simulated response spectra
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum vs. Simulated Spectra', y=0.95)
 
-            hatch = [self.lower_bound_period, self.upper_bound_period]
-            # Plot Target spectrum vs. Selected response spectra
-            fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-            for i in range(self.rec_sa_ln.shape[0]):
-                ax.plot(self.periods, self.rec_sa_ln[i, :] * self.rec_scale_factors[i], color='gray', lw=1, label='Selected')
-            ax.plot(self.periods, np.mean(self.rec_sa_ln * self.rec_scale_factors.reshape(-1, 1), axis=0), color='black', lw=2,
-                    label='Selected Mean')
+            for i in range(self.num_records):
+                ax[0].loglog(self.periods, np.exp(self.sim_spec[i, :]), color='gray', lw=1, label='Selected')
 
-            if self.code == 'TBEC 2018':
-                ax.plot(self.periods, self.target, color='red', lw=2, label='Design Response Spectrum')
-                if self.num_components == 2:
-                    ax.plot(self.periods, 1.3 * self.target, color='red', ls='--', lw=2,
-                            label='1.3 x Design Response Spectrum')
+            ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.use_variance == 1:
+                ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-            if self.code == 'ASCE 7-16':
-                ax.plot(self.periods, self.target, color='red', lw=2, label='$MCE_{R}$ Response Spectrum')
-                ax.plot(self.periods, 0.9 * self.target, color='red', ls='--', lw=2,
-                        label='0.9 x $MCE_{R}$ Response Spectrum')
+            ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0)), color='blue', lw=2,
+                         label='Selected - $e^{\mu_{ln}}$')
+            if self.use_variance == 1:
+                ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) + 2 * np.std(self.sim_spec, axis=0)),
+                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.periods, np.exp(np.mean(self.sim_spec, axis=0) - 2 * np.std(self.sim_spec, axis=0)),
+                             color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
 
-            if self.code == 'EC8-Part1':
-                ax.plot(self.periods, self.target, color='red', lw=2, label='Design Response Spectrum')
-                ax.plot(self.periods, 0.9 * self.target, color='red', lw=2, ls='--', label='0.9 x Design Response Spectrum')
-
-            ax.axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
-            ax.set_xlabel('Period [sec]')
-            ax.set_ylabel('Spectral Acceleration [g]')
-            ax.grid(True)
-            handles, labels = ax.get_legend_handles_labels()
+            ax[0].set_xlim([self.periods[0], self.periods[-1]])
+            ax[0].set_xticks(xticks)
+            ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_xaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_yticks(yticks)
+            ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_yaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+            handles, labels = ax[0].get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
-            ax.legend(by_label.values(), by_label.keys(), frameon=False)
-            ax.set_xlim([self.periods[0], self.upper_bound_period * 2])
-            plt.suptitle(f'Spectra of Selected Records ({self.code})', y=0.95)
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
+            if self.is_conditioned == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+
+            if self.use_variance == 1:
+                # Sample and target standard deviations
+                ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2,
+                                label='Target - $\sigma_{ln}$')
+                ax[1].semilogx(self.periods, np.std(self.sim_spec, axis=0), color='black', linestyle='--', lw=2,
+                                label='Selected - $\sigma_{ln}$')
+                ax[1].set_xlabel('Period [sec]')
+                ax[1].set_ylabel('Dispersion')
+                ax[1].grid(True)
+                ax[1].legend(frameon=False)
+                ax[1].set_xlim([self.periods[0], self.periods[-1]])
+                ax[1].set_xticks(xticks)
+                ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
+                ax[1].get_xaxis().set_minor_formatter(NullFormatter())
+                ax[1].set_ylim(bottom=0)
+                ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
+                ax[1].get_yaxis().set_minor_formatter(NullFormatter())
+                if self.is_conditioned == 1:
+                    ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+
+            if save == 1:
+                plt.savefig(os.path.join(self.output_directory_path, 'Simulated.pdf'))
+
+        if records == 1:
+            # Plot Target spectrum vs. Selected response spectra
+            fig, ax = plt.subplots(1, 2, figsize=(16, 8))
+            plt.suptitle('Target Spectrum vs. Spectra of Selected Records', y=0.95)
+
+            for i in range(self.num_records):
+                ax[0].loglog(self.periods, np.exp(self.rec_sa_ln[i, :]), color='gray', lw=1, label='Selected')
+
+            ax[0].loglog(self.periods, np.exp(self.mu_ln), color='red', lw=2, label='Target - $e^{\mu_{ln}}$')
+            if self.use_variance == 1:
+                ax[0].loglog(self.periods, np.exp(self.mu_ln + 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+                ax[0].loglog(self.periods, np.exp(self.mu_ln - 2 * self.sigma_ln), color='red', linestyle='--', lw=2,
+                             label='Target - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+
+            ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0)), color='blue', lw=2,
+                         label='Selected - $e^{\mu_{ln}}$')
+            ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) + 2 * np.std(self.rec_sa_ln, axis=0)),
+                         color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+            ax[0].loglog(self.periods, np.exp(np.mean(self.rec_sa_ln, axis=0) - 2 * np.std(self.rec_sa_ln, axis=0)),
+                         color='blue', linestyle='--', lw=2, label='Selected - $e^{\mu_{ln}\mp 2\sigma_{ln}}$')
+
+            ax[0].set_xlim([self.periods[0], self.periods[-1]])
+            ax[0].set_xticks(xticks)
+            ax[0].get_xaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_xaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_yticks(yticks)
+            ax[0].get_yaxis().set_major_formatter(ScalarFormatter())
+            ax[0].get_yaxis().set_minor_formatter(NullFormatter())
+            ax[0].set_xlabel('Period [sec]')
+            ax[0].set_ylabel('Spectral Acceleration [g]')
+            ax[0].grid(True)
+            handles, labels = ax[0].get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax[0].legend(by_label.values(), by_label.keys(), frameon=False)
+            if self.is_conditioned == 1:
+                ax[0].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
+
+            # Sample and target standard deviations
+            ax[1].semilogx(self.periods, self.sigma_ln, color='red', linestyle='--', lw=2, label='Target - $\sigma_{ln}$')
+            ax[1].semilogx(self.periods, np.std(self.rec_sa_ln, axis=0), color='black', linestyle='--', lw=2,
+                           label='Selected - $\sigma_{ln}$')
+            ax[1].set_xlabel('Period [sec]')
+            ax[1].set_ylabel('Dispersion')
+            ax[1].grid(True)
+            ax[1].legend(frameon=False)
+            ax[1].set_xlim([self.periods[0], self.periods[-1]])
+            ax[1].set_xticks(xticks)
+            ax[1].get_xaxis().set_major_formatter(ScalarFormatter())
+            ax[1].get_xaxis().set_minor_formatter(NullFormatter())
+            ax[1].set_ylim(bottom=0)
+            ax[1].get_yaxis().set_major_formatter(ScalarFormatter())
+            ax[1].get_yaxis().set_minor_formatter(NullFormatter())
+            if self.is_conditioned == 1:
+                ax[1].axvspan(hatch[0], hatch[1], facecolor='red', alpha=0.3)
 
             if save == 1:
                 plt.savefig(os.path.join(self.output_directory_path, 'Selected.pdf'))
